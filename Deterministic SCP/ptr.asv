@@ -24,6 +24,10 @@ for i = 1:ptr_ops.iter_max
     % Convexify along reference trajectory
     prob = convexify_along_reference(prob, i);
 
+    % Add virtual control
+    % Augment cost function
+    prob.ptr_cost = trust_region_cost()
+
     % Determine feasibility of reference trajectory
     ptr_sol.Delta = calculate_defect(prob, i + 1);
 
@@ -46,6 +50,17 @@ end
 ptr_sol.x = x_ref;
 ptr_sol.u = u_ref;
 ptr_sol.p = p_ref;
+end
+
+function [J_tr] = trust_region_cost(eta, eta_p, w_tr, w_tr_p)
+    J_tr = w_tr' * eta + w_tr_p * eta_p;
+end
+
+function [ptr_constraints] = trust_region_constraints(X, U, p, x_ref, u_ref, p_ref, q, alpha_x, alpha_u, alpha_p, eta_k, eta_p)
+    % Limit artificial unboundedness
+    ptr_constraints(1) = alpha_x * vecnorm(X - x_ref, q, 2) ...
+        + alpha_u * vecnorm(U - u_ref, q, 2) <= eta_k;
+    ptr_constraints(2) = alpha_p * vecnorm(p - p_ref, q, 2) <= eta_p;
 end
 
 function [w_tr] = update_trust_region_weights(Delta, update, w_tr, Delta_min)
