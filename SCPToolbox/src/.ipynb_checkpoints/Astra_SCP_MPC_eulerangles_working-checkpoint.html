@@ -1,0 +1,1883 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.4.554">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Travis Hastreiter">
+<meta name="dcterms.date" content="2024-06-21">
+
+<title>PSP AC Astra Modeling Euler Angles</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="Astra_SCP_MPC_eulerangles_working_files/libs/clipboard/clipboard.min.js"></script>
+<script src="Astra_SCP_MPC_eulerangles_working_files/libs/quarto-html/quarto.js"></script>
+<script src="Astra_SCP_MPC_eulerangles_working_files/libs/quarto-html/popper.min.js"></script>
+<script src="Astra_SCP_MPC_eulerangles_working_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="Astra_SCP_MPC_eulerangles_working_files/libs/quarto-html/anchor.min.js"></script>
+<link href="Astra_SCP_MPC_eulerangles_working_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="Astra_SCP_MPC_eulerangles_working_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="Astra_SCP_MPC_eulerangles_working_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="Astra_SCP_MPC_eulerangles_working_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="Astra_SCP_MPC_eulerangles_working_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body>
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#psp-ac-astra-modeling" id="toc-psp-ac-astra-modeling" class="nav-link active" data-scroll-target="#psp-ac-astra-modeling"><span class="header-section-number">1</span> PSP AC Astra Modeling</a>
+  <ul class="collapse">
+  <li><a href="#model-derivation-scp-problem-definition-for-mpc-and-solving-with-scptoolbox" id="toc-model-derivation-scp-problem-definition-for-mpc-and-solving-with-scptoolbox" class="nav-link" data-scroll-target="#model-derivation-scp-problem-definition-for-mpc-and-solving-with-scptoolbox"><span class="header-section-number">1.0.1</span> Model Derivation, SCP Problem Definition for MPC, and Solving with SCPToolbox</a></li>
+  <li><a href="#model-derivation" id="toc-model-derivation" class="nav-link" data-scroll-target="#model-derivation"><span class="header-section-number">1.1</span> Model Derivation</a>
+  <ul class="collapse">
+  <li><a href="#problem-description" id="toc-problem-description" class="nav-link" data-scroll-target="#problem-description"><span class="header-section-number">1.1.1</span> Problem Description</a></li>
+  <li><a href="#equations-of-motions" id="toc-equations-of-motions" class="nav-link" data-scroll-target="#equations-of-motions"><span class="header-section-number">1.1.2</span> Equations of Motions</a></li>
+  <li><a href="#dynamics" id="toc-dynamics" class="nav-link" data-scroll-target="#dynamics"><span class="header-section-number">1.1.3</span> Dynamics</a></li>
+  <li><a href="#cost-function" id="toc-cost-function" class="nav-link" data-scroll-target="#cost-function"><span class="header-section-number">1.1.4</span> Cost Function</a></li>
+  </ul></li>
+  <li><a href="#scp-problem-definition-for-mpc" id="toc-scp-problem-definition-for-mpc" class="nav-link" data-scroll-target="#scp-problem-definition-for-mpc"><span class="header-section-number">1.2</span> SCP Problem Definition for MPC</a>
+  <ul class="collapse">
+  <li><a href="#optimal-control-optimization-problem-definition" id="toc-optimal-control-optimization-problem-definition" class="nav-link" data-scroll-target="#optimal-control-optimization-problem-definition"><span class="header-section-number">1.2.1</span> Optimal Control Optimization Problem Definition</a></li>
+  <li><a href="#scp-optimization-problem-definition" id="toc-scp-optimization-problem-definition" class="nav-link" data-scroll-target="#scp-optimization-problem-definition"><span class="header-section-number">1.2.2</span> SCP Optimization Problem Definition</a></li>
+  <li><a href="#initial-guess" id="toc-initial-guess" class="nav-link" data-scroll-target="#initial-guess"><span class="header-section-number">1.2.3</span> Initial Guess</a></li>
+  </ul></li>
+  <li><a href="#scp-toolbox-code-and-solution" id="toc-scp-toolbox-code-and-solution" class="nav-link" data-scroll-target="#scp-toolbox-code-and-solution"><span class="header-section-number">1.3</span> SCP Toolbox Code and Solution</a>
+  <ul class="collapse">
+  <li><a href="#set-up-problem" id="toc-set-up-problem" class="nav-link" data-scroll-target="#set-up-problem"><span class="header-section-number">1.3.1</span> Set Up Problem</a></li>
+  <li><a href="#solve-optimization-problem" id="toc-solve-optimization-problem" class="nav-link" data-scroll-target="#solve-optimization-problem"><span class="header-section-number">1.3.2</span> Solve Optimization Problem</a></li>
+  <li><a href="#plot-solution" id="toc-plot-solution" class="nav-link" data-scroll-target="#plot-solution"><span class="header-section-number">1.3.3</span> Plot Solution</a></li>
+  </ul></li>
+  </ul></li>
+  </ul>
+</nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">PSP AC Astra Modeling Euler Angles</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Travis Hastreiter </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">June 21, 2024</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="psp-ac-astra-modeling" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> PSP AC Astra Modeling</h1>
+<section id="model-derivation-scp-problem-definition-for-mpc-and-solving-with-scptoolbox" class="level3" data-number="1.0.1">
+<h3 data-number="1.0.1" class="anchored" data-anchor-id="model-derivation-scp-problem-definition-for-mpc-and-solving-with-scptoolbox"><span class="header-section-number">1.0.1</span> Model Derivation, SCP Problem Definition for MPC, and Solving with SCPToolbox</h3>
+<div id="2229244e-f950-4b98-b971-3f962752f2b1" class="cell" data-execution_count="1">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> <span class="bu">Pkg</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="bu">Pkg</span>.<span class="fu">activate</span>(<span class="st">".."</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">SCPToolbox</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">PyCall</span>, <span class="bu">PyPlot</span>, <span class="bu">Colors</span>, <span class="bu">LinearAlgebra</span>, <span class="bu">Latexify</span>, <span class="bu">Symbolics</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> <span class="bu">Plots</span>, <span class="bu">Measures</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">Plots</span>, <span class="bu">Measures</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Import the different possible low-level convex solvers</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">ECOS</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="co"># using Ipopt</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co"># using SCS</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="co"># using OSQP</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stderr">
+<pre><code>  Activating project at `C:\Users\thatf\Documents\PSP AC\Astra_SCP`
+Precompiling SCPToolbox
+  ✓ SCPToolbox
+  1 dependency successfully precompiled in 8 seconds. 67 already precompiled.</code></pre>
+</div>
+</div>
+</section>
+<section id="model-derivation" class="level2" data-number="1.1">
+<h2 data-number="1.1" class="anchored" data-anchor-id="model-derivation"><span class="header-section-number">1.1</span> Model Derivation</h2>
+<section id="problem-description" class="level3" data-number="1.1.1">
+<h3 data-number="1.1.1" class="anchored" data-anchor-id="problem-description"><span class="header-section-number">1.1.1</span> Problem Description</h3>
+<section id="general-description" class="level4" data-number="1.1.1.1">
+<h4 data-number="1.1.1.1" class="anchored" data-anchor-id="general-description"><span class="header-section-number">1.1.1.1</span> General Description</h4>
+</section>
+<section id="assumptions" class="level4" data-number="1.1.1.2">
+<h4 data-number="1.1.1.2" class="anchored" data-anchor-id="assumptions"><span class="header-section-number">1.1.1.2</span> Assumptions</h4>
+</section>
+<section id="states" class="level4" data-number="1.1.1.3">
+<h4 data-number="1.1.1.3" class="anchored" data-anchor-id="states"><span class="header-section-number">1.1.1.3</span> States</h4>
+<p>The Euler angle definition chosen is 121 sequence because there won’t be a singularity when pointing straight up and it will be simple to express rotations about the x direction in the body frame.</p>
+<div id="81af8957-1abc-434c-ac54-c68d46362912" class="cell" data-tags="[]" data-execution_count="2">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>r <span class="op">=</span> Symbolics.<span class="fu">variables</span>(<span class="op">:</span>r, <span class="fl">1</span><span class="op">:</span><span class="fl">3</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>v <span class="op">=</span> Symbolics.<span class="fu">variables</span>(<span class="op">:</span>v, <span class="fl">1</span><span class="op">:</span><span class="fl">3</span>)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>θ <span class="op">=</span> Symbolics.<span class="fu">variables</span>(<span class="op">:</span>θ, <span class="fl">1</span><span class="op">:</span><span class="fl">3</span>)</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>ω <span class="op">=</span> Symbolics.<span class="fu">variables</span>(<span class="op">:</span>ω, <span class="fl">1</span><span class="op">:</span><span class="fl">3</span>)</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> [r; v; θ; ω]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="3">
+<p><span class="math display">\[ \begin{equation}
+\left[
+\begin{array}{c}
+r_1 \\
+r_2 \\
+r_3 \\
+v_1 \\
+v_2 \\
+v_3 \\
+\theta_1 \\
+\theta_2 \\
+\theta_3 \\
+\omega_1 \\
+\omega_2 \\
+\omega_3 \\
+\end{array}
+\right]
+\end{equation}
+\]</span></p>
+</div>
+</div>
+<p>The state vector is <span class="math display">\[
+x = L"\begin{equation}
+\left[
+\begin{array}{c}
+r_1 \\
+r_2 \\
+r_3 \\
+v_1 \\
+v_2 \\
+v_3 \\
+\theta_1 \\
+\theta_2 \\
+\theta_3 \\
+\omega_1 \\
+\omega_2 \\
+\omega_3 \\
+\end{array}
+\right]
+\end{equation}
+"
+\]</span></p>
+</section>
+<section id="controls" class="level4" data-number="1.1.1.4">
+<h4 data-number="1.1.1.4" class="anchored" data-anchor-id="controls"><span class="header-section-number">1.1.1.4</span> Controls</h4>
+<div id="193cf487-50ed-44c6-9a5d-bb3ffccb3a9e" class="cell" data-tags="[]" data-execution_count="3">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="pp">@variables</span> σ, γ</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>T <span class="op">=</span> Symbolics.<span class="fu">variables</span>(<span class="op">:</span>T, <span class="fl">1</span><span class="op">:</span><span class="fl">3</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>u <span class="op">=</span> [T; σ; γ]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="5">
+<p><span class="math display">\[ \begin{equation}
+\left[
+\begin{array}{c}
+T_1 \\
+T_2 \\
+T_3 \\
+\sigma \\
+\gamma \\
+\end{array}
+\right]
+\end{equation}
+\]</span></p>
+</div>
+</div>
+<p>The control vector is <span class="math display">\[
+u = L"\begin{equation}
+\left[
+\begin{array}{c}
+T_1 \\
+T_2 \\
+T_3 \\
+\sigma \\
+\gamma \\
+\end{array}
+\right]
+\end{equation}
+"
+\]</span></p>
+</section>
+<section id="parameters" class="level4" data-number="1.1.1.5">
+<h4 data-number="1.1.1.5" class="anchored" data-anchor-id="parameters"><span class="header-section-number">1.1.1.5</span> Parameters</h4>
+<div id="2fd39a36-1fb3-4d5c-838d-d48c4e72ab0d" class="cell" data-tags="[]" data-execution_count="4">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="pp">@variables</span> t_f</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>p <span class="op">=</span> [t_f]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="7">
+<p><span class="math display">\[ \begin{equation}
+\left[
+\begin{array}{c}
+t_{f} \\
+\end{array}
+\right]
+\end{equation}
+\]</span></p>
+</div>
+</div>
+<p>The parameter vector is <span class="math display">\[
+p = L"\begin{equation}
+\left[
+\begin{array}{c}
+t_{f} \\
+\end{array}
+\right]
+\end{equation}
+"
+\]</span></p>
+</section>
+<section id="constraints" class="level4" data-number="1.1.1.6">
+<h4 data-number="1.1.1.6" class="anchored" data-anchor-id="constraints"><span class="header-section-number">1.1.1.6</span> Constraints</h4>
+<p>There are two types of constraints. Path is the general term for the state and control.</p>
+<ol type="1">
+<li>Convex Path Constraints</li>
+</ol>
+<p>Constraints which constraint the path to be apart of a closed and bounded convex set. These can be transformed into constraining the path to be inside some convex cone.</p>
+<table class="table">
+<colgroup>
+<col style="width: 34%">
+<col style="width: 12%">
+<col style="width: 30%">
+<col style="width: 24%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: center;">Label</th>
+<th style="text-align: center;">Notation</th>
+<th style="text-align: center;">Name</th>
+<th style="text-align: center;">Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: center;"><code>UNCONSTRAINED</code></td>
+<td style="text-align: center;"><span class="math inline">\(\mathbb{K}_{ \lesseqgtr}\)</span></td>
+<td style="text-align: center;">Unconstrained cone</td>
+<td style="text-align: center;"><span class="math display">\[\{x\in\mathbb{R}^n\}\]</span></td>
+</tr>
+<tr class="even">
+<td style="text-align: center;"><code>ZERO</code></td>
+<td style="text-align: center;"><span class="math inline">\(\mathbb{K}_{=0}\)</span></td>
+<td style="text-align: center;">Zero cone</td>
+<td style="text-align: center;"><span class="math inline">\(\{x\in\mathbb{R}^n\mid x=0\}\)</span></td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;"><code>NONPOS</code></td>
+<td style="text-align: center;"><span class="math inline">\(\mathbb{K}_{\leq 0}\)</span></td>
+<td style="text-align: center;">Non-positive orthant</td>
+<td style="text-align: center;"><span class="math inline">\(\{x\in\mathbb{R}^n\mid x\leq 0\}\)</span></td>
+</tr>
+<tr class="even">
+<td style="text-align: center;"><code>L1</code></td>
+<td style="text-align: center;"><span class="math inline">\(\mathbb{K}_{1}\)</span></td>
+<td style="text-align: center;"><span class="math inline">\(l_1\)</span> norm cone</td>
+<td style="text-align: center;"><span class="math inline">\(\{(t,x)\in\mathbb{R}\times\mathbb{R}^n\mid \lVert x\rVert_1\leq t\}\)</span></td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;"><code>SOC</code></td>
+<td style="text-align: center;"><span class="math inline">\(\mathbb{K}_{2}\)</span></td>
+<td style="text-align: center;"><span class="math inline">\(l_2\)</span> norm cone</td>
+<td style="text-align: center;"><span class="math inline">\(\{(t,x)\in\mathbb{R}\times\mathbb{R}^n\mid \lVert x\rVert_2\leq t\}\)</span></td>
+</tr>
+<tr class="even">
+<td style="text-align: center;"><code>LINF</code></td>
+<td style="text-align: center;"><span class="math inline">\(\mathbb{K}_{\infty}\)</span></td>
+<td style="text-align: center;"><span class="math inline">\(l_\infty\)</span> norm cone</td>
+<td style="text-align: center;"><span class="math inline">\(\{(t,x)\in\mathbb{R}\times\mathbb{R}^n\mid \lVert x\rVert_\infty\leq t\}\)</span></td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;"><code>GEOM</code></td>
+<td style="text-align: center;"><span class="math inline">\(\mathbb{K}_{\text{GM}}\)</span></td>
+<td style="text-align: center;">Geometric mean cone</td>
+<td style="text-align: center;">$ { (t,x)^n(_{i=1}^n x_i)^{1/n} t }$</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;"><code>EXP</code></td>
+<td style="text-align: center;"><span class="math inline">\(\mathbb{K}_{\text{EXP}}\)</span></td>
+<td style="text-align: center;">Exponential cone</td>
+<td style="text-align: center;"><span class="math inline">\(\{(x,y,z)\in \mathbb{R}\times \mathbb{R} \times \mathbb{R} \mid y\,\text{exp}(x/y) \leq z,~y&gt;0\}\)</span></td>
+</tr>
+</tbody>
+</table>
+<ol start="2" type="1">
+<li>Nonconvex Path Constraints</li>
+</ol>
+<p>Constraints which are too complex to be transformed into a set of convex cone constraints. SCP handles these by linearizing them.</p>
+<p><strong>State</strong></p>
+<ol type="1">
+<li>Glideslope <span class="math display">\[\begin{equation*}
+\left\{r\in\mathbb{R}^3~|~ ||r|| \cos(\gamma_{gs}) \leq e_3^\top r\right\}
+\end{equation*}\]</span> <span class="math display">\[\begin{equation*}
+\left\{r\in\mathbb{R}^3~|~ ||r|| \cos(\gamma_{gs}) \leq r_3 \right\}
+\end{equation*}\]</span> <span class="math display">\[\begin{equation*}
+\left\{r\in\mathbb{R}^3~|~ ||r|| \leq \frac{r_3}{\cos(\gamma_{gs})} \in \mathbb{K}_{2} \right\}
+\end{equation*}\]</span></li>
+</ol>
+<div id="f4b8431c-dc57-46ea-b599-bfaadb9409e9" class="cell" data-execution_count="5">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co">#@variables γ_gs</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="co">## Constants for state constraints</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="co">#csc = [γ_gs]</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="co"># State Constraint Constant</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>γ_gs_ <span class="op">=</span> <span class="fu">deg2rad</span>(<span class="fl">45.0</span>); <span class="co"># [rad] Glideslope angle (measured from the horizon)</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Define constraints</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Glideslope - replace with half space? (if relaxing landing site bc)</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="fu">glideslope</span>(r, clp) <span class="op">=</span> <span class="pp">@add_constraint</span>(clp, SOC, r <span class="op">-&gt;</span> [r[<span class="fl">3</span>] <span class="op">/</span> <span class="fu">cos</span>(γ_gs_); r])</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a><span class="fu">state_constraints</span>(t, k, x, p, pbm, clp) <span class="op">=</span> <span class="cf">begin</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>        r, v, θ, ω <span class="op">=</span> x[<span class="fl">1</span><span class="op">:</span><span class="fl">3</span>], x[<span class="fl">4</span><span class="op">:</span><span class="fl">6</span>], x[<span class="fl">7</span><span class="op">:</span><span class="fl">9</span>], x[<span class="fl">10</span><span class="op">:</span><span class="fl">12</span>]</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>        <span class="fu">glideslope</span>(r, clp)</span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span>;</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p><strong>Control</strong></p>
+<ol type="1">
+<li>Thrust cone <span class="math display">\[\begin{equation*}
+\left\{T\in\mathbb{R}^3~|~ b_1^\top T \geq ||T|| \cos(\gamma_{T})\right\}
+\end{equation*}\]</span> Simplifying, <span class="math display">\[\begin{equation*}
+\left\{T\in\mathbb{R}^3~|~ T_1 \geq ||T|| \cos(\gamma_{T})\right\}
+\end{equation*}\]</span></li>
+</ol>
+<p>This constraint is not a linear or quadratic convex constraint, but a more general convex constraint. To remedy this, we use the technique of Lossless Convexification to add a slack variable, <span class="math inline">\(\sigma\)</span>, which is equal to <span class="math inline">\(||T||\)</span> at the optimal solution to the optimization problem. This means the thrust cone constraint now becomes <span class="math display">\[\begin{equation*}
+\left\{T\in\mathbb{R}^3,\sigma\in\mathbb{R}~|~  \sigma \cos(\gamma_{T}) - T_1 \leq 0 \in \mathbb{K}_{\leq 0} \right\}
+\end{equation*}\]</span> To make the lossless convexification hold, the following constraint must be added <span class="math display">\[\begin{equation*}
+\left\{T\in\mathbb{R}^3,\sigma\in\mathbb{R}~|~ ||T|| \leq \sigma \in \mathbb{K}_{2} \right\}
+\end{equation*}\]</span></p>
+<ol start="2" type="1">
+<li><p>Thrust limit <span class="math display">\[\begin{equation*}
+\left\{T\in\mathbb{R}^3~|~ ||T|| \leq T_{max} \right\}
+\end{equation*}\]</span> Using the slack variable <span class="math inline">\(\sigma\)</span>, the constraint becomes <span class="math display">\[\begin{equation*}
+\left\{\sigma\in\mathbb{R}~|~ \sigma - T_{max} \leq 0 \in \mathbb{K}_{\leq 0} \right\}
+\end{equation*}\]</span></p></li>
+<li><p>Vane angle <span class="math display">\[\begin{equation*}
+\left\{γ\in\mathbb{R}~|~ |γ| \leq γ_{max} \in \mathbb{K}_{1} \right\}
+\end{equation*}\]</span></p></li>
+</ol>
+<div id="a077fa87-542c-4e49-a66c-f493a07588b6" class="cell" data-execution_count="6">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co">#@variables T_max, γ_max, δ_max</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="co">## Constants for control constraints</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="co">#cuc = [T_max, γ_max, δ_max]</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Control Constraint Constants</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>T_max_ <span class="op">=</span> <span class="fl">500e3</span> <span class="co"># [N] Maximum thrust</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>δ_max_ <span class="op">=</span> <span class="fu">deg2rad</span>(<span class="fl">7.0</span>); <span class="co"># [rad] Maximum gimbal angle</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>γ_max_ <span class="op">=</span> <span class="fu">deg2rad</span>(<span class="fl">45</span>); <span class="co"># [rad] Maximum vane angle</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Define constraints</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a><span class="fu">thrust_limit</span>(σ, clp) <span class="op">=</span> <span class="pp">@add_constraint</span>(clp, NONPOS, σ <span class="op">-&gt;</span> σ <span class="op">-</span> T_max_)</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a><span class="fu">vane_limit</span>(γ, clp) <span class="op">=</span> <span class="pp">@add_constraint</span>(clp, L1, γ <span class="op">-&gt;</span> [γ_max_; γ]);</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a><span class="co"># Thrust Cone</span></span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a><span class="fu">thrust_cone</span>(T, σ, clp) <span class="op">=</span> <span class="pp">@add_constraint</span>(clp, NONPOS, <span class="st">"Thrust Cone"</span>, (T, σ) <span class="op">-&gt;</span> σ <span class="op">*</span> <span class="fu">cos</span>(δ_max_) <span class="op">-</span> T[<span class="fl">1</span>])</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a><span class="fu">lcvx_thrust_equality</span>(T, σ, clp) <span class="op">=</span> <span class="pp">@add_constraint</span>(clp, SOC, <span class="st">"lcvx_equality_thrust_cone"</span>, (T, σ) <span class="op">-&gt;</span> [σ; T]);</span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a><span class="fu">control_constraints</span>(t, k, u, p, pbm, clp) <span class="op">=</span> <span class="cf">begin</span></span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>        T, σ, γ <span class="op">=</span> u[<span class="fl">1</span><span class="op">:</span><span class="fl">3</span>], u[<span class="fl">4</span>], u[<span class="fl">5</span>]</span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>                </span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>        <span class="fu">thrust_limit</span>(σ, clp)</span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>        <span class="fu">vane_limit</span>(γ, clp)</span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>        <span class="fu">thrust_cone</span>(T, σ, clp)</span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>        <span class="fu">lcvx_thrust_equality</span>(T, σ, clp)</span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span>;</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p><strong>Parameter</strong></p>
+<ol type="1">
+<li>Final time range <span class="math display">\[\begin{equation*}
+\left\{t_f\in\mathbb{R}~|~ t_{fmin} \leq t_f \leq t_{fmax} \right\}
+\end{equation*}\]</span></li>
+</ol>
+</section>
+<section id="constants" class="level4" data-number="1.1.1.7">
+<h4 data-number="1.1.1.7" class="anchored" data-anchor-id="constants"><span class="header-section-number">1.1.1.7</span> Constants</h4>
+<p>Where define actual values?</p>
+<div id="9780934e-2783-4f08-9a2f-1a3d84aafed3" class="cell" data-tags="[]" data-execution_count="7">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Environment Parameters</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="pp">@variables</span> g</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>g_ <span class="op">=</span> <span class="fl">9.81</span>; <span class="co"># [m/s^2] Earth gravity</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Mechanical Parameters</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="pp">@variables</span> m</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>m_ <span class="op">=</span> <span class="fl">25e3</span> <span class="co"># [kg] Initial mass</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a><span class="pp">@variables</span> L</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>L_ <span class="op">=</span> <span class="fl">0.5</span> <span class="co"># [m] Thrust lever arm</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>J <span class="op">=</span> Symbolics.<span class="fu">variables</span>(<span class="op">:</span>J, <span class="fl">1</span><span class="op">:</span><span class="fl">3</span>)</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>J_t <span class="op">=</span> <span class="fl">100e3</span>; <span class="co"># [kg*m^2] Moment of inertia</span></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>J_a <span class="op">=</span> J_t <span class="op">/</span> <span class="fl">10</span>;</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>J_ <span class="op">=</span> [J_a; J_t; J_t];</span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a><span class="co"># General Constant Vector</span></span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a>c <span class="op">=</span> [g; m; L; J]</span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a>c_ <span class="op">=</span> [g_; m_; L_; J_];</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>The constants are <span class="math display">\[
+c = L"\begin{equation}
+\left[
+\begin{array}{c}
+9.81 \\
+25000.0 \\
+0.5 \\
+10000.0 \\
+100000.0 \\
+100000.0 \\
+\end{array}
+\right]
+\end{equation}
+"
+\]</span></p>
+</section>
+<section id="boundary-conditions" class="level4" data-number="1.1.1.8">
+<h4 data-number="1.1.1.8" class="anchored" data-anchor-id="boundary-conditions"><span class="header-section-number">1.1.1.8</span> Boundary Conditions</h4>
+<div id="34111932-25d8-45c8-a4e6-03161672b4c0" class="cell" data-execution_count="8">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">km2m</span>(x) <span class="op">=</span> x<span class="op">*</span><span class="fl">1e3</span> <span class="co"># Conversion from km to m</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="fu">kph2mps</span>(v) <span class="op">=</span> v<span class="op">/</span><span class="fl">3.6</span> <span class="co"># Conversion from km/h to m/s</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Initial state</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>r0 <span class="op">=</span> Symbolics.<span class="fu">variables</span>(<span class="op">:</span>r_0, <span class="fl">1</span><span class="op">:</span><span class="fl">3</span>)</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>r0_ <span class="op">=</span> <span class="fu">km2m</span>.([<span class="fl">0.3</span>, <span class="op">-</span><span class="fl">0.4</span>, <span class="fl">0.8</span>]) <span class="co"># [m]</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>v0 <span class="op">=</span> Symbolics.<span class="fu">variables</span>(<span class="op">:</span>v_0, <span class="fl">1</span><span class="op">:</span><span class="fl">3</span>)</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>v0_ <span class="op">=</span> <span class="fu">kph2mps</span>.([<span class="fl">30</span>, <span class="fl">50</span>, <span class="op">-</span><span class="fl">80</span>]) <span class="co"># [m / s]</span></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>θ<span class="fl">0</span> <span class="op">=</span> Symbolics.<span class="fu">variables</span>(<span class="op">:</span>θ_0, <span class="fl">1</span><span class="op">:</span><span class="fl">3</span>)</span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>θ<span class="fl">0</span>_ <span class="op">=</span> <span class="fu">deg2rad</span>.([<span class="fl">0</span>, <span class="fl">90</span>, <span class="fl">0</span>]) <span class="co"># [rad] 121 Euler sequence</span></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>ω<span class="fl">0</span> <span class="op">=</span> Symbolics.<span class="fu">variables</span>(<span class="op">:</span>ω_0, <span class="fl">1</span><span class="op">:</span><span class="fl">3</span>)</span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a>ω<span class="fl">0</span>_ <span class="op">=</span> <span class="fu">deg2rad</span>.([<span class="fl">50</span>, <span class="fl">10</span>, <span class="fl">0</span>]) <span class="co"># [rad / s]</span></span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a>x0 <span class="op">=</span> [r0; v0; θ<span class="fl">0</span>; ω<span class="fl">0</span>]</span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a>x_0 <span class="op">=</span> [r0_; v0_; θ<span class="fl">0</span>_; ω<span class="fl">0</span>_];</span>
+<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a><span class="co"># Terminal state</span></span>
+<span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a>r1 <span class="op">=</span> <span class="fu">zeros</span>(<span class="fl">3</span>) <span class="co"># Potentially relax this constraint into the objective function - would have to change glideslope to be centered at new final position...</span></span>
+<span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a>v1 <span class="op">=</span> <span class="fu">zeros</span>(<span class="fl">3</span>)</span>
+<span id="cb9-23"><a href="#cb9-23" aria-hidden="true" tabindex="-1"></a>θ<span class="fl">1</span> <span class="op">=</span> [θ[<span class="fl">1</span>], <span class="cn">pi</span><span class="op">/</span><span class="fl">2</span>, <span class="fl">0</span>] <span class="co"># Constrain to be upright</span></span>
+<span id="cb9-24"><a href="#cb9-24" aria-hidden="true" tabindex="-1"></a>ω<span class="fl">1</span> <span class="op">=</span> <span class="fu">zeros</span>(<span class="fl">3</span>)</span>
+<span id="cb9-25"><a href="#cb9-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-26"><a href="#cb9-26" aria-hidden="true" tabindex="-1"></a>x1 <span class="op">=</span> [r1; v1; θ<span class="fl">1</span>; ω<span class="fl">1</span>];</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>The boundary conditions are <span class="math display">\[
+x_0  = L"\begin{equation}
+\left[
+\begin{array}{c}
+300.0 \\
+-400.0 \\
+800.0 \\
+8.333333333333334 \\
+13.88888888888889 \\
+-22.22222222222222 \\
+0.0 \\
+1.5707963267948966 \\
+0.0 \\
+0.8726646259971648 \\
+0.17453292519943295 \\
+0.0 \\
+\end{array}
+\right]
+\end{equation}
+",
+x_f = L"\begin{equation}
+\left[
+\begin{array}{c}
+0 \\
+0 \\
+0 \\
+0 \\
+0 \\
+0 \\
+\theta_1 \\
+1.5708 \\
+0 \\
+0 \\
+0 \\
+0 \\
+\end{array}
+\right]
+\end{equation}
+"
+\]</span></p>
+<div id="227ff445-9c7d-48d3-a813-c9d5b57d95d2" class="cell" data-execution_count="9">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>g_ic <span class="op">=</span> x <span class="op">-</span> x0</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>g_tc <span class="op">=</span> x <span class="op">-</span> x1;</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+</section>
+<section id="equations-of-motions" class="level3" data-number="1.1.2">
+<h3 data-number="1.1.2" class="anchored" data-anchor-id="equations-of-motions"><span class="header-section-number">1.1.2</span> Equations of Motions</h3>
+<section id="eulers-law" class="level4" data-number="1.1.2.1">
+<h4 data-number="1.1.2.1" class="anchored" data-anchor-id="eulers-law"><span class="header-section-number">1.1.2.1</span> Euler’s Law</h4>
+<p><span class="math display">\[
+\begin{cases}
+\dot\omega_1 = \frac{T + (I_2 - I_3)\omega_2\omega_3}{I_1} \\
+\dot\omega_2 = \frac{T + (I_3 - I_1)\omega_3\omega_1}{I_2} \\
+\dot\omega_3 = \frac{T + (I_1 - I_2)\omega_1\omega_2}{I_3} \\
+\end{cases}
+\]</span></p>
+</section>
+<section id="newtons-second-law" class="level4" data-number="1.1.2.2">
+<h4 data-number="1.1.2.2" class="anchored" data-anchor-id="newtons-second-law"><span class="header-section-number">1.1.2.2</span> Newton’s Second Law</h4>
+<p><span class="math display">\[F = ma\]</span></p>
+</section>
+<section id="euler-angle-update---121-sequence" class="level4" data-number="1.1.2.3">
+<h4 data-number="1.1.2.3" class="anchored" data-anchor-id="euler-angle-update---121-sequence"><span class="header-section-number">1.1.2.3</span> Euler Angle Update - 121 Sequence</h4>
+<p><span class="math display">\[
+\begin{cases}
+B^{-1} = \frac{1}{\sin(\theta_2)}\begin{pmatrix} 0 &amp; \sin(\theta_3) &amp; \cos(\theta_3) \\
+0 &amp; \sin(\theta_2) \cos(\theta_3) &amp; -\sin(\theta_2) \sin(\theta_3) \\
+\sin(\theta_2) &amp; -\cos(\theta_2) \sin(\theta_3) &amp; -\cos(\theta_2) \cos(\theta_3)
+\end{pmatrix} \\
+\dot\theta = B^{-1} \vec\omega
+\end{cases}
+\]</span></p>
+</section>
+</section>
+<section id="dynamics" class="level3" data-number="1.1.3">
+<h3 data-number="1.1.3" class="anchored" data-anchor-id="dynamics"><span class="header-section-number">1.1.3</span> Dynamics</h3>
+<div id="d4ae8e98-070c-45f7-84da-3215ef6a21b9" class="cell" data-tags="[]" data-execution_count="10">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>x_dot <span class="op">=</span> v</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>Rxθ<span class="fl">1</span> <span class="op">=</span> [<span class="fl">1</span> <span class="fl">0</span> <span class="fl">0</span>; </span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>        <span class="fl">0</span> <span class="fu">cos</span>(θ[<span class="fl">1</span>]) <span class="fu">-sin</span>(θ[<span class="fl">1</span>]); </span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>        <span class="fl">0</span> <span class="fu">sin</span>(θ[<span class="fl">1</span>]) <span class="fu">cos</span>(θ[<span class="fl">1</span>])]</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>Ryθ<span class="fl">2</span> <span class="op">=</span> [<span class="fu">cos</span>(θ[<span class="fl">2</span>]) <span class="fl">0</span> <span class="fu">sin</span>(θ[<span class="fl">2</span>]); </span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>        <span class="fl">0</span> <span class="fl">1</span> <span class="fl">0</span>; </span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>        <span class="fu">-sin</span>(θ[<span class="fl">2</span>]) <span class="fl">0</span> <span class="fu">cos</span>(θ[<span class="fl">2</span>])]</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>Rxθ<span class="fl">3</span> <span class="op">=</span> [<span class="fl">1</span> <span class="fl">0</span> <span class="fl">0</span>; </span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>        <span class="fl">0</span> <span class="fu">cos</span>(θ[<span class="fl">3</span>]) <span class="fu">-sin</span>(θ[<span class="fl">3</span>]); </span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>        <span class="fl">0</span> <span class="fu">sin</span>(θ[<span class="fl">3</span>]) <span class="fu">cos</span>(θ[<span class="fl">3</span>])]</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>C_be <span class="op">=</span> (Rxθ<span class="fl">1</span> <span class="op">*</span> Ryθ<span class="fl">2</span> <span class="op">*</span> Rxθ<span class="fl">3</span>)</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>C_eb <span class="op">=</span> (Rxθ<span class="fl">1</span> <span class="op">*</span> Ryθ<span class="fl">2</span> <span class="op">*</span> Rxθ<span class="fl">3</span>)<span class="ch">'</span></span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>v_dot <span class="op">=</span> C_eb <span class="op">*</span> T <span class="op">/</span> m <span class="op">*</span> <span class="fu">cos</span>(γ) <span class="op">+</span> [<span class="fl">0</span>; <span class="fl">0</span>; <span class="op">-</span>g]</span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>B_inv <span class="op">=</span> <span class="fl">1</span> <span class="op">./</span> <span class="fu">sin</span>(θ[<span class="fl">2</span>]) <span class="op">*</span> [<span class="fl">0</span> <span class="fu">sin</span>(θ[<span class="fl">3</span>]) <span class="fu">cos</span>(θ[<span class="fl">3</span>]); </span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>    <span class="fl">0</span> <span class="fu">sin</span>(θ[<span class="fl">2</span>]) <span class="op">*</span> <span class="fu">cos</span>(θ[<span class="fl">3</span>]) <span class="fu">-sin</span>(θ[<span class="fl">2</span>]) <span class="op">*</span> <span class="fu">sin</span>(θ[<span class="fl">3</span>]); </span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>    <span class="fu">sin</span>(θ[<span class="fl">2</span>]) <span class="fu">-cos</span>(θ[<span class="fl">2</span>]) <span class="op">*</span> <span class="fu">sin</span>(θ[<span class="fl">3</span>]) <span class="fu">-cos</span>(θ[<span class="fl">2</span>]) <span class="op">*</span> <span class="fu">cos</span>(θ[<span class="fl">3</span>])]</span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>θ_dot <span class="op">=</span> B_inv <span class="op">*</span> ω <span class="co"># Need actual update</span></span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>M <span class="op">=</span> σ <span class="op">.*</span> <span class="fu">sin</span>(γ) <span class="op">.*</span> [<span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">0</span>] <span class="op">+</span> <span class="fu">cross</span>([<span class="op">-</span>L, <span class="fl">0</span>, <span class="fl">0</span>], T)</span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>ω_dot <span class="op">=</span> (M <span class="op">.+</span> (J[[<span class="fl">2</span>, <span class="fl">3</span>, <span class="fl">1</span>]] <span class="op">.-</span> J[[<span class="fl">3</span>, <span class="fl">1</span>, <span class="fl">2</span>]]) <span class="op">.*</span> ω[[<span class="fl">2</span>, <span class="fl">3</span>, <span class="fl">1</span>]] <span class="op">.*</span> ω[[<span class="fl">3</span>, <span class="fl">1</span>, <span class="fl">2</span>]]) <span class="op">./</span> J</span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>f_ <span class="op">=</span> [x_dot; v_dot; θ_dot; ω_dot]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="16">
+<p><span class="math display">\[ \begin{equation}
+\left[
+\begin{array}{c}
+v_1 \\
+v_2 \\
+v_3 \\
+\frac{\left( T_1 \cos\left( \theta_2 \right) + T_2 \sin\left( \theta_1 \right) \sin\left( \theta_2 \right) - T_3 \sin\left( \theta_2 \right) \cos\left( \theta_1 \right) \right) \cos\left( \gamma \right)}{m} \\
+\frac{\left( T_1 \sin\left( \theta_3 \right) \sin\left( \theta_2 \right) + T_2 \left( \cos\left( \theta_3 \right) \cos\left( \theta_1 \right) - \cos\left( \theta_2 \right) \sin\left( \theta_1 \right) \sin\left( \theta_3 \right) \right) + T_3 \left( \cos\left( \theta_3 \right) \sin\left( \theta_1 \right) + \cos\left( \theta_2 \right) \sin\left( \theta_3 \right) \cos\left( \theta_1 \right) \right) \right) \cos\left( \gamma \right)}{m} \\
+- g + \frac{\left( T_1 \cos\left( \theta_3 \right) \sin\left( \theta_2 \right) + T_2 \left(  - \sin\left( \theta_3 \right) \cos\left( \theta_1 \right) - \cos\left( \theta_2 \right) \cos\left( \theta_3 \right) \sin\left( \theta_1 \right) \right) + T_3 \left(  - \sin\left( \theta_1 \right) \sin\left( \theta_3 \right) + \cos\left( \theta_2 \right) \cos\left( \theta_3 \right) \cos\left( \theta_1 \right) \right) \right) \cos\left( \gamma \right)}{m} \\
+\frac{\sin\left( \theta_3 \right) \omega_2}{\sin\left( \theta_2 \right)} + \frac{\cos\left( \theta_3 \right) \omega_3}{\sin\left( \theta_2 \right)} \\
+\cos\left( \theta_3 \right) \omega_2 - \sin\left( \theta_3 \right) \omega_3 \\
+\frac{ - \cos\left( \theta_2 \right) \cos\left( \theta_3 \right) \omega_3}{\sin\left( \theta_2 \right)} + \frac{ - \cos\left( \theta_2 \right) \sin\left( \theta_3 \right) \omega_2}{\sin\left( \theta_2 \right)} + \omega_1 \\
+\frac{\sin\left( \gamma \right) \sigma + \left( J_2 - J_3 \right) \omega_2 \omega_3}{J_1} \\
+\frac{L T_3 + \left(  - J_1 + J_3 \right) \omega_1 \omega_3}{J_2} \\
+\frac{ - L T_2 + \left( J_1 - J_2 \right) \omega_1 \omega_2}{J_3} \\
+\end{array}
+\right]
+\end{equation}
+\]</span></p>
+</div>
+</div>
+</section>
+<section id="cost-function" class="level3" data-number="1.1.4">
+<h3 data-number="1.1.4" class="anchored" data-anchor-id="cost-function"><span class="header-section-number">1.1.4</span> Cost Function</h3>
+<p>Assuming Bolza Form of the cost function: <img src="Astra_SCP_MPC_eulerangles_working_files/figure-html/27816bcd-84dd-4fda-9077-c2194fd4020f-1-5f195a9e-afe3-4699-bcf1-f85a4aef09e5.png" class="img-fluid" alt="image.png"></p>
+<section id="terminal-cost-phix1-p" class="level4" data-number="1.1.4.1">
+<h4 data-number="1.1.4.1" class="anchored" data-anchor-id="terminal-cost-phix1-p"><span class="header-section-number">1.1.4.1</span> Terminal Cost <span class="math inline">\(\phi(x(1), p)\)</span></h4>
+<p>Altitude : <span class="math inline">\(r_z^2\)</span></p>
+<div id="da37eeae-482c-44e2-9b91-63393f325b96" class="cell" data-execution_count="11">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ϕ</span>(x, p) <span class="op">=</span> x[<span class="fl">3</span>]<span class="op">^</span><span class="fl">2</span>;<span class="co"># + p[1] / tf_min * 0.01;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+<section id="running-cost-gammaxt-ut-p" class="level4" data-number="1.1.4.2">
+<h4 data-number="1.1.4.2" class="anchored" data-anchor-id="running-cost-gammaxt-ut-p"><span class="header-section-number">1.1.4.2</span> Running Cost <span class="math inline">\(\Gamma(x(t), u(t), p)\)</span></h4>
+<p>Thrust: <span class="math inline">\(\frac{||T||}{T_{max}} = \frac{\sigma}{T_{max}}\)</span></p>
+<p>Vane Angle: <span class="math inline">\((\frac{\gamma}{\gamma_{max}})^2\)</span></p>
+<div id="63ceab98-ac65-44fa-a368-fd87838aadfa" class="cell" data-execution_count="12">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">Γ</span>(x, u, p) <span class="op">=</span> u[<span class="fl">4</span>] <span class="op">/</span> T_max_ <span class="op">+</span> (u[<span class="fl">5</span>] <span class="op">/</span> γ_max_)<span class="op">^</span><span class="fl">2</span>;<span class="co"># + x[10]^2;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+</section>
+</section>
+<section id="scp-problem-definition-for-mpc" class="level2" data-number="1.2">
+<h2 data-number="1.2" class="anchored" data-anchor-id="scp-problem-definition-for-mpc"><span class="header-section-number">1.2</span> SCP Problem Definition for MPC</h2>
+<p>SCP: Successive Convex Programming MPC: Model Predictive Control</p>
+<section id="optimal-control-optimization-problem-definition" class="level3" data-number="1.2.1">
+<h3 data-number="1.2.1" class="anchored" data-anchor-id="optimal-control-optimization-problem-definition"><span class="header-section-number">1.2.1</span> Optimal Control Optimization Problem Definition</h3>
+<section id="general-form" class="level4" data-number="1.2.1.1">
+<h4 data-number="1.2.1.1" class="anchored" data-anchor-id="general-form"><span class="header-section-number">1.2.1.1</span> General Form</h4>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="attachment:987ceadc-616f-48dc-8460-190016705809.png" class="img-fluid figure-img"></p>
+<figcaption>image.png</figcaption>
+</figure>
+</div>
+</section>
+</section>
+<section id="scp-optimization-problem-definition" class="level3" data-number="1.2.2">
+<h3 data-number="1.2.2" class="anchored" data-anchor-id="scp-optimization-problem-definition"><span class="header-section-number">1.2.2</span> SCP Optimization Problem Definition</h3>
+<p>Scale the dynamics by the final time so that the final time can be a free parameter.</p>
+<div id="5c243a65-5b74-4a10-86a6-4772137675d6" class="cell" data-tags="[]" data-execution_count="13">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>f_n <span class="op">=</span> f_ <span class="op">*</span> t_f</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="19">
+<p><span class="math display">\[ \begin{equation}
+\left[
+\begin{array}{c}
+t_{f} v_1 \\
+t_{f} v_2 \\
+t_{f} v_3 \\
+\frac{\left( T_1 \cos\left( \theta_2 \right) + T_2 \sin\left( \theta_1 \right) \sin\left( \theta_2 \right) - T_3 \sin\left( \theta_2 \right) \cos\left( \theta_1 \right) \right) t_{f} \cos\left( \gamma \right)}{m} \\
+\frac{\left( T_1 \sin\left( \theta_3 \right) \sin\left( \theta_2 \right) + T_2 \left( \cos\left( \theta_3 \right) \cos\left( \theta_1 \right) - \cos\left( \theta_2 \right) \sin\left( \theta_1 \right) \sin\left( \theta_3 \right) \right) + T_3 \left( \cos\left( \theta_3 \right) \sin\left( \theta_1 \right) + \cos\left( \theta_2 \right) \sin\left( \theta_3 \right) \cos\left( \theta_1 \right) \right) \right) t_{f} \cos\left( \gamma \right)}{m} \\
+\left(  - g + \frac{\left( T_1 \cos\left( \theta_3 \right) \sin\left( \theta_2 \right) + T_2 \left(  - \sin\left( \theta_3 \right) \cos\left( \theta_1 \right) - \cos\left( \theta_2 \right) \cos\left( \theta_3 \right) \sin\left( \theta_1 \right) \right) + T_3 \left(  - \sin\left( \theta_1 \right) \sin\left( \theta_3 \right) + \cos\left( \theta_2 \right) \cos\left( \theta_3 \right) \cos\left( \theta_1 \right) \right) \right) \cos\left( \gamma \right)}{m} \right) t_{f} \\
+t_{f} \left( \frac{\sin\left( \theta_3 \right) \omega_2}{\sin\left( \theta_2 \right)} + \frac{\cos\left( \theta_3 \right) \omega_3}{\sin\left( \theta_2 \right)} \right) \\
+t_{f} \left( \cos\left( \theta_3 \right) \omega_2 - \sin\left( \theta_3 \right) \omega_3 \right) \\
+t_{f} \left( \frac{ - \cos\left( \theta_2 \right) \cos\left( \theta_3 \right) \omega_3}{\sin\left( \theta_2 \right)} + \frac{ - \cos\left( \theta_2 \right) \sin\left( \theta_3 \right) \omega_2}{\sin\left( \theta_2 \right)} + \omega_1 \right) \\
+\frac{\left( \sin\left( \gamma \right) \sigma + \left( J_2 - J_3 \right) \omega_2 \omega_3 \right) t_{f}}{J_1} \\
+\frac{\left( L T_3 + \left(  - J_1 + J_3 \right) \omega_1 \omega_3 \right) t_{f}}{J_2} \\
+\frac{\left(  - L T_2 + \left( J_1 - J_2 \right) \omega_1 \omega_2 \right) t_{f}}{J_3} \\
+\end{array}
+\right]
+\end{equation}
+\]</span></p>
+</div>
+</div>
+<section id="jacobian-calculations" class="level4" data-number="1.2.2.1">
+<h4 data-number="1.2.2.1" class="anchored" data-anchor-id="jacobian-calculations"><span class="header-section-number">1.2.2.1</span> Jacobian Calculations</h4>
+<p>State: <span class="math inline">\(A = \nabla_x f =\)</span></p>
+<div id="c2b9e0c8-964b-4c58-954b-2fa4b4f12872" class="cell" data-tags="[]" data-execution_count="14">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>A_l <span class="op">=</span> Symbolics.<span class="fu">jacobian</span>(f_n, x)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="20">
+<p><span class="math display">\[ \begin{equation}
+\left[
+\begin{array}{cccccccccccc}
+0 &amp; 0 &amp; 0 &amp; t_{f} &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; t_{f} &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; t_{f} &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; \frac{\left( T_2 \sin\left( \theta_2 \right) \cos\left( \theta_1 \right) + T_3 \sin\left( \theta_1 \right) \sin\left( \theta_2 \right) \right) t_{f} \cos\left( \gamma \right)}{m} &amp; \frac{\left(  - T_1 \sin\left( \theta_2 \right) + T_2 \cos\left( \theta_2 \right) \sin\left( \theta_1 \right) - T_3 \cos\left( \theta_2 \right) \cos\left( \theta_1 \right) \right) t_{f} \cos\left( \gamma \right)}{m} &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; \frac{\left( T_2 \left(  - \cos\left( \theta_3 \right) \sin\left( \theta_1 \right) - \cos\left( \theta_2 \right) \sin\left( \theta_3 \right) \cos\left( \theta_1 \right) \right) + T_3 \left( \cos\left( \theta_3 \right) \cos\left( \theta_1 \right) - \cos\left( \theta_2 \right) \sin\left( \theta_1 \right) \sin\left( \theta_3 \right) \right) \right) t_{f} \cos\left( \gamma \right)}{m} &amp; \frac{\left( T_1 \cos\left( \theta_2 \right) \sin\left( \theta_3 \right) + T_2 \sin\left( \theta_1 \right) \sin\left( \theta_3 \right) \sin\left( \theta_2 \right) - T_3 \sin\left( \theta_3 \right) \sin\left( \theta_2 \right) \cos\left( \theta_1 \right) \right) t_{f} \cos\left( \gamma \right)}{m} &amp; \frac{\left( T_1 \cos\left( \theta_3 \right) \sin\left( \theta_2 \right) + T_2 \left(  - \sin\left( \theta_3 \right) \cos\left( \theta_1 \right) - \cos\left( \theta_2 \right) \cos\left( \theta_3 \right) \sin\left( \theta_1 \right) \right) + T_3 \left(  - \sin\left( \theta_1 \right) \sin\left( \theta_3 \right) + \cos\left( \theta_2 \right) \cos\left( \theta_3 \right) \cos\left( \theta_1 \right) \right) \right) t_{f} \cos\left( \gamma \right)}{m} &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; \frac{\left( T_2 \left( \sin\left( \theta_1 \right) \sin\left( \theta_3 \right) - \cos\left( \theta_2 \right) \cos\left( \theta_3 \right) \cos\left( \theta_1 \right) \right) + T_3 \left(  - \sin\left( \theta_3 \right) \cos\left( \theta_1 \right) - \cos\left( \theta_2 \right) \cos\left( \theta_3 \right) \sin\left( \theta_1 \right) \right) \right) t_{f} \cos\left( \gamma \right)}{m} &amp; \frac{\left( T_1 \cos\left( \theta_2 \right) \cos\left( \theta_3 \right) + T_2 \cos\left( \theta_3 \right) \sin\left( \theta_1 \right) \sin\left( \theta_2 \right) - T_3 \cos\left( \theta_3 \right) \sin\left( \theta_2 \right) \cos\left( \theta_1 \right) \right) t_{f} \cos\left( \gamma \right)}{m} &amp; \frac{\left(  - T_1 \sin\left( \theta_3 \right) \sin\left( \theta_2 \right) + T_2 \left(  - \cos\left( \theta_3 \right) \cos\left( \theta_1 \right) + \cos\left( \theta_2 \right) \sin\left( \theta_1 \right) \sin\left( \theta_3 \right) \right) + T_3 \left(  - \cos\left( \theta_3 \right) \sin\left( \theta_1 \right) - \cos\left( \theta_2 \right) \sin\left( \theta_3 \right) \cos\left( \theta_1 \right) \right) \right) t_{f} \cos\left( \gamma \right)}{m} &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; t_{f} \left(  - \cos\left( \theta_2 \right) \frac{\sin\left( \theta_3 \right) \omega_2}{\sin^{2}\left( \theta_2 \right)} - \cos\left( \theta_2 \right) \frac{\cos\left( \theta_3 \right) \omega_3}{\sin^{2}\left( \theta_2 \right)} \right) &amp; t_{f} \left( \frac{ - \sin\left( \theta_3 \right) \omega_3}{\sin\left( \theta_2 \right)} + \frac{\cos\left( \theta_3 \right) \omega_2}{\sin\left( \theta_2 \right)} \right) &amp; 0 &amp; \frac{t_{f} \sin\left( \theta_3 \right)}{\sin\left( \theta_2 \right)} &amp; \frac{t_{f} \cos\left( \theta_3 \right)}{\sin\left( \theta_2 \right)} \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; t_{f} \left(  - \cos\left( \theta_3 \right) \omega_3 - \sin\left( \theta_3 \right) \omega_2 \right) &amp; 0 &amp; t_{f} \cos\left( \theta_3 \right) &amp;  - t_{f} \sin\left( \theta_3 \right) \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; t_{f} \left(  - \cos\left( \theta_2 \right) \frac{ - \cos\left( \theta_2 \right) \cos\left( \theta_3 \right) \omega_3}{\sin^{2}\left( \theta_2 \right)} - \cos\left( \theta_2 \right) \frac{ - \cos\left( \theta_2 \right) \sin\left( \theta_3 \right) \omega_2}{\sin^{2}\left( \theta_2 \right)} + \cos\left( \theta_3 \right) \omega_3 + \sin\left( \theta_3 \right) \omega_2 \right) &amp; t_{f} \left( \frac{ - \cos\left( \theta_2 \right) \cos\left( \theta_3 \right) \omega_2}{\sin\left( \theta_2 \right)} + \frac{\cos\left( \theta_2 \right) \sin\left( \theta_3 \right) \omega_3}{\sin\left( \theta_2 \right)} \right) &amp; t_{f} &amp; \frac{ - t_{f} \cos\left( \theta_2 \right) \sin\left( \theta_3 \right)}{\sin\left( \theta_2 \right)} &amp; \frac{ - t_{f} \cos\left( \theta_2 \right) \cos\left( \theta_3 \right)}{\sin\left( \theta_2 \right)} \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; \frac{\left( J_2 - J_3 \right) t_{f} \omega_3}{J_1} &amp; \frac{\left( J_2 - J_3 \right) t_{f} \omega_2}{J_1} \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; \frac{\left(  - J_1 + J_3 \right) t_{f} \omega_3}{J_2} &amp; 0 &amp; \frac{\left(  - J_1 + J_3 \right) t_{f} \omega_1}{J_2} \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; \frac{\left( J_1 - J_2 \right) t_{f} \omega_2}{J_3} &amp; \frac{\left( J_1 - J_2 \right) t_{f} \omega_1}{J_3} &amp; 0 \\
+\end{array}
+\right]
+\end{equation}
+\]</span></p>
+</div>
+</div>
+<p>Control: <span class="math inline">\(B = \nabla_u f =\)</span></p>
+<div id="bf205570-25b9-400a-93c1-4d8648177d6d" class="cell" data-tags="[]" data-execution_count="15">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>B_l <span class="op">=</span> Symbolics.<span class="fu">jacobian</span>(f_n, u)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="21">
+<p><span class="math display">\[ \begin{equation}
+\left[
+\begin{array}{ccccc}
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\
+\frac{t_{f} \cos\left( \gamma \right) \cos\left( \theta_2 \right)}{m} &amp; \frac{t_{f} \cos\left( \gamma \right) \sin\left( \theta_1 \right) \sin\left( \theta_2 \right)}{m} &amp; \frac{ - t_{f} \cos\left( \gamma \right) \sin\left( \theta_2 \right) \cos\left( \theta_1 \right)}{m} &amp; 0 &amp; \frac{ - \left( T_1 \cos\left( \theta_2 \right) + T_2 \sin\left( \theta_1 \right) \sin\left( \theta_2 \right) - T_3 \sin\left( \theta_2 \right) \cos\left( \theta_1 \right) \right) t_{f} \sin\left( \gamma \right)}{m} \\
+\frac{t_{f} \cos\left( \gamma \right) \sin\left( \theta_3 \right) \sin\left( \theta_2 \right)}{m} &amp; \frac{t_{f} \cos\left( \gamma \right) \left( \cos\left( \theta_3 \right) \cos\left( \theta_1 \right) - \cos\left( \theta_2 \right) \sin\left( \theta_1 \right) \sin\left( \theta_3 \right) \right)}{m} &amp; \frac{t_{f} \cos\left( \gamma \right) \left( \cos\left( \theta_3 \right) \sin\left( \theta_1 \right) + \cos\left( \theta_2 \right) \sin\left( \theta_3 \right) \cos\left( \theta_1 \right) \right)}{m} &amp; 0 &amp; \frac{ - \left( T_1 \sin\left( \theta_3 \right) \sin\left( \theta_2 \right) + T_2 \left( \cos\left( \theta_3 \right) \cos\left( \theta_1 \right) - \cos\left( \theta_2 \right) \sin\left( \theta_1 \right) \sin\left( \theta_3 \right) \right) + T_3 \left( \cos\left( \theta_3 \right) \sin\left( \theta_1 \right) + \cos\left( \theta_2 \right) \sin\left( \theta_3 \right) \cos\left( \theta_1 \right) \right) \right) t_{f} \sin\left( \gamma \right)}{m} \\
+\frac{t_{f} \cos\left( \gamma \right) \cos\left( \theta_3 \right) \sin\left( \theta_2 \right)}{m} &amp; \frac{t_{f} \cos\left( \gamma \right) \left(  - \sin\left( \theta_3 \right) \cos\left( \theta_1 \right) - \cos\left( \theta_2 \right) \cos\left( \theta_3 \right) \sin\left( \theta_1 \right) \right)}{m} &amp; \frac{t_{f} \cos\left( \gamma \right) \left(  - \sin\left( \theta_1 \right) \sin\left( \theta_3 \right) + \cos\left( \theta_2 \right) \cos\left( \theta_3 \right) \cos\left( \theta_1 \right) \right)}{m} &amp; 0 &amp; \frac{ - \left( T_1 \cos\left( \theta_3 \right) \sin\left( \theta_2 \right) + T_2 \left(  - \sin\left( \theta_3 \right) \cos\left( \theta_1 \right) - \cos\left( \theta_2 \right) \cos\left( \theta_3 \right) \sin\left( \theta_1 \right) \right) + T_3 \left(  - \sin\left( \theta_1 \right) \sin\left( \theta_3 \right) + \cos\left( \theta_2 \right) \cos\left( \theta_3 \right) \cos\left( \theta_1 \right) \right) \right) t_{f} \sin\left( \gamma \right)}{m} \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; \frac{t_{f} \sin\left( \gamma \right)}{J_1} &amp; \frac{t_{f} \cos\left( \gamma \right) \sigma}{J_1} \\
+0 &amp; 0 &amp; \frac{L t_{f}}{J_2} &amp; 0 &amp; 0 \\
+0 &amp; \frac{ - L t_{f}}{J_3} &amp; 0 &amp; 0 &amp; 0 \\
+\end{array}
+\right]
+\end{equation}
+\]</span></p>
+</div>
+</div>
+<p>Parameter: <span class="math inline">\(F = \nabla_p f =\)</span></p>
+<div id="7f8d91f7-3ba4-4130-a758-9c4e5a503f2b" class="cell" data-tags="[]" data-execution_count="16">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>F_l <span class="op">=</span> Symbolics.<span class="fu">jacobian</span>(f_n, p)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="22">
+<p><span class="math display">\[ \begin{equation}
+\left[
+\begin{array}{c}
+v_1 \\
+v_2 \\
+v_3 \\
+\frac{\left( T_1 \cos\left( \theta_2 \right) + T_2 \sin\left( \theta_1 \right) \sin\left( \theta_2 \right) - T_3 \sin\left( \theta_2 \right) \cos\left( \theta_1 \right) \right) \cos\left( \gamma \right)}{m} \\
+\frac{\left( T_1 \sin\left( \theta_3 \right) \sin\left( \theta_2 \right) + T_2 \left( \cos\left( \theta_3 \right) \cos\left( \theta_1 \right) - \cos\left( \theta_2 \right) \sin\left( \theta_1 \right) \sin\left( \theta_3 \right) \right) + T_3 \left( \cos\left( \theta_3 \right) \sin\left( \theta_1 \right) + \cos\left( \theta_2 \right) \sin\left( \theta_3 \right) \cos\left( \theta_1 \right) \right) \right) \cos\left( \gamma \right)}{m} \\
+- g + \frac{\left( T_1 \cos\left( \theta_3 \right) \sin\left( \theta_2 \right) + T_2 \left(  - \sin\left( \theta_3 \right) \cos\left( \theta_1 \right) - \cos\left( \theta_2 \right) \cos\left( \theta_3 \right) \sin\left( \theta_1 \right) \right) + T_3 \left(  - \sin\left( \theta_1 \right) \sin\left( \theta_3 \right) + \cos\left( \theta_2 \right) \cos\left( \theta_3 \right) \cos\left( \theta_1 \right) \right) \right) \cos\left( \gamma \right)}{m} \\
+\frac{\sin\left( \theta_3 \right) \omega_2}{\sin\left( \theta_2 \right)} + \frac{\cos\left( \theta_3 \right) \omega_3}{\sin\left( \theta_2 \right)} \\
+\cos\left( \theta_3 \right) \omega_2 - \sin\left( \theta_3 \right) \omega_3 \\
+\frac{ - \cos\left( \theta_2 \right) \cos\left( \theta_3 \right) \omega_3}{\sin\left( \theta_2 \right)} + \frac{ - \cos\left( \theta_2 \right) \sin\left( \theta_3 \right) \omega_2}{\sin\left( \theta_2 \right)} + \omega_1 \\
+\frac{\sin\left( \gamma \right) \sigma + \left( J_2 - J_3 \right) \omega_2 \omega_3}{J_1} \\
+\frac{L T_3 + \left(  - J_1 + J_3 \right) \omega_1 \omega_3}{J_2} \\
+\frac{ - L T_2 + \left( J_1 - J_2 \right) \omega_1 \omega_2}{J_3} \\
+\end{array}
+\right]
+\end{equation}
+\]</span></p>
+</div>
+</div>
+<p>Nonconvex Path Constraint</p>
+<p>N/A - No nonconvex path constraints</p>
+<div id="b67c23ec-bdcc-46b2-9aae-15e5b434a235" class="cell" data-execution_count="17">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co">#C_l = Symbolics.jacobian(s_n, x)</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="co">#D_l = Symbolics.jacobian(s_n, u)</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a><span class="co">#G_l = Symbolics.jacobian(s_n, p)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>Boundary Conditions</p>
+<p>Initial conditions: <span class="math inline">\(H_0 = \nabla_x g_{ic} =\)</span></p>
+<div id="cc8255ae-ddc0-4a19-aa5d-a91b327a2a8b" class="cell" data-execution_count="18">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="co">#K_0 = Symbolics.jacobian(g_ic, p)</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>H_0 <span class="op">=</span> Symbolics.<span class="fu">jacobian</span>(g_ic, x)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="24">
+<p><span class="math display">\[ \begin{equation}
+\left[
+\begin{array}{cccccccccccc}
+1 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 \\
+\end{array}
+\right]
+\end{equation}
+\]</span></p>
+</div>
+</div>
+<p>Terminal conditions: <span class="math inline">\(H_f = \nabla_x g_{tc} =\)</span></p>
+<div id="750e6647-acd8-4d00-8b39-5744d3696443" class="cell" data-execution_count="19">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co">#K_f = Symbolics.jacobian(g_tc, p)</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>H_f <span class="op">=</span> Symbolics.<span class="fu">jacobian</span>(g_tc, x)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="25">
+<p><span class="math display">\[ \begin{equation}
+\left[
+\begin{array}{cccccccccccc}
+1 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 \\
+\end{array}
+\right]
+\end{equation}
+\]</span></p>
+</div>
+</div>
+</section>
+<section id="linearized-optimization-problem-definition" class="level4" data-number="1.2.2.2">
+<h4 data-number="1.2.2.2" class="anchored" data-anchor-id="linearized-optimization-problem-definition"><span class="header-section-number">1.2.2.2</span> Linearized Optimization Problem Definition</h4>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="attachment:e3a10da5-6cb2-4ca7-9589-b4a901eb7e87.png" class="img-fluid figure-img"></p>
+<figcaption>image.png</figcaption>
+</figure>
+</div>
+</section>
+</section>
+<section id="initial-guess" class="level3" data-number="1.2.3">
+<h3 data-number="1.2.3" class="anchored" data-anchor-id="initial-guess"><span class="header-section-number">1.2.3</span> Initial Guess</h3>
+<p>The SCP algorithms do not require the initial guess to be feasible with respect to the dynamics or nonconvex path constraints, but they do require the guess to be feasible with respect to the convex path constraints</p>
+<p>State - r: Straight line interpolation - v: Constant (from r) - θ: Straight line interpolation - ω: Constant (from θ)</p>
+<p>Control - T: Half max thrust, no thrust vectoring: <span class="math inline">\(T_{guess} = \frac{1}{2}T_{max}\hat b_1\)</span> - γ: Zero vane angle (should never be very large)</p>
+<div id="8a2ca534-fb91-4eca-9a0b-b6e04db02d61" class="cell" data-jupyter="{&quot;source_hidden&quot;:true}" data-execution_count="20">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="st">"""</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="st">    straightline_interpolate(v0, vf, N)</span></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a><span class="st">Straight-line interpolation between two points. Compute a straight-line</span></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a><span class="st">interpolation between an initial and a final vector, on a grid of N points.</span></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a><span class="st"># Arguments</span></span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a><span class="st">- `v0`: starting vector.</span></span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a><span class="st">- `vf`: ending vector.</span></span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a><span class="st">- `N`: number of vectors in between (including endpoints).</span></span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a><span class="st"># Returns</span></span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a><span class="st">- `v`: the resulting interpolation (a matrix, k-th column is the k-th vector,</span></span>
+<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a><span class="st">  k=1,...,N).</span></span>
+<span id="cb21-15"><a href="#cb21-15" aria-hidden="true" tabindex="-1"></a><span class="st">"""</span></span>
+<span id="cb21-16"><a href="#cb21-16" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">straightline_interpolate</span>(v0<span class="op">::</span><span class="dt">RealVector</span>, vf<span class="op">::</span><span class="dt">RealVector</span>, N<span class="op">::</span><span class="dt">Int</span>)<span class="op">::</span><span class="dt">RealMatrix</span></span>
+<span id="cb21-17"><a href="#cb21-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-18"><a href="#cb21-18" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Initialize</span></span>
+<span id="cb21-19"><a href="#cb21-19" aria-hidden="true" tabindex="-1"></a>    nv <span class="op">=</span> <span class="fu">length</span>(v0)</span>
+<span id="cb21-20"><a href="#cb21-20" aria-hidden="true" tabindex="-1"></a>    v <span class="op">=</span> <span class="fu">zeros</span>(nv, N)</span>
+<span id="cb21-21"><a href="#cb21-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-22"><a href="#cb21-22" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Interpolation grid</span></span>
+<span id="cb21-23"><a href="#cb21-23" aria-hidden="true" tabindex="-1"></a>    times <span class="op">=</span> <span class="fu">LinRange</span>(<span class="fl">0.0</span>, <span class="fl">1.0</span>, N)</span>
+<span id="cb21-24"><a href="#cb21-24" aria-hidden="true" tabindex="-1"></a>    t_endpts <span class="op">=</span> [times[<span class="fl">1</span>], times[<span class="kw">end</span>]]</span>
+<span id="cb21-25"><a href="#cb21-25" aria-hidden="true" tabindex="-1"></a>    v_endpts <span class="op">=</span> <span class="fu">hcat</span>(v0, vf)</span>
+<span id="cb21-26"><a href="#cb21-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-27"><a href="#cb21-27" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> k <span class="op">=</span> <span class="fl">1</span><span class="op">:</span>N</span>
+<span id="cb21-28"><a href="#cb21-28" aria-hidden="true" tabindex="-1"></a>        v[<span class="op">:</span>, k] <span class="op">=</span> <span class="fu">linterp</span>(times[k], v_endpts, t_endpts)</span>
+<span id="cb21-29"><a href="#cb21-29" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
+<span id="cb21-30"><a href="#cb21-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-31"><a href="#cb21-31" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> v</span>
+<span id="cb21-32"><a href="#cb21-32" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
+<span id="cb21-33"><a href="#cb21-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-34"><a href="#cb21-34" aria-hidden="true" tabindex="-1"></a><span class="st">"""</span></span>
+<span id="cb21-35"><a href="#cb21-35" aria-hidden="true" tabindex="-1"></a><span class="st">    get_interval(x, grid)</span></span>
+<span id="cb21-36"><a href="#cb21-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-37"><a href="#cb21-37" aria-hidden="true" tabindex="-1"></a><span class="st">Compute grid bin. Get which grid interval a real number belongs to.</span></span>
+<span id="cb21-38"><a href="#cb21-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-39"><a href="#cb21-39" aria-hidden="true" tabindex="-1"></a><span class="st"># Arguments</span></span>
+<span id="cb21-40"><a href="#cb21-40" aria-hidden="true" tabindex="-1"></a><span class="st">- `x`: the real number.</span></span>
+<span id="cb21-41"><a href="#cb21-41" aria-hidden="true" tabindex="-1"></a><span class="st">- `grid`: the discrete grid on the real line.</span></span>
+<span id="cb21-42"><a href="#cb21-42" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-43"><a href="#cb21-43" aria-hidden="true" tabindex="-1"></a><span class="st"># Returns</span></span>
+<span id="cb21-44"><a href="#cb21-44" aria-hidden="true" tabindex="-1"></a><span class="st">- `k`: the interval of the grid the the real number is in.</span></span>
+<span id="cb21-45"><a href="#cb21-45" aria-hidden="true" tabindex="-1"></a><span class="st">"""</span></span>
+<span id="cb21-46"><a href="#cb21-46" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">get_interval</span>(x<span class="op">::</span><span class="dt">RealValue</span>, grid<span class="op">::</span><span class="dt">RealVector</span>)<span class="op">::</span><span class="dt">Int</span></span>
+<span id="cb21-47"><a href="#cb21-47" aria-hidden="true" tabindex="-1"></a>    k <span class="op">=</span> <span class="fu">sum</span>(x <span class="op">.&gt;</span> grid)</span>
+<span id="cb21-48"><a href="#cb21-48" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> k <span class="op">==</span> <span class="fl">0</span></span>
+<span id="cb21-49"><a href="#cb21-49" aria-hidden="true" tabindex="-1"></a>        k <span class="op">=</span> <span class="fl">1</span></span>
+<span id="cb21-50"><a href="#cb21-50" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
+<span id="cb21-51"><a href="#cb21-51" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> k</span>
+<span id="cb21-52"><a href="#cb21-52" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
+<span id="cb21-53"><a href="#cb21-53" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-54"><a href="#cb21-54" aria-hidden="true" tabindex="-1"></a><span class="st">"""</span></span>
+<span id="cb21-55"><a href="#cb21-55" aria-hidden="true" tabindex="-1"></a><span class="st">    linterp(t, f_cps, t_grid)</span></span>
+<span id="cb21-56"><a href="#cb21-56" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-57"><a href="#cb21-57" aria-hidden="true" tabindex="-1"></a><span class="st">Linear interpolation on a grid. Linearly interpolate a discrete function on a</span></span>
+<span id="cb21-58"><a href="#cb21-58" aria-hidden="true" tabindex="-1"></a><span class="st">time grid. In other words, get the function value assuming that it is a</span></span>
+<span id="cb21-59"><a href="#cb21-59" aria-hidden="true" tabindex="-1"></a><span class="st">continuous and piecewise affine function.</span></span>
+<span id="cb21-60"><a href="#cb21-60" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-61"><a href="#cb21-61" aria-hidden="true" tabindex="-1"></a><span class="st"># Arguments</span></span>
+<span id="cb21-62"><a href="#cb21-62" aria-hidden="true" tabindex="-1"></a><span class="st">- `t`: the time at which to get the function value.</span></span>
+<span id="cb21-63"><a href="#cb21-63" aria-hidden="true" tabindex="-1"></a><span class="st">- `f_cps`: the control points of the function, stored as columns of a matrix.</span></span>
+<span id="cb21-64"><a href="#cb21-64" aria-hidden="true" tabindex="-1"></a><span class="st">- `t_grid`: the discrete time nodes.</span></span>
+<span id="cb21-65"><a href="#cb21-65" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-66"><a href="#cb21-66" aria-hidden="true" tabindex="-1"></a><span class="st"># Returns</span></span>
+<span id="cb21-67"><a href="#cb21-67" aria-hidden="true" tabindex="-1"></a><span class="st">- `f_t`: the function value at time t.</span></span>
+<span id="cb21-68"><a href="#cb21-68" aria-hidden="true" tabindex="-1"></a><span class="st">"""</span></span>
+<span id="cb21-69"><a href="#cb21-69" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">linterp</span>(</span>
+<span id="cb21-70"><a href="#cb21-70" aria-hidden="true" tabindex="-1"></a>    t<span class="op">::</span><span class="dt">RealValue</span>,</span>
+<span id="cb21-71"><a href="#cb21-71" aria-hidden="true" tabindex="-1"></a>    f_cps<span class="op">::</span><span class="dt">RealArray</span>,</span>
+<span id="cb21-72"><a href="#cb21-72" aria-hidden="true" tabindex="-1"></a>    t_grid<span class="op">::</span><span class="dt">RealVector</span>,</span>
+<span id="cb21-73"><a href="#cb21-73" aria-hidden="true" tabindex="-1"></a>)<span class="op">::</span><span class="dt">Union{RealValue,RealArray}</span></span>
+<span id="cb21-74"><a href="#cb21-74" aria-hidden="true" tabindex="-1"></a>    t <span class="op">=</span> <span class="fu">max</span>(t_grid[<span class="fl">1</span>], <span class="fu">min</span>(t_grid[<span class="kw">end</span>], t)) <span class="co"># Saturate to time grid</span></span>
+<span id="cb21-75"><a href="#cb21-75" aria-hidden="true" tabindex="-1"></a>    k <span class="op">=</span> <span class="fu">get_interval</span>(t, t_grid)</span>
+<span id="cb21-76"><a href="#cb21-76" aria-hidden="true" tabindex="-1"></a>    c <span class="op">=</span> (t_grid[k<span class="op">+</span><span class="fl">1</span>] <span class="op">-</span> t) <span class="op">/</span> (t_grid[k<span class="op">+</span><span class="fl">1</span>] <span class="op">-</span> t_grid[k])</span>
+<span id="cb21-77"><a href="#cb21-77" aria-hidden="true" tabindex="-1"></a>    dimfill <span class="op">=</span> <span class="fu">fill</span>(<span class="op">:</span>, <span class="fu">ndims</span>(f_cps) <span class="op">-</span> <span class="fl">1</span>)</span>
+<span id="cb21-78"><a href="#cb21-78" aria-hidden="true" tabindex="-1"></a>    f_t <span class="op">=</span> c <span class="op">*</span> f_cps[dimfill<span class="op">...</span>, k] <span class="op">+</span> (<span class="fl">1</span> <span class="op">-</span> c) <span class="op">*</span> f_cps[dimfill<span class="op">...</span>, k<span class="op">+</span><span class="fl">1</span>]</span>
+<span id="cb21-79"><a href="#cb21-79" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> f_t</span>
+<span id="cb21-80"><a href="#cb21-80" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span>;</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<div id="03f97fc8-9487-42cc-a79e-d0d6c96b7db6" class="cell" data-execution_count="21">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Terminal state</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>r1_ <span class="op">=</span> <span class="fu">zeros</span>(<span class="fl">3</span>) <span class="co"># [m]</span></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>v1_ <span class="op">=</span> <span class="fu">zeros</span>(<span class="fl">3</span>) <span class="co"># [m / s]</span></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>θ<span class="fl">1</span>_ <span class="op">=</span> <span class="fu">deg2rad</span>.([<span class="fl">0</span>, <span class="fl">90</span>, <span class="fl">0</span>]) <span class="co"># [rad] 121 Euler sequence</span></span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>θ<span class="fl">1</span>_[<span class="fl">1</span>] <span class="op">=</span> θ<span class="fl">0</span>_[<span class="fl">1</span>]</span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>ω<span class="fl">1</span>_ <span class="op">=</span> <span class="fu">zeros</span>(<span class="fl">3</span>) <span class="co"># [rad / s]</span></span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>x_f <span class="op">=</span> [r1_; v1_; θ<span class="fl">1</span>_; ω<span class="fl">1</span>_];</span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Control guess</span></span>
+<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a>T_guess <span class="op">=</span> <span class="fl">0.8</span><span class="op">*</span>T_max_ <span class="co"># [N] Initial thrust guess</span></span>
+<span id="cb22-12"><a href="#cb22-12" aria-hidden="true" tabindex="-1"></a><span class="fu">input_guess</span>(N) <span class="op">=</span> <span class="fu">straightline_interpolate</span>([T_guess; <span class="fl">0</span>; <span class="fl">0</span>; T_guess; <span class="fl">0</span>], [T_guess; <span class="fl">0</span>; <span class="fl">0</span>; T_guess; <span class="fl">0</span>], N);</span>
+<span id="cb22-13"><a href="#cb22-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-14"><a href="#cb22-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Parameter guess</span></span>
+<span id="cb22-15"><a href="#cb22-15" aria-hidden="true" tabindex="-1"></a>v_0, v_f <span class="op">=</span> x_0[<span class="fl">4</span><span class="op">:</span><span class="fl">6</span>], x_f[<span class="fl">4</span><span class="op">:</span><span class="fl">6</span>]</span>
+<span id="cb22-16"><a href="#cb22-16" aria-hidden="true" tabindex="-1"></a>tf_guess <span class="op">=</span> <span class="fu">norm</span>(v_f<span class="op">-</span>v_0 <span class="op">+</span> <span class="fu">sqrt</span>.(<span class="fl">2</span> <span class="op">*</span> [<span class="fl">0</span>; <span class="fl">0</span>; g_] <span class="op">*</span> x_0[<span class="fl">3</span>]), <span class="fl">2</span>)<span class="op">/</span>(T_guess<span class="op">/</span>m_<span class="op">-</span>g_)</span>
+<span id="cb22-17"><a href="#cb22-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-18"><a href="#cb22-18" aria-hidden="true" tabindex="-1"></a><span class="co"># State guess</span></span>
+<span id="cb22-19"><a href="#cb22-19" aria-hidden="true" tabindex="-1"></a><span class="fu">state_guess</span>(N) <span class="op">=</span> <span class="cf">begin</span></span>
+<span id="cb22-20"><a href="#cb22-20" aria-hidden="true" tabindex="-1"></a>    x_guess <span class="op">=</span> <span class="fu">straightline_interpolate</span>(x_0, x_f, N)</span>
+<span id="cb22-21"><a href="#cb22-21" aria-hidden="true" tabindex="-1"></a>    x_guess[<span class="fl">10</span>, <span class="op">:</span>] <span class="op">.=</span> (x_f[<span class="fl">7</span>]<span class="op">-</span>x_0[<span class="fl">7</span>])<span class="op">/</span>tf_guess</span>
+<span id="cb22-22"><a href="#cb22-22" aria-hidden="true" tabindex="-1"></a>    x_guess[<span class="fl">11</span>, <span class="op">:</span>] <span class="op">.=</span> (x_f[<span class="fl">8</span>]<span class="op">-</span>x_0[<span class="fl">8</span>])<span class="op">/</span>tf_guess</span>
+<span id="cb22-23"><a href="#cb22-23" aria-hidden="true" tabindex="-1"></a>    x_guess[<span class="fl">12</span>, <span class="op">:</span>] <span class="op">.=</span> <span class="fu">-</span>(x_f[<span class="fl">9</span>]<span class="op">-</span>x_0[<span class="fl">9</span>])<span class="op">/</span>tf_guess</span>
+<span id="cb22-24"><a href="#cb22-24" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> x_guess</span>
+<span id="cb22-25"><a href="#cb22-25" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span>;</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+</section>
+<section id="scp-toolbox-code-and-solution" class="level2" data-number="1.3">
+<h2 data-number="1.3" class="anchored" data-anchor-id="scp-toolbox-code-and-solution"><span class="header-section-number">1.3</span> SCP Toolbox Code and Solution</h2>
+<section id="set-up-problem" class="level3" data-number="1.3.1">
+<h3 data-number="1.3.1" class="anchored" data-anchor-id="set-up-problem"><span class="header-section-number">1.3.1</span> Set Up Problem</h3>
+<div id="58fc45c7-c714-4efc-b7de-5661e1e41eed" class="cell" data-execution_count="22">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>pbm <span class="op">=</span> <span class="fu">TrajectoryProblem</span>();</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>algo <span class="op">=</span> <span class="op">:</span>ptr;</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Dimensions</span></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>n <span class="op">=</span> <span class="fu">length</span>(x)</span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>md <span class="op">=</span> <span class="fu">length</span>(u)</span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>d <span class="op">=</span> <span class="fu">length</span>(p);</span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a><span class="fu">problem_set_dims!</span>(pbm, n, md, d)</span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Dynamics</span></span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a><span class="fu">build_func</span>(func) <span class="op">=</span> <span class="cf">begin</span></span>
+<span id="cb23-12"><a href="#cb23-12" aria-hidden="true" tabindex="-1"></a>    vfunc <span class="op">=</span> <span class="fu">eval</span>(<span class="fu">build_function</span>(func, [x; u; p; c])[<span class="fl">1</span>]) </span>
+<span id="cb23-13"><a href="#cb23-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">bfunc</span>(t, k, x, u, p, pbm) <span class="op">=</span> <span class="fu">vfunc</span>([x; u; p; c_])</span>
+<span id="cb23-14"><a href="#cb23-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> bfunc</span>
+<span id="cb23-15"><a href="#cb23-15" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span>;</span>
+<span id="cb23-16"><a href="#cb23-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-17"><a href="#cb23-17" aria-hidden="true" tabindex="-1"></a><span class="fu">problem_set_dynamics!</span>(pbm, <span class="fu">build_func</span>(f_n), <span class="fu">build_func</span>(A_l), <span class="fu">build_func</span>(B_l), <span class="fu">build_func</span>(F_l))</span>
+<span id="cb23-18"><a href="#cb23-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-19"><a href="#cb23-19" aria-hidden="true" tabindex="-1"></a><span class="co"># Boundary Conditions</span></span>
+<span id="cb23-20"><a href="#cb23-20" aria-hidden="true" tabindex="-1"></a><span class="fu">build_bc</span>(func) <span class="op">=</span> <span class="cf">begin</span></span>
+<span id="cb23-21"><a href="#cb23-21" aria-hidden="true" tabindex="-1"></a>    vfunc <span class="op">=</span> <span class="fu">eval</span>(<span class="fu">build_function</span>(func, [x; x0])[<span class="fl">1</span>]) </span>
+<span id="cb23-22"><a href="#cb23-22" aria-hidden="true" tabindex="-1"></a>    <span class="fu">bfunc</span>(x, p, pbm) <span class="op">=</span> <span class="fu">vfunc</span>([x; x_0])</span>
+<span id="cb23-23"><a href="#cb23-23" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> bfunc</span>
+<span id="cb23-24"><a href="#cb23-24" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span>;</span>
+<span id="cb23-25"><a href="#cb23-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-26"><a href="#cb23-26" aria-hidden="true" tabindex="-1"></a><span class="fu">problem_set_bc!</span>(pbm, <span class="op">:</span>ic, <span class="fu">build_bc</span>(g_ic), <span class="fu">build_bc</span>(H_0))</span>
+<span id="cb23-27"><a href="#cb23-27" aria-hidden="true" tabindex="-1"></a><span class="fu">problem_set_bc!</span>(pbm, <span class="op">:</span>tc, <span class="fu">build_bc</span>(g_tc), <span class="fu">build_bc</span>(H_f));</span>
+<span id="cb23-28"><a href="#cb23-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-29"><a href="#cb23-29" aria-hidden="true" tabindex="-1"></a><span class="co"># Constraints</span></span>
+<span id="cb23-30"><a href="#cb23-30" aria-hidden="true" tabindex="-1"></a><span class="fu">problem_set_X!</span>(pbm, (t, k, x, p, pbm, clp) <span class="op">-&gt;</span> <span class="cf">begin</span></span>
+<span id="cb23-31"><a href="#cb23-31" aria-hidden="true" tabindex="-1"></a>        <span class="co">#@add_constraint(clp, NONPOS, p -&gt; tf_min - p[1])</span></span>
+<span id="cb23-32"><a href="#cb23-32" aria-hidden="true" tabindex="-1"></a>        <span class="co">#glideslope(x, clp)</span></span>
+<span id="cb23-33"><a href="#cb23-33" aria-hidden="true" tabindex="-1"></a>        <span class="fu">state_constraints</span>(t, k, x, p, pbm, clp)</span>
+<span id="cb23-34"><a href="#cb23-34" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span>)</span>
+<span id="cb23-35"><a href="#cb23-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-36"><a href="#cb23-36" aria-hidden="true" tabindex="-1"></a><span class="fu">problem_set_U!</span>(pbm, (t, k, u, p, pbm, clp) <span class="op">-&gt;</span> <span class="cf">begin</span></span>
+<span id="cb23-37"><a href="#cb23-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-38"><a href="#cb23-38" aria-hidden="true" tabindex="-1"></a>        <span class="fu">control_constraints</span>(t, k, u, p, pbm, clp)</span>
+<span id="cb23-39"><a href="#cb23-39" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span>)</span>
+<span id="cb23-40"><a href="#cb23-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-41"><a href="#cb23-41" aria-hidden="true" tabindex="-1"></a><span class="co"># Cost Function</span></span>
+<span id="cb23-42"><a href="#cb23-42" aria-hidden="true" tabindex="-1"></a><span class="co">#build_terminal(func) = begin</span></span>
+<span id="cb23-43"><a href="#cb23-43" aria-hidden="true" tabindex="-1"></a><span class="co">#    vfunc = eval(build_function(func, [x; p])[1]) </span></span>
+<span id="cb23-44"><a href="#cb23-44" aria-hidden="true" tabindex="-1"></a><span class="co">#    bfunc(x, p, pbm) = vfunc([x; p])[1]</span></span>
+<span id="cb23-45"><a href="#cb23-45" aria-hidden="true" tabindex="-1"></a><span class="co">#    return bfunc</span></span>
+<span id="cb23-46"><a href="#cb23-46" aria-hidden="true" tabindex="-1"></a><span class="co">#end;</span></span>
+<span id="cb23-47"><a href="#cb23-47" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb23-48"><a href="#cb23-48" aria-hidden="true" tabindex="-1"></a><span class="co">#build_running(func) = begin</span></span>
+<span id="cb23-49"><a href="#cb23-49" aria-hidden="true" tabindex="-1"></a><span class="co">#    vfunc = eval(build_function(func, [x; u; p; c])[1]) </span></span>
+<span id="cb23-50"><a href="#cb23-50" aria-hidden="true" tabindex="-1"></a><span class="co">#    bfunc(t, k, x, u, p, pbm) = vfunc([x; u; p; c_])[1]</span></span>
+<span id="cb23-51"><a href="#cb23-51" aria-hidden="true" tabindex="-1"></a><span class="co">#    return bfunc</span></span>
+<span id="cb23-52"><a href="#cb23-52" aria-hidden="true" tabindex="-1"></a><span class="co">#end</span></span>
+<span id="cb23-53"><a href="#cb23-53" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb23-54"><a href="#cb23-54" aria-hidden="true" tabindex="-1"></a><span class="co">#problem_set_terminal_cost!(pbm, build_terminal([ϕ]))</span></span>
+<span id="cb23-55"><a href="#cb23-55" aria-hidden="true" tabindex="-1"></a><span class="co">#problem_set_running_cost!(pbm, algo, build_running([Γ]))</span></span>
+<span id="cb23-56"><a href="#cb23-56" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-57"><a href="#cb23-57" aria-hidden="true" tabindex="-1"></a><span class="fu">problem_set_terminal_cost!</span>(pbm, (x, p, pbm) <span class="op">-&gt;</span> <span class="fu">ϕ</span>(x, p))</span>
+<span id="cb23-58"><a href="#cb23-58" aria-hidden="true" tabindex="-1"></a><span class="fu">problem_set_running_cost!</span>(pbm, algo, (t, k, x, u, p, pbm) <span class="op">-&gt;</span> <span class="fu">Γ</span>(x, u, p))</span>
+<span id="cb23-59"><a href="#cb23-59" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-60"><a href="#cb23-60" aria-hidden="true" tabindex="-1"></a><span class="co"># Initial Guess</span></span>
+<span id="cb23-61"><a href="#cb23-61" aria-hidden="true" tabindex="-1"></a><span class="fu">problem_set_guess!</span>(pbm, (N, pbm) <span class="op">-&gt;</span> <span class="cf">begin</span></span>
+<span id="cb23-62"><a href="#cb23-62" aria-hidden="true" tabindex="-1"></a>    x <span class="op">=</span> <span class="fu">state_guess</span>(N)</span>
+<span id="cb23-63"><a href="#cb23-63" aria-hidden="true" tabindex="-1"></a>    u <span class="op">=</span> <span class="fu">input_guess</span>(N)</span>
+<span id="cb23-64"><a href="#cb23-64" aria-hidden="true" tabindex="-1"></a>    p <span class="op">=</span> [tf_guess]</span>
+<span id="cb23-65"><a href="#cb23-65" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> x, u, p</span>
+<span id="cb23-66"><a href="#cb23-66" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span>)</span>
+<span id="cb23-67"><a href="#cb23-67" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-68"><a href="#cb23-68" aria-hidden="true" tabindex="-1"></a><span class="co"># Variable Scaling</span></span>
+<span id="cb23-69"><a href="#cb23-69" aria-hidden="true" tabindex="-1"></a>rx_range_box <span class="op">=</span> <span class="fu">max</span>(x_0[<span class="fl">1</span>], <span class="fl">1.0</span>)</span>
+<span id="cb23-70"><a href="#cb23-70" aria-hidden="true" tabindex="-1"></a>ry_range_box <span class="op">=</span> <span class="fu">max</span>(x_0[<span class="fl">2</span>], <span class="fl">1.0</span>)</span>
+<span id="cb23-71"><a href="#cb23-71" aria-hidden="true" tabindex="-1"></a>rz_range_box <span class="op">=</span> <span class="fu">max</span>(x_0[<span class="fl">3</span>], <span class="fl">1.0</span>)</span>
+<span id="cb23-72"><a href="#cb23-72" aria-hidden="true" tabindex="-1"></a>vx_range_box <span class="op">=</span> <span class="fu">max</span>(<span class="fu">abs</span>(x_0[<span class="fl">4</span>]), <span class="fl">1.0</span>)</span>
+<span id="cb23-73"><a href="#cb23-73" aria-hidden="true" tabindex="-1"></a>vy_range_box <span class="op">=</span> <span class="fu">max</span>(<span class="fu">abs</span>(x_0[<span class="fl">5</span>]), <span class="fl">1.0</span>)</span>
+<span id="cb23-74"><a href="#cb23-74" aria-hidden="true" tabindex="-1"></a>vz_range_box <span class="op">=</span> <span class="fu">min</span>(x_0[<span class="fl">6</span>], <span class="op">-</span><span class="fl">1.0</span>)</span>
+<span id="cb23-75"><a href="#cb23-75" aria-hidden="true" tabindex="-1"></a>θ_range_box <span class="op">=</span> <span class="fu">deg2rad</span>(<span class="fl">20.0</span>)</span>
+<span id="cb23-76"><a href="#cb23-76" aria-hidden="true" tabindex="-1"></a>ω_range_box <span class="op">=</span> <span class="fu">max</span>(<span class="fu">abs</span>(x_0[<span class="fl">10</span>]), <span class="fu">deg2rad</span>(<span class="fl">5.0</span>))</span>
+<span id="cb23-77"><a href="#cb23-77" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-78"><a href="#cb23-78" aria-hidden="true" tabindex="-1"></a>thrust_range <span class="op">=</span> (<span class="fl">0</span>, T_max_)</span>
+<span id="cb23-79"><a href="#cb23-79" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-80"><a href="#cb23-80" aria-hidden="true" tabindex="-1"></a><span class="fu">problem_advise_scale!</span>(pbm, <span class="op">:</span>state, <span class="fl">1</span>, (<span class="op">-</span>rx_range_box, rx_range_box))</span>
+<span id="cb23-81"><a href="#cb23-81" aria-hidden="true" tabindex="-1"></a><span class="fu">problem_advise_scale!</span>(pbm, <span class="op">:</span>state, <span class="fl">2</span>, (<span class="op">-</span>ry_range_box, ry_range_box))</span>
+<span id="cb23-82"><a href="#cb23-82" aria-hidden="true" tabindex="-1"></a><span class="fu">problem_advise_scale!</span>(pbm, <span class="op">:</span>state, <span class="fl">3</span>, (<span class="fl">0</span>, rz_range_box))</span>
+<span id="cb23-83"><a href="#cb23-83" aria-hidden="true" tabindex="-1"></a><span class="fu">problem_advise_scale!</span>(pbm, <span class="op">:</span>state, <span class="fl">4</span>, (<span class="op">-</span>vx_range_box, vx_range_box))</span>
+<span id="cb23-84"><a href="#cb23-84" aria-hidden="true" tabindex="-1"></a><span class="fu">problem_advise_scale!</span>(pbm, <span class="op">:</span>state, <span class="fl">5</span>, (<span class="op">-</span>vy_range_box, vy_range_box))</span>
+<span id="cb23-85"><a href="#cb23-85" aria-hidden="true" tabindex="-1"></a><span class="fu">problem_advise_scale!</span>(pbm, <span class="op">:</span>state, <span class="fl">6</span>, (vz_range_box, <span class="fl">0.0</span>))</span>
+<span id="cb23-86"><a href="#cb23-86" aria-hidden="true" tabindex="-1"></a><span class="fu">problem_advise_scale!</span>(pbm, <span class="op">:</span>state, <span class="fl">7</span>, (<span class="op">-</span>θ_range_box, θ_range_box))</span>
+<span id="cb23-87"><a href="#cb23-87" aria-hidden="true" tabindex="-1"></a><span class="fu">problem_advise_scale!</span>(pbm, <span class="op">:</span>state, <span class="fl">8</span>, (<span class="op">-</span>θ_range_box, θ_range_box))</span>
+<span id="cb23-88"><a href="#cb23-88" aria-hidden="true" tabindex="-1"></a><span class="fu">problem_advise_scale!</span>(pbm, <span class="op">:</span>state, <span class="fl">9</span>, (<span class="op">-</span>θ_range_box, θ_range_box))</span>
+<span id="cb23-89"><a href="#cb23-89" aria-hidden="true" tabindex="-1"></a><span class="fu">problem_advise_scale!</span>(pbm, <span class="op">:</span>state, <span class="fl">10</span>, (<span class="op">-</span>ω_range_box, ω_range_box))</span>
+<span id="cb23-90"><a href="#cb23-90" aria-hidden="true" tabindex="-1"></a><span class="fu">problem_advise_scale!</span>(pbm, <span class="op">:</span>state, <span class="fl">11</span>, (<span class="op">-</span>ω_range_box, ω_range_box))</span>
+<span id="cb23-91"><a href="#cb23-91" aria-hidden="true" tabindex="-1"></a><span class="fu">problem_advise_scale!</span>(pbm, <span class="op">:</span>state, <span class="fl">12</span>, (<span class="op">-</span>ω_range_box, ω_range_box))</span>
+<span id="cb23-92"><a href="#cb23-92" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-93"><a href="#cb23-93" aria-hidden="true" tabindex="-1"></a><span class="fu">problem_advise_scale!</span>(pbm, <span class="op">:</span>input, <span class="fl">1</span>, thrust_range)</span>
+<span id="cb23-94"><a href="#cb23-94" aria-hidden="true" tabindex="-1"></a><span class="fu">problem_advise_scale!</span>(pbm, <span class="op">:</span>input, <span class="fl">2</span>, thrust_range)</span>
+<span id="cb23-95"><a href="#cb23-95" aria-hidden="true" tabindex="-1"></a><span class="fu">problem_advise_scale!</span>(pbm, <span class="op">:</span>input, <span class="fl">3</span>, thrust_range)</span>
+<span id="cb23-96"><a href="#cb23-96" aria-hidden="true" tabindex="-1"></a><span class="fu">problem_advise_scale!</span>(pbm, <span class="op">:</span>input, <span class="fl">4</span>, thrust_range)</span>
+<span id="cb23-97"><a href="#cb23-97" aria-hidden="true" tabindex="-1"></a><span class="fu">problem_advise_scale!</span>(pbm, <span class="op">:</span>input, <span class="fl">5</span>, (<span class="op">-</span>γ_max_, γ_max_))</span>
+<span id="cb23-98"><a href="#cb23-98" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-99"><a href="#cb23-99" aria-hidden="true" tabindex="-1"></a><span class="fu">problem_advise_scale!</span>(pbm, <span class="op">:</span>parameter, <span class="fl">1</span>, (<span class="fl">0.5</span><span class="op">*</span>tf_guess, tf_guess));</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+<section id="solve-optimization-problem" class="level3" data-number="1.3.2">
+<h3 data-number="1.3.2" class="anchored" data-anchor-id="solve-optimization-problem"><span class="header-section-number">1.3.2</span> Solve Optimization Problem</h3>
+<p>Define solver parameters and print the solution state at each iteration</p>
+<div id="19d060f8-04ae-4835-9d3d-925cf76c02a3" class="cell" data-execution_count="23">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Parameters</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>N, Nsub <span class="op">=</span> <span class="fl">12</span>, <span class="fl">12</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>iter_max <span class="op">=</span> <span class="fl">30</span></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>disc_method <span class="op">=</span> FOH</span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>wvc, wtr <span class="op">=</span> <span class="fl">1e1</span>, <span class="fl">1e-1</span></span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>feas_tol <span class="op">=</span> <span class="fl">5e-3</span></span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>ε_abs, ε_rel <span class="op">=</span> <span class="fl">1e-5</span>, <span class="fl">1e-4</span></span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a>q_tr <span class="op">=</span> <span class="cn">Inf</span></span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a>q_exit <span class="op">=</span> <span class="cn">Inf</span></span>
+<span id="cb24-10"><a href="#cb24-10" aria-hidden="true" tabindex="-1"></a>solver, solver_options <span class="op">=</span> ECOS, <span class="fu">Dict</span>(<span class="st">"verbose"</span><span class="op">=&gt;</span><span class="fl">0</span>)      </span>
+<span id="cb24-11"><a href="#cb24-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-12"><a href="#cb24-12" aria-hidden="true" tabindex="-1"></a>pars <span class="op">=</span> PTR.<span class="fu">Parameters</span>(N, Nsub, iter_max, disc_method, wvc, wtr, ε_abs,</span>
+<span id="cb24-13"><a href="#cb24-13" aria-hidden="true" tabindex="-1"></a>                      ε_rel, feas_tol, q_tr, q_exit, solver, solver_options);</span>
+<span id="cb24-14"><a href="#cb24-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-15"><a href="#cb24-15" aria-hidden="true" tabindex="-1"></a>ptr_pbm <span class="op">=</span> PTR.<span class="fu">create</span>(pars, pbm)</span>
+<span id="cb24-16"><a href="#cb24-16" aria-hidden="true" tabindex="-1"></a>sol, history <span class="op">=</span> PTR.<span class="fu">solve</span>(ptr_pbm);</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>k  | status   | vd    | vs    | vbc   | J         | ΔJ %      | Δx    | Δu    | Δp    | δ     | dyn | ηx    | ηu    | ηp   
+---+----------+-------+-------+-------+-----------+-----------+-------+-------+-------+-------+-----+-------+-------+------
+1  | ALMOST_O | 2e-07 | 0e+00 | 3e-11 | 7.58e-01  |           | 1e+01 | 6e-01 | 2e-01 | 1e+01 | F   | 10.26 | 0.65  | 0.23 
+2  | OPTIMAL  | 2e-10 | 0e+00 | 7e-13 | 6.10e-01  | 19.46     | 1e+00 | 2e-01 | 6e-11 | 1e+00 | F   | 1.15  | 0.19  | 0.00 
+3  | ALMOST_O | 4e-09 | 0e+00 | 2e-12 | 5.91e-01  | 3.23      | 3e-01 | 1e-01 | 2e-07 | 3e-01 | F   | 0.32  | 0.14  | 0.00 
+4  | OPTIMAL  | 9e-12 | 0e+00 | 1e-13 | 5.81e-01  | 1.73      | 1e-02 | 6e-03 | 4e-11 | 1e-02 | T   | 0.01  | 0.01  | 0.00 
+5  | ALMOST_O | 4e-08 | 0e+00 | 8e-11 | 5.80e-01  | 0.09      | 1e-03 | 2e-03 | 8e-08 | 1e-03 | T   | 0.00  | 0.00  | 0.00 
+6  | ALMOST_O | 2e-09 | 0e+00 | 3e-12 | 5.80e-01  | 0.00      | 5e-06 | 3e-06 | 3e-08 | 5e-06 | T   | 0.00  | 0.00  | 0.00 </code></pre>
+</div>
+</div>
+</section>
+<section id="plot-solution" class="level3" data-number="1.3.3">
+<h3 data-number="1.3.3" class="anchored" data-anchor-id="plot-solution"><span class="header-section-number">1.3.3</span> Plot Solution</h3>
+<div id="8fb0cb4f-2c36-4045-8572-1dc86ffc48a6" class="cell" data-execution_count="24">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="co">#_sol = history.subproblems[end].sol</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a><span class="co">#tf = _sol.p[1]</span></span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a><span class="co">#xd = _sol.xd</span></span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a><span class="co">#ud = _sol.ud</span></span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a><span class="co">#vd = _sol.vd</span></span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a><span class="co">#p_sol = _sol.p</span></span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a><span class="co">#td = sol.td*tf</span></span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb26-10"><a href="#cb26-10" aria-hidden="true" tabindex="-1"></a><span class="co">#Nc = 100</span></span>
+<span id="cb26-11"><a href="#cb26-11" aria-hidden="true" tabindex="-1"></a><span class="co">#tc = LinRange(0, tf, Nc)</span></span>
+<span id="cb26-12"><a href="#cb26-12" aria-hidden="true" tabindex="-1"></a><span class="co">#xc = hcat([sample(sol.xc, t) for t in LinRange(0, 1, Nc)]...)</span></span>
+<span id="cb26-13"><a href="#cb26-13" aria-hidden="true" tabindex="-1"></a><span class="co">#uc = hcat([sample(sol.uc, t) for t in LinRange(0, 1, Nc)]...)</span></span>
+<span id="cb26-14"><a href="#cb26-14" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb26-15"><a href="#cb26-15" aria-hidden="true" tabindex="-1"></a><span class="co">#tf_values = [spbm.sol.p[1] for spbm in history.subproblems]</span></span>
+<span id="cb26-16"><a href="#cb26-16" aria-hidden="true" tabindex="-1"></a><span class="co">#pushfirst!(tf_values, history.subproblems[1].ref.p[1]);</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<div id="69800a66-3b07-44c3-8055-25e4e93e025f" class="cell" data-user_expressions="[{&quot;expression&quot;:&quot;round(tf_guess, digits = 3)&quot;,&quot;result&quot;:{&quot;data&quot;:{&quot;text/plain&quot;:&quot;23.973&quot;},&quot;metadata&quot;:{},&quot;status&quot;:&quot;ok&quot;}},{&quot;expression&quot;:&quot;round(p_sol[1], digits = 3)&quot;,&quot;result&quot;:{&quot;data&quot;:{&quot;text/plain&quot;:&quot;26.042&quot;},&quot;metadata&quot;:{},&quot;status&quot;:&quot;ok&quot;}}]" data-execution_count="25">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="co">#The final time guess and final time of the solution are</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="co">#$$</span></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a><span class="co">#t_{fguess} = `{julia} round(tf_guess, digits = 3)`s,</span></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a><span class="co">#t_{f} = `{julia} round(p_sol[1], digits = 3)`s</span></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a><span class="co">#$$</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<div id="d58fb324-1d2c-4507-a395-fdc699be3c36" class="cell" data-execution_count="26">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="co">## define a function that returns a Plots.Shape</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="co">#rectangle(w, h, x, y, bx) = begin </span></span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a><span class="co">#    P = [-w/2 w/2 w/2 -w/2; 0 0 h h]</span></span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a><span class="co">#    by = [0 1; -1 0] * bx</span></span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a><span class="co">#    P_prime = hcat([[0 -1; 1 0] * [bx by] * P[:, i] for i in range(1, 4)]...)</span></span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a><span class="co">#    P_prime = P_prime .+ [x; y]</span></span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a><span class="co">#    </span></span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a><span class="co">#    return Shape(P_prime[1, :], P_prime[2, :])</span></span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a><span class="co">#end</span></span>
+<span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb28-11"><a href="#cb28-11" aria-hidden="true" tabindex="-1"></a><span class="co">#rectangle_norot(w, h, x, y) = begin </span></span>
+<span id="cb28-12"><a href="#cb28-12" aria-hidden="true" tabindex="-1"></a><span class="co">#    P = [-w/2 w/2 w/2 -w/2; 0 0 h h]</span></span>
+<span id="cb28-13"><a href="#cb28-13" aria-hidden="true" tabindex="-1"></a><span class="co">#    P = P .+ [x; y]</span></span>
+<span id="cb28-14"><a href="#cb28-14" aria-hidden="true" tabindex="-1"></a><span class="co">#    </span></span>
+<span id="cb28-15"><a href="#cb28-15" aria-hidden="true" tabindex="-1"></a><span class="co">#    return Shape(P[1, :], P[2, :])</span></span>
+<span id="cb28-16"><a href="#cb28-16" aria-hidden="true" tabindex="-1"></a><span class="co">#end</span></span>
+<span id="cb28-17"><a href="#cb28-17" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb28-18"><a href="#cb28-18" aria-hidden="true" tabindex="-1"></a><span class="co">#Xd = xd[1, :]' .* ones(length(xd[2, :]))</span></span>
+<span id="cb28-19"><a href="#cb28-19" aria-hidden="true" tabindex="-1"></a><span class="co">#Yd = ones(length(xd[1, :]))' .* xd[2, :]</span></span>
+<span id="cb28-20"><a href="#cb28-20" aria-hidden="true" tabindex="-1"></a><span class="co">#Zd = sqrt.((Xd .^ 2 + Yd .^ 2)) * tan(γ_gs_);</span></span>
+<span id="cb28-21"><a href="#cb28-21" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb28-22"><a href="#cb28-22" aria-hidden="true" tabindex="-1"></a><span class="co">#θ_ = xc[7:9, :]</span></span>
+<span id="cb28-23"><a href="#cb28-23" aria-hidden="true" tabindex="-1"></a><span class="co">#b_x = hcat([substitute(C_be, Dict([θ[1] =&gt; θ_[1, i], θ[2] =&gt; θ_[2, i], θ[3] =&gt; θ_[3, i]]))' * [1, 0, 0] for i in range(1, length(tc))]...)</span></span>
+<span id="cb28-24"><a href="#cb28-24" aria-hidden="true" tabindex="-1"></a><span class="co">#b_y = hcat([substitute(C_be, Dict([θ[1] =&gt; θ_[1, i], θ[2] =&gt; θ_[2, i], θ[3] =&gt; θ_[3, i]]))' * [0, 1, 0] for i in range(1, length(tc))]...)</span></span>
+<span id="cb28-25"><a href="#cb28-25" aria-hidden="true" tabindex="-1"></a><span class="co">#b_z = hcat([substitute(C_be, Dict([θ[1] =&gt; θ_[1, i], θ[2] =&gt; θ_[2, i], θ[3] =&gt; θ_[3, i]]))' * [0, 0, 1] for i in range(1, length(tc))]...)</span></span>
+<span id="cb28-26"><a href="#cb28-26" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb28-27"><a href="#cb28-27" aria-hidden="true" tabindex="-1"></a><span class="co">#T_ = uc[1:3, :]</span></span>
+<span id="cb28-28"><a href="#cb28-28" aria-hidden="true" tabindex="-1"></a><span class="co">#T_e = hcat([substitute(C_be, Dict([θ[1] =&gt; θ_[1, i], θ[2] =&gt; θ_[2, i], θ[3] =&gt; θ_[3, i]]))' * T_[:, i] for i in range(1, length(tc))]...)</span></span>
+<span id="cb28-29"><a href="#cb28-29" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb28-30"><a href="#cb28-30" aria-hidden="true" tabindex="-1"></a><span class="co">#gimbal_r = [acos(dot([1; 0; 0], T_[:, i]) / norm(T_[:, i])) * 180 / pi for i in range(1, length(tc))]</span></span>
+<span id="cb28-31"><a href="#cb28-31" aria-hidden="true" tabindex="-1"></a><span class="co">#gimbal_θ = (atan.(uc[3,:], uc[2, :])) .+ pi </span></span>
+<span id="cb28-32"><a href="#cb28-32" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb28-33"><a href="#cb28-33" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.gr()</span></span>
+<span id="cb28-34"><a href="#cb28-34" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb28-35"><a href="#cb28-35" aria-hidden="true" tabindex="-1"></a><span class="co">#velocity = [norm(xc[4:6, i]) for i in range(1, length(tc))]</span></span>
+<span id="cb28-36"><a href="#cb28-36" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb28-37"><a href="#cb28-37" aria-hidden="true" tabindex="-1"></a><span class="co">#a = Animation()</span></span>
+<span id="cb28-38"><a href="#cb28-38" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb28-39"><a href="#cb28-39" aria-hidden="true" tabindex="-1"></a><span class="co">#z_max = max(xc[3, :]...)</span></span>
+<span id="cb28-40"><a href="#cb28-40" aria-hidden="true" tabindex="-1"></a><span class="co">#x_lim = (min(min(xc[1, :]...), -z_max / 10), max(max(xc[1, :]...), z_max / 10))</span></span>
+<span id="cb28-41"><a href="#cb28-41" aria-hidden="true" tabindex="-1"></a><span class="co">#y_lim = (min(min(xc[2, :]...), -z_max / 10), max(max(xc[2, :]...), z_max / 10))</span></span>
+<span id="cb28-42"><a href="#cb28-42" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb28-43"><a href="#cb28-43" aria-hidden="true" tabindex="-1"></a><span class="co">#for i in 1:length(tc)</span></span>
+<span id="cb28-44"><a href="#cb28-44" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb28-45"><a href="#cb28-45" aria-hidden="true" tabindex="-1"></a><span class="co">#    l = @layout [a; b c; d]</span></span>
+<span id="cb28-46"><a href="#cb28-46" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb28-47"><a href="#cb28-47" aria-hidden="true" tabindex="-1"></a><span class="co">#    xz_angle = asin(norm(cross([b_x[1, i], 0, b_x[3, i]], [1,0,0])) / norm([b_x[1, i], 0, b_x[3, i]]))</span></span>
+<span id="cb28-48"><a href="#cb28-48" aria-hidden="true" tabindex="-1"></a><span class="co">#    p1 = Plots.plot(xc[1, :], xc[3, :], lc=:viridis, line_z=velocity, label = "", colorbar_title = "Speed")</span></span>
+<span id="cb28-49"><a href="#cb28-49" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.quiver!([xc[1, i]], [xc[3, i]], quiver = ([b_x[1, i]], [b_x[3, i]]) .* z_max ./ 10, aspect_ratio=:equal, color = :blue, label = "b_x")</span></span>
+<span id="cb28-50"><a href="#cb28-50" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.quiver!([xc[1, i]], [xc[3, i]], quiver = ([b_y[1, i]], [b_y[3, i]]) .* z_max ./ 10, aspect_ratio=:equal, color = :green, label = "b_y")</span></span>
+<span id="cb28-51"><a href="#cb28-51" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.quiver!([xc[1, i]], [xc[3, i]], quiver = ([b_z[1, i]], [b_z[3, i]]) .* z_max ./ 10, aspect_ratio=:equal, color = :orange, label = "b_z")</span></span>
+<span id="cb28-52"><a href="#cb28-52" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.plot!([xc[1, i], xc[1, i] - T_e[1, i] / T_max_ * z_max ./ 10], [xc[3, i], xc[3, i] - T_e[3, i] / T_max_ * z_max ./ 10], color = :red, label = "Thrust", axpect_ratio=:equal, ylim=(0, z_max), xlim=x_lim)</span></span>
+<span id="cb28-53"><a href="#cb28-53" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.plot!(rectangle(z_max / 50,z_max / 20,xc[1, i],xc[3, i], [b_x[1, i]; b_x[3, i]]), label = "", opacity=.5, color = :gray)</span></span>
+<span id="cb28-54"><a href="#cb28-54" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.plot!(LinRange(x_lim[1], x_lim[2], 100), abs.(LinRange(x_lim[1], x_lim[2], 100)) * tan(γ_gs_), linestyle = :dash, label = "", color = :gray)</span></span>
+<span id="cb28-55"><a href="#cb28-55" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.title!("XZ Projection")</span></span>
+<span id="cb28-56"><a href="#cb28-56" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.xlabel!("X [m]")</span></span>
+<span id="cb28-57"><a href="#cb28-57" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.ylabel!("Z [m]")</span></span>
+<span id="cb28-58"><a href="#cb28-58" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb28-59"><a href="#cb28-59" aria-hidden="true" tabindex="-1"></a><span class="co">#    yz_angle = asin(norm(cross([0, b_x[2, i], b_x[3, i]], [1,0,0])) / norm([0, b_x[2, i], b_x[3, i]]))</span></span>
+<span id="cb28-60"><a href="#cb28-60" aria-hidden="true" tabindex="-1"></a><span class="co">#    p2 = Plots.plot(xc[2, :], xc[3, :], lc=:viridis, line_z=velocity, label = "", colorbar_title = "Speed")</span></span>
+<span id="cb28-61"><a href="#cb28-61" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.quiver!([xc[2, i]], [xc[3, i]], quiver = ([b_x[2, i]], [b_x[3, i]]) .* z_max ./ 10, aspect_ratio=:equal, color = :blue, label = "b_x")</span></span>
+<span id="cb28-62"><a href="#cb28-62" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.quiver!([xc[2, i]], [xc[3, i]], quiver = ([b_y[2, i]], [b_y[3, i]]) .* z_max ./ 10, aspect_ratio=:equal, color = :green, label = "b_y")</span></span>
+<span id="cb28-63"><a href="#cb28-63" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.quiver!([xc[2, i]], [xc[3, i]], quiver = ([b_z[2, i]], [b_z[3, i]]) .* z_max ./ 10, aspect_ratio=:equal, color = :orange, label = "b_z")</span></span>
+<span id="cb28-64"><a href="#cb28-64" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.plot!([xc[2, i], xc[2, i] - T_e[2, i] / T_max_ * z_max ./ 10], [xc[3, i], xc[3, i] - T_e[3, i] / T_max_ * z_max ./ 10], color = :red, label = "Thrust", axpect_ratio=:equal, ylim=(0, z_max), xlim=y_lim)</span></span>
+<span id="cb28-65"><a href="#cb28-65" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.plot!(rectangle(z_max / 50,z_max / 20,xc[2, i],xc[3, i], [b_x[2, i]; b_x[3, i]]), label = "", opacity=.5, color = :gray)</span></span>
+<span id="cb28-66"><a href="#cb28-66" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.plot!(LinRange(y_lim[1], y_lim[2], 100), abs.(LinRange(y_lim[1], y_lim[2], 100)) * tan(γ_gs_), linestyle = :dash, label = "", color = :gray)</span></span>
+<span id="cb28-67"><a href="#cb28-67" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.title!("YZ Projection")</span></span>
+<span id="cb28-68"><a href="#cb28-68" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.xlabel!("Y [m]")</span></span>
+<span id="cb28-69"><a href="#cb28-69" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.ylabel!("Z [m]")</span></span>
+<span id="cb28-70"><a href="#cb28-70" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb28-71"><a href="#cb28-71" aria-hidden="true" tabindex="-1"></a><span class="co">#    p3 = Plots.plot(xc[1, :], xc[2, :], xc[3, :], lc=:viridis, line_z=velocity, label = "", colorbar_title = "Speed")</span></span>
+<span id="cb28-72"><a href="#cb28-72" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.quiver!([xc[1, i]], [xc[2, i]], [xc[3, i]], quiver = ([b_x[1, i]], [b_x[2, i]], [b_x[3, i]]) .* z_max ./ 10, aspect_ratio=:equal, scene_aspectmode="cube", color = :blue, label = "b_x")</span></span>
+<span id="cb28-73"><a href="#cb28-73" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.quiver!([xc[1, i]], [xc[2, i]], [xc[3, i]], quiver = ([b_y[1, i]], [b_y[2, i]], [b_y[3, i]]) .* z_max ./ 10, aspect_ratio=:equal, scene_aspectmode="cube", color = :green, label = "b_y")</span></span>
+<span id="cb28-74"><a href="#cb28-74" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.quiver!([xc[1, i]], [xc[2, i]], [xc[3, i]], quiver = ([b_z[1, i]], [b_z[2, i]], [b_z[3, i]]) .* z_max ./ 10, aspect_ratio=:equal, scene_aspectmode="cube", color = :orange, label = "b_z")</span></span>
+<span id="cb28-75"><a href="#cb28-75" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.plot!([xc[1, i], xc[1, i] - T_e[1, i] / T_max_ * z_max ./ 10], [xc[2, i], xc[2, i] - T_e[2, i] / T_max_ * z_max ./ 10], [xc[3, i], xc[3, i] - T_e[3, i] / T_max_ * z_max ./ 10], color = :red, axpect_ratio=:equal, label = "", zlim=(0, z_max), ylim=(min(x_lim[1], y_lim[1]), max(x_lim[2], y_lim[2])), xlim=(min(x_lim[1], y_lim[1]), max(x_lim[2], y_lim[2])))</span></span>
+<span id="cb28-76"><a href="#cb28-76" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.title!("Trajectory")</span></span>
+<span id="cb28-77"><a href="#cb28-77" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.xlabel!("X [m]")</span></span>
+<span id="cb28-78"><a href="#cb28-78" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.ylabel!("Y [m]")</span></span>
+<span id="cb28-79"><a href="#cb28-79" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.zlabel!("Z [m]")</span></span>
+<span id="cb28-80"><a href="#cb28-80" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb28-81"><a href="#cb28-81" aria-hidden="true" tabindex="-1"></a><span class="co">#    p5 = Plots.plot(gimbal_θ, gimbal_r, proj = :polar, lc = :viridis, line_z = uc[4, :], label = "", colorbar_title = "Thrust Magnitude")</span></span>
+<span id="cb28-82"><a href="#cb28-82" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.plot!([gimbal_θ[i]], [gimbal_r[i]], proj = :polar, m = 3, label = "Thrust Direction")</span></span>
+<span id="cb28-83"><a href="#cb28-83" aria-hidden="true" tabindex="-1"></a><span class="co">#    th = uc[5, i] * 5</span></span>
+<span id="cb28-84"><a href="#cb28-84" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.plot!(rectangle_norot(abs(sin(th)),0.4,sin(th)/2,0.5), label = "Vanes", opacity=.5, color = :gray)</span></span>
+<span id="cb28-85"><a href="#cb28-85" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.plot!(rectangle_norot(abs(sin(-th)),-0.4,sin(-th)/2,-0.5), label = "", opacity=.5, color = :gray)</span></span>
+<span id="cb28-86"><a href="#cb28-86" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.plot!(rectangle_norot(0.4,sin(-th),0.7,0), label = "", opacity=.5, color = :gray)</span></span>
+<span id="cb28-87"><a href="#cb28-87" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.plot!(rectangle_norot(0.4,sin(th),-0.7,0), label = "", opacity=.5, color = :gray)</span></span>
+<span id="cb28-88"><a href="#cb28-88" aria-hidden="true" tabindex="-1"></a><span class="co">#    Plots.title!("Control - Looking From Above")</span></span>
+<span id="cb28-89"><a href="#cb28-89" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb28-90"><a href="#cb28-90" aria-hidden="true" tabindex="-1"></a><span class="co">#    </span></span>
+<span id="cb28-91"><a href="#cb28-91" aria-hidden="true" tabindex="-1"></a><span class="co">#    plt = Plots.plot(p3, p1, p2, p5, layout = l, widths = (1, 4/8, 4/8, 1), plot_title="6DoF Astra Landing with SCP", size = (600, 900), aspect_ratio = :equal, margin = 1mm)</span></span>
+<span id="cb28-92"><a href="#cb28-92" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb28-93"><a href="#cb28-93" aria-hidden="true" tabindex="-1"></a><span class="co">#    </span></span>
+<span id="cb28-94"><a href="#cb28-94" aria-hidden="true" tabindex="-1"></a><span class="co">#    frame(a, plt)</span></span>
+<span id="cb28-95"><a href="#cb28-95" aria-hidden="true" tabindex="-1"></a><span class="co">#end</span></span>
+<span id="cb28-96"><a href="#cb28-96" aria-hidden="true" tabindex="-1"></a><span class="co">#   </span></span>
+<span id="cb28-97"><a href="#cb28-97" aria-hidden="true" tabindex="-1"></a><span class="co">#gif(a, fps = 15)#"Trajectory_and_Orientation.gif", fps = 15)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>Ignore the error from the next plot</p>
+<div id="7ff7e619-66a1-45f9-bfd0-746c7741e703" class="cell" data-execution_count="27">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Xd = LinRange(x_lim[1], x_lim[2], 100)' .* ones(100)</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="co">#Yd = ones(100)' .* LinRange(y_lim[1], y_lim[2], 100)</span></span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a><span class="co">#Zd = sqrt.((Xd .^ 2 + Yd .^ 2)) * tan(γ_gs_);</span></span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a><span class="co">#T_ = uc[1:3, :]</span></span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a><span class="co">#θ_ = xc[7:9, :]</span></span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a><span class="co">##T_e = hcat([substitute(C_be, Dict([θ[1] =&gt; θ_[1, i], θ[2] =&gt; θ_[2, i], θ[3] =&gt; θ_[3, i]]))' * T_[:, i] for i in range(1, length(tc))]...)</span></span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb29-9"><a href="#cb29-9" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.plotlyjs()   # set the backend to Plotly</span></span>
+<span id="cb29-10"><a href="#cb29-10" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb29-11"><a href="#cb29-11" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.quiver(xc[1, :], xc[2, :], xc[3, :], quiver = (b_x[1, :], b_x[2, :], b_x[3, :]) .* z_max ./ 40, aspect_ratio=:equal, size = (500, 800), label = "Body X")</span></span>
+<span id="cb29-12"><a href="#cb29-12" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.quiver!(xc[1, :], xc[2, :], xc[3, :], quiver = (b_y[1, :], b_y[2, :], b_y[3, :]) .* z_max ./ 40, aspect_ratio=:equal, label = "Body Y")</span></span>
+<span id="cb29-13"><a href="#cb29-13" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.quiver!(xc[1, :], xc[2, :], xc[3, :], quiver = (b_z[1, :], b_z[2, :], b_z[3, :]) .* z_max ./ 40, aspect_ratio=:equal, label = "Body Z")</span></span>
+<span id="cb29-14"><a href="#cb29-14" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.quiver!(xc[1, :], xc[2, :], xc[3, :], quiver = (-T_e[1, :], -T_e[2, :], -T_e[3, :]) ./ T_max_ .* z_max ./ 20, axpect_ratio=:equal, scene_aspectmode="cube", label = "Thrust")</span></span>
+<span id="cb29-15"><a href="#cb29-15" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.surface!(Xd, Yd, Zd, aspect_ratio=:equal, colorbar = false) # Glideslope</span></span>
+<span id="cb29-16"><a href="#cb29-16" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.title!("Interactive Trajectory")</span></span>
+<span id="cb29-17"><a href="#cb29-17" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.xlabel!("X")</span></span>
+<span id="cb29-18"><a href="#cb29-18" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.ylabel!("Y")</span></span>
+<span id="cb29-19"><a href="#cb29-19" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.zlabel!("Z")</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<div id="915b32bc-18bd-4bee-b544-1f9a12ed17ad" class="cell" data-execution_count="28">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.gr()</span></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a><span class="co">#l = @layout [a b; c d]</span></span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a><span class="co">#plt_r = Plots.plot(td, xd[1, :], label = "Disc X")</span></span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.plot!(td, xd[2, :], label = "Disc Y")</span></span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.plot!(td, xd[3, :], label = "Disc Z")</span></span>
+<span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.plot!(tc, xc[1, :], label = "Cont X")</span></span>
+<span id="cb30-9"><a href="#cb30-9" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.plot!(tc, xc[2, :], label = "Cont Y")</span></span>
+<span id="cb30-10"><a href="#cb30-10" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.plot!(tc, xc[3, :], label = "Cont Z")</span></span>
+<span id="cb30-11"><a href="#cb30-11" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.title!("Position")</span></span>
+<span id="cb30-12"><a href="#cb30-12" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.xlabel!("Time [s]")</span></span>
+<span id="cb30-13"><a href="#cb30-13" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.ylabel!("Position [m]")</span></span>
+<span id="cb30-14"><a href="#cb30-14" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb30-15"><a href="#cb30-15" aria-hidden="true" tabindex="-1"></a><span class="co">#plt_v = Plots.plot(td, xd[4, :], label = "Disc Vx")</span></span>
+<span id="cb30-16"><a href="#cb30-16" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.plot!(td, xd[5, :], label = "Disc Vy")</span></span>
+<span id="cb30-17"><a href="#cb30-17" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.plot!(td, xd[6, :], label = "Disc Vz")</span></span>
+<span id="cb30-18"><a href="#cb30-18" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.plot!(tc, xc[4, :], label = "Cont Vx")</span></span>
+<span id="cb30-19"><a href="#cb30-19" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.plot!(tc, xc[5, :], label = "Cont Vy")</span></span>
+<span id="cb30-20"><a href="#cb30-20" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.plot!(tc, xc[6, :], label = "Cont Vz")</span></span>
+<span id="cb30-21"><a href="#cb30-21" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.title!("Velocity")</span></span>
+<span id="cb30-22"><a href="#cb30-22" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.xlabel!("Time [s]")</span></span>
+<span id="cb30-23"><a href="#cb30-23" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.ylabel!("Velocity [m/s]")</span></span>
+<span id="cb30-24"><a href="#cb30-24" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb30-25"><a href="#cb30-25" aria-hidden="true" tabindex="-1"></a><span class="co">#plt_θ = Plots.plot(td, xd[7, :] * 180 / pi, label = "Disc θx")</span></span>
+<span id="cb30-26"><a href="#cb30-26" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.plot!(td, xd[8, :] * 180 / pi, label = "Disc θy")</span></span>
+<span id="cb30-27"><a href="#cb30-27" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.plot!(td, xd[9, :] * 180 / pi, label = "Disc θz")</span></span>
+<span id="cb30-28"><a href="#cb30-28" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.plot!(tc, xc[7, :] * 180 / pi, label = "Disc θx")</span></span>
+<span id="cb30-29"><a href="#cb30-29" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.plot!(tc, xc[8, :] * 180 / pi, label = "Disc θy")</span></span>
+<span id="cb30-30"><a href="#cb30-30" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.plot!(tc, xc[9, :] * 180 / pi, label = "Disc θz")</span></span>
+<span id="cb30-31"><a href="#cb30-31" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.title!("Orientation")</span></span>
+<span id="cb30-32"><a href="#cb30-32" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.xlabel!("Time [s]")</span></span>
+<span id="cb30-33"><a href="#cb30-33" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.ylabel!("Euler Angle [deg]")</span></span>
+<span id="cb30-34"><a href="#cb30-34" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb30-35"><a href="#cb30-35" aria-hidden="true" tabindex="-1"></a><span class="co">#plt_ω = Plots.plot(td, xd[10, :] * 180 / pi, label = "Disc ωx")</span></span>
+<span id="cb30-36"><a href="#cb30-36" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.plot!(td, xd[11, :] * 180 / pi, label = "Disc ωy")</span></span>
+<span id="cb30-37"><a href="#cb30-37" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.plot!(td, xd[12, :] * 180 / pi, label = "Disc ωz")</span></span>
+<span id="cb30-38"><a href="#cb30-38" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.plot!(tc, xc[10, :] * 180 / pi, label = "Cont ωx")</span></span>
+<span id="cb30-39"><a href="#cb30-39" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.plot!(tc, xc[11, :] * 180 / pi, label = "Cont ωy")</span></span>
+<span id="cb30-40"><a href="#cb30-40" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.plot!(tc, xc[12, :] * 180 / pi, label = "Cont ωz")</span></span>
+<span id="cb30-41"><a href="#cb30-41" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.title!("Angular Velocity")</span></span>
+<span id="cb30-42"><a href="#cb30-42" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.xlabel!("Time [s]")</span></span>
+<span id="cb30-43"><a href="#cb30-43" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.ylabel!("Angular Velocity [deg/s]")</span></span>
+<span id="cb30-44"><a href="#cb30-44" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb30-45"><a href="#cb30-45" aria-hidden="true" tabindex="-1"></a><span class="co">#plt = Plots.plot(plt_r, plt_v, plt_θ, plt_ω, layout = l, widths = (1/2, 1/2, 1/2, 1/2), plot_title="State Plots - Discrete and Continuous", size = (600, 600), margin = 1mm)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<div id="c99668de-20ff-4589-ae12-cdaad9d5dd7e" class="cell" data-execution_count="29">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.gr()</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a><span class="co">#l = @layout [a b; c d]</span></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a><span class="co">#plt_tT = Plots.plot(tc, uc[2, :], label = "Ty")</span></span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.plot!(tc, uc[3, :], label = "Tz")</span></span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.title!("Transverse Thrust")</span></span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.xlabel!("Time [s]")</span></span>
+<span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.ylabel!("Thrust [N]")</span></span>
+<span id="cb31-10"><a href="#cb31-10" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb31-11"><a href="#cb31-11" aria-hidden="true" tabindex="-1"></a><span class="co">#plt_σ = Plots.plot(tc, sqrt.(uc[1, :].^2 + uc[2, :].^2 + uc[3, :].^2), label = "norm(T)")</span></span>
+<span id="cb31-12"><a href="#cb31-12" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.plot!(tc, uc[4, :], label = "σ")</span></span>
+<span id="cb31-13"><a href="#cb31-13" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.title!("Thrust Magnitude")</span></span>
+<span id="cb31-14"><a href="#cb31-14" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.xlabel!("Time [s]")</span></span>
+<span id="cb31-15"><a href="#cb31-15" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.ylabel!("Thrust Magnitude [N]")</span></span>
+<span id="cb31-16"><a href="#cb31-16" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb31-17"><a href="#cb31-17" aria-hidden="true" tabindex="-1"></a><span class="co">#T_ = uc[1:3, :]</span></span>
+<span id="cb31-18"><a href="#cb31-18" aria-hidden="true" tabindex="-1"></a><span class="co">#gimbal = [acos(dot([1; 0; 0], T_[:, i]) / norm(T_[:, i])) * 180 / pi for i in range(1, length(tc))]</span></span>
+<span id="cb31-19"><a href="#cb31-19" aria-hidden="true" tabindex="-1"></a><span class="co">#plt_δ = Plots.plot(tc, gimbal, label = "")</span></span>
+<span id="cb31-20"><a href="#cb31-20" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.title!("Thrust Gimbaling")</span></span>
+<span id="cb31-21"><a href="#cb31-21" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.xlabel!("Time [s]")</span></span>
+<span id="cb31-22"><a href="#cb31-22" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.ylabel!("Thrust Gimbaling [deg]")</span></span>
+<span id="cb31-23"><a href="#cb31-23" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb31-24"><a href="#cb31-24" aria-hidden="true" tabindex="-1"></a><span class="co">#plt_γ = Plots.plot(tc, uc[5, :]* 180 / pi, label = "")</span></span>
+<span id="cb31-25"><a href="#cb31-25" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.title!("Vane Angle")</span></span>
+<span id="cb31-26"><a href="#cb31-26" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.xlabel!("Time [s]")</span></span>
+<span id="cb31-27"><a href="#cb31-27" aria-hidden="true" tabindex="-1"></a><span class="co">#Plots.ylabel!("Vane Angle [deg]")</span></span>
+<span id="cb31-28"><a href="#cb31-28" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb31-29"><a href="#cb31-29" aria-hidden="true" tabindex="-1"></a><span class="co">#plt = Plots.plot(plt_tT, plt_σ, plt_δ, plt_γ, layout = l, widths = (1/2, 1/2, 1/2, 1/2), plot_title="Control Plots", size = (600, 600), margin = 1mm)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
