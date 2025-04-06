@@ -8,34 +8,28 @@ x_ref = zeros([prob.N, ptr_ops.iter_max]);
 u_ref = zeros([prob.Nu, ptr_ops.iter_max]);
 p_ref = zeros([size(p_guess), ptr_ops.iter_max]);
 
-x_ref(:, 1) = prob.guess.x;
-u_ref(:, 1) = prob.guess.u;
-p_ref(:, 1) = prob.guess.p;
+x_ref(:, 1) = prob.scale_x(prob.guess.x);
+u_ref(:, 1) = prob.scale_u(prob.guess.u);
+p_ref(:, 1) = prob.scale_p(prob.guess.p);
 
 % Convexify along initial guess
-prob = convexify_along_reference(prob, 1);
+prob = convexify_along_reference(prob, guess.x, guess.u, guess.p);
 
 ptr_sol.converged = false;
+ptr_sol.objective = zeros([1, ptr_ops.iter_max]);
 
 for i = 1:ptr_ops.iter_max
     % Solve convex subproblem and update reference
-    prob = solve_ptr_convex_subproblem(prob, i);
+    [x_ref(:, :, i + 1), u_ref(:, :, i + 1), p_ref(:, i + 1), ptr_sol.objective(i), ptr_sol.delta_xp] = solve_ptr_convex_subproblem(prob, x_ref(:, :, i), u_ref(:, :, i), p_ref(:, i));
     
     % Convexify along reference trajectory
-    prob = convexify_along_reference(prob, i);
-
-    % Add virtual control
-    % Augment cost function
-    prob.ptr_cost = trust_region_cost()
-
-    % Determine feasibility of reference trajectory
-    ptr_sol.Delta = calculate_defect(prob, i + 1);
+    [prob, ptr_sol.Delta] = convexify_along_reference(prob, prob.unscale_x(x_ref(:, :, i + 1)), prob.unscale_u(u_ref(:, :, i + 1)), prob.unscale_p(p_ref(:, i + 1));
 
     % Update algorithm weights (4.24)
     ptr_ops.w_tr = update_trust_region_weights(ptr_sol.Delta, update, ptr_ops.w_tr, ptr_ops.Delta_min);
 
     % Check stopping criteria (4.30)
-    ptr_sol.delta_xp = ptr_stopping(x_ref(:, i + 1), p_ref(:, i + 1), x_ref(:, i), p_ref(:, i), ptr_ops.q, prob.S_x, prob.S_p);
+    ptr_sol.delta_xp = ptr_stopping(x_ref(:, i + 1), p_ref(:, i + 1), x_ref(:, i), p_ref(:, i), ptr_ops.q);
     
     if ptr_sol.delta_xp < ptr_ops.delta_tol
         ptr_sol.converged = true;
@@ -47,20 +41,9 @@ if ptr_sol.converged == false
     warning("PTR did not converge after %g iterations. delta_xp = %.3f. norm(Delta) = %.3f\n", i, ptr_sol.delta_xp, ptr_sol.Delta)
 end
 
-ptr_sol.x = x_ref;
-ptr_sol.u = u_ref;
-ptr_sol.p = p_ref;
-end
-
-function [J_tr] = trust_region_cost(eta, eta_p, w_tr, w_tr_p)
-    J_tr = w_tr' * eta + w_tr_p * eta_p;
-end
-
-function [ptr_constraints] = trust_region_constraints(X, U, p, x_ref, u_ref, p_ref, q, alpha_x, alpha_u, alpha_p, eta_k, eta_p)
-    % Limit artificial unboundedness
-    ptr_constraints(1) = alpha_x * vecnorm(X - x_ref, q, 2) ...
-        + alpha_u * vecnorm(U - u_ref, q, 2) <= eta_k;
-    ptr_constraints(2) = alpha_p * vecnorm(p - p_ref, q, 2) <= eta_p;
+ptr_sol.x = prob.unscale_x(x_ref);
+ptr_sol.u = prob.unscale_u(u_ref);
+ptr_sol.p = prob.unscale_p(p_ref);
 end
 
 function [w_tr] = update_trust_region_weights(Delta, update, w_tr, Delta_min)

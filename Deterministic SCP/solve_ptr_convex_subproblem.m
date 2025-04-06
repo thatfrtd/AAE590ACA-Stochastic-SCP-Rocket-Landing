@@ -1,19 +1,19 @@
-function [prob] = solve_ptr_convex_subproblem(prob, i)
+function [x_sol, u_sol, p_sol, objective] = solve_ptr_convex_subproblem(prob, x_ref, u_ref, p_ref)
 %SOLVE_PTR_CONVEX_SUBPROBLEM Summary of this function goes here
 %   Detailed explanation goes here
 
 cvx_begin
-    variable X(prob.n_x, prob.N)
-    variable U(prob.n_u, prob.N_u)
-    variable p(prob.n_p, 1)
+    variable X(prob.n.x, prob.N)
+    variable U(prob.n.u, prob.N_u)
+    variable p(prob.n.p, 1)
     variable eta(prob.N)
-    variable eta_p(prob.np, 1)
-    variable V(prob.nx, prob.N - 1)
-    variable v_prime(prob.n_ncvx)
-    variable v_0(prob.n_x, 1)
-    variable v_N(prob.n_x, 1)
+    variable eta_p(prob.n.p, 1)
+    variable V(prob.n.x, prob.N - 1)
+    variable v_prime(prob.n.ncvx)
+    variable v_0(prob.n.x, 1)
+    variable v_N(prob.n.x, 1)
     minimize( prob.objective(X, U, p) ...
-        + virtual_control_cost(V, v_prime, v_0, v_N, w_vc) ...
+        + virtual_control_cost(V, v_prime, v_0, v_N, ptr_ops.w_vc) ...
         + trust_region_cost(eta, eta_p, ptr_ops.w_tr, ptr_ops.w_tr_p) )
     subject to
         % Dynamics
@@ -39,12 +39,12 @@ cvx_begin
         % Constraints
         for k = 1:prob.N
             % Convex Constraints
-            for cc = 1:prob.n_cvx
+            for cc = 1:prob.n.cvx
                 prob.convex_constraints{cc}(X(:, k), U(:, k), p) <= 0;
             end
             % Nonconvex Constraints
-            for nc = 1:prob.n_ncvx
-                prob.nonconvex_constraints{nc}(X(:, k), U(:, k), p, prob.x_ref(:, :, i), prob.u_ref(:, :, i), prob.p_ref(:, i)) ...
+            for nc = 1:prob.n.ncvx
+                prob.nonconvex_constraints{nc}(X(:, k), U(:, k), p, x_ref, u_ref, p_ref) ...
                     - v_prime(nc) <= 0;
             end
         end
@@ -55,9 +55,13 @@ cvx_begin
         prob.terminal_bc(X(:, prob.N), p) + v_N == 0;
 
         % Trust Region Constraints
-        trust_region_constraints(X, U, p, prob.x_ref(:, :, i + 1), prob.u_ref(:, :, i + 1), prob.p_ref(:, i + 1), ptr_ops.q, ptr_ops.alpha_x, ptr_ops.alpha_u, ptr_ops.alpha_p, eta, eta_p);
+        trust_region_constraints(X, U, p, x_ref, u_ref, p_ref, ptr_ops.q, ptr_ops.alpha_x, ptr_ops.alpha_u, ptr_ops.alpha_p, eta, eta_p);
 cvx_end
 
+x_sol = X;
+u_sol = U;
+p_sol = p;
+objective = cvx_optval;
 end
 
 function [J_tr] = trust_region_cost(eta, eta_p, w_tr, w_tr_p)

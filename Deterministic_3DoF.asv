@@ -13,7 +13,7 @@ g = [-3.7114e-3; 0; 0]; % [km / s2]
 alpha = 0.5086; % [s / km]
 T_min = 4.97; % [kg km / s2]
 T_max = 13.26; % [kg km / s2]
-I = 15000 * (1e-3) ^ 2; % [kg m2]
+I = 15000;
 
 % Problem Parameters
 tf = 80; % [s]
@@ -28,7 +28,6 @@ x_0 = [r_0; v_0];
 
 tspan = [0, tf];
 t_k = linspace(tspan(1), tspan(2), N);
-delta_t = t_k(2) - t_k(1);
 
 % PTR algorithm parameters
 ptr_ops.iter_max = 15;
@@ -45,25 +44,22 @@ ptr_ops.alpha_p = 0;
 %% Specify Constraints
 % Convex state path constraints
 glideslope_constraint = @(x, u, p) norms(x, 2, 2) - x(2, :) / cos(glideslope_angle_max);
-state_convex_constraints = {glideslope_constraint};
+state_convex_constraints = [glideslope_constraint];
 
 % Convex control constraints
-max_thrust_constraint = @(x, u, p) u(3, :) - T_max;
-min_thrust_constraint = @(x, u, p) T_min - u(3, :);
+max_thrust_constraint = @(x, u, p) u(3) - T_max
 max_gimbal_constraint = @(x, u, p) norms(u, 2, 2) - u(1, :) / cos(gimbal_max);
-control_convex_constraints = {max_thrust_constraint, min_thrust_constraint, max_gimbal_constraint};
+control_convex_constraints = [max_gimbal_constraint];
 
 % Combine convex constraints
 convex_constraints = [state_convex_constraints, control_convex_constraints];
 
 %% Specify Objective
-min_fuel_objective = @(x, u, p) sum(u(3,:)) * delta_t;
 
 %% Create Guess
-guess = straight_line_interpolate_3DoF_guess(x0, xf, N);
 
 %% Construct Problem Object
-prob_3DoF = DeterministicProblem(x0, N, "ZOH", tf, f, guess, convex_constraints, min_fuel_objective);
+prob_3DoF = DeterministicProblem(x0, N, "ZOH", tf, f, guess, convex_constraints, objective);
 
 %% Solve Problem with PTR
 ptr_sol = ptr(prob_3DoF, ptr_ops);

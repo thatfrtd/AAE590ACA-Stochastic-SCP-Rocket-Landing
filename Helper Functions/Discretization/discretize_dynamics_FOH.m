@@ -1,4 +1,4 @@
-function [A_k, B_k_plus, B_k_minus, c_k] = discretize_dynamics_FOH(f, A, B, E, c, N, tspan, x_ref, u_ref, p_ref, tolerances)
+function [A_k, B_k_plus, B_k_minus, c_k, Delta] = discretize_dynamics_FOH(f, A, B, E, c, N, tspan, x_ref, u_ref, p_ref, tolerances)
     % Discretization of a dynamical system assuming FOH control
     % Make c optional? c = f - Ax - Bu
 
@@ -12,8 +12,10 @@ function [A_k, B_k_plus, B_k_minus, c_k] = discretize_dynamics_FOH(f, A, B, E, c
     B_k_minus = zeros([nx, nu, N]);
     E_k = zeros([nx, np, N]);
     c_k = zeros([nx, 1, N]);
+    Delta = zeros([1, N - 1]);
     
     for k = 1:N
-        [A_k(:, :, k), B_k_plus(:, :, k), B_k_minus(:, :, k), E_k(:, :, k), c_k(:, :, k)] = integrate_discrete_FOH(x_ref(t_k(k)), A, B, E, c, f, u_ref, p_ref, [t_k(k), t_k(k + 1)], tolerances);
+        [A_k(:, :, k), B_k_plus(:, :, k), B_k_minus(:, :, k), E_k(:, :, k), c_k(:, :, k)] = integrate_discrete_FOH(x_ref(k), A, B, E, c, f, u_ref, p_ref, [t_k(k), t_k(k + 1)], tolerances);
+        Delta(k) = norm(x_kp1 - x_ref(k + 1), 2);
     end
 end

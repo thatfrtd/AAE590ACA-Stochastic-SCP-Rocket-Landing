@@ -1,4 +1,4 @@
-function [A_k, B_k, E_k, c_k] = integrate_discrete_ZOH(x0, A, B, E, c, f, u, p, tspan, tolerances)
+function [A_k, B_k, E_k, c_k, x_kp1] = integrate_discrete_ZOH(x0, A, B, E, c, f, u, p, tspan, tolerances)
     % Integrates STM and state with Bk and ck
     %   Uses ODE45 to integrate the State Transition Matrix and the state using
     %   the given A matrix and dynamics f over the time period in tspan using
@@ -23,7 +23,7 @@ function [A_k, B_k, E_k, c_k] = integrate_discrete_ZOH(x0, A, B, E, c, f, u, p, 
     y_f = y(end, :); 
 
     % Unpack solution
-    x = y_f(:, 1:nx);
+    x_kp1 = y_f(:, 1:nx);
     A_k = reshape(y_f(:, (nx + 1) : (nx * (nx + 1))), nx, nx);
     B_k = A_k * reshape(y_f(:, (nx * (nx + 1) + 1) : (nx * (nx + 1) + nx * nu)), nx, nu);
     E_k = A_k * reshape(y_f(:, (nx * (nx + 1) + nx * nu + 1) : (nx * (nx + 1) + nx * nu + nx * np)), nx, np);
