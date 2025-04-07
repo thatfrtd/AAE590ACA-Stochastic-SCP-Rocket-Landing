@@ -1,4 +1,4 @@
-function [A_k, B_k_plus, B_k_minus, E_k, c_k] = integrate_discrete_FOH(x0, A, B, E, c, f, u, p, tspan, tolerances)
+function [A_k, B_k_plus, B_k_minus, E_k, c_k, x] = integrate_discrete_FOH(x0, A, B, E, c, f, u, p, tspan, tolerances)
     % Integrates STM and state with Bk+, Bk-, and ck
     %   Uses ODE45 to integrate the State Transition Matrix and the state using
     %   the given A matrix and dynamics f over the time period in tspan using

@@ -23,12 +23,12 @@ vehicle = Vehicle(m_dry, L, L * 3, gimbal_max, T_min, T_max, I = I);
 
 % Problem Parameters
 tf = 80; % [s]
-N = 80; % []
+N = 50; % []
 r_0 = [1.5; 2.0]; % [km]
 v_0 = [-0.0185; -0.0247]; % [km / s]
 theta_0 = deg2rad(90); % [rad]
 w_0 = deg2rad(0); % [rad / s]
-glideslope_angle_max = deg2rad(45); % [rad]
+glideslope_angle_max = deg2rad(80); % [rad]
 
 x_0 = [r_0; v_0; theta_0; w_0];
 x_f = [zeros(2, 1); zeros(2, 1); pi / 2; 0];
@@ -41,13 +41,13 @@ u_hold = "ZOH";
 Nu = (u_hold == "ZOH") * (N - 1) + (u_hold == "FOH") * N;
 
 % PTR algorithm parameters
-ptr_ops.iter_max = 4;
-ptr_ops.Delta_min = 5e-3;
-ptr_ops.w_vc = 1e1;
-ptr_ops.w_tr = 1e-1 * ones(1, Nu);
+ptr_ops.iter_max = 15;
+ptr_ops.Delta_min = 5e-2;
+ptr_ops.w_vc = 1e2;
+ptr_ops.w_tr = ones(1, Nu) * 1e-1;
 ptr_ops.w_tr_p = 1e-1;
-ptr_ops.update_w_tr = true;
-ptr_ops.delta_tol = 1e-5;
+ptr_ops.update_w_tr = false;
+ptr_ops.delta_tol = 1e-3;
 ptr_ops.q = 2;
 ptr_ops.alpha_x = 1;
 ptr_ops.alpha_u = 1;
@@ -58,29 +58,43 @@ f = @(t, x, u, p) SymDynamics3DoF(t, x, u, vehicle.m, vehicle.L, vehicle.I(2));
 
 %% Specify Constraints
 % Convex state path constraints
-glideslope_constraint = @(x, u, p) norms(x, 2, 2) - x(2, :) / cos(glideslope_angle_max);
-state_convex_constraints = {glideslope_constraint};
+glideslope_constraint = @(x, u, p) norm(x(1:2)) - x(2) / cos(glideslope_angle_max);
+state_convex_constraints = {};
 
 % Convex control constraints
-max_thrust_constraint = @(x, u, p) u(3, :) - T_max;
-min_thrust_constraint = @(x, u, p) T_min - u(3, :);
-max_gimbal_constraint = @(x, u, p) norms(u, 2, 2) - u(1, :) / cos(gimbal_max);
-control_convex_constraints = {max_thrust_constraint, min_thrust_constraint, max_gimbal_constraint};
+max_thrust_constraint = @(x, u, p) u(3) - T_max;
+min_thrust_constraint = @(x, u, p) T_min - u(3);
+max_gimbal_constraint = @(x, u, p) u(3) - u(1) / cos(gimbal_max);
+lcvx_thrust_constraint = @(x, u, p) norm(u(1:2))- u(3); 
+control_convex_constraints = {min_thrust_constraint,max_gimbal_constraint,max_thrust_constraint,lcvx_thrust_constraint};
 
 % Combine convex constraints
 convex_constraints = [state_convex_constraints, control_convex_constraints];
 
 %% Specify Objective
-min_fuel_objective = @(x, u, p) sum(u(3,:)) * delta_t;
+min_fuel_objective = @(x, u, p) sum(u(3,:).^2*0 + x(6,1:Nu).^2)% * delta_t;
 
 %% Create Guess
-guess = guess_3DoF(x_0, x_f, N, Nu, delta_t, vehicle);
+sl_guess = guess_3DoF(x_0, x_f, N, Nu, delta_t, vehicle);
+
+% CasADi solution won't be perfect since it is implemented to use Euler
+% integration with the nonlinear EoMs
+CasADi_sol = CasADi_solve(x_0, sl_guess.x, sl_guess.u, vehicle, N, delta_t, glideslope_angle_max);
+
+guess = CasADi_sol;
+guess.p = sl_guess.p;
 
 % figure
-% plot_3DoF_trajectory(t_k, guess.x, guess.u, glideslope_angle_max, gimbal_max, T_min, T_max)
+% plot_3DoF_trajectory(t_k, sl_guess.x, sl_guess.u, glideslope_angle_max, gimbal_max, T_min, T_max)
 % 
 % figure
-% plot_3DoF_time_histories(t_k, guess.x, guess.u)
+% plot_3DoF_time_histories(t_k, sl_guess.x, sl_guess.u)
+
+figure
+plot_3DoF_trajectory(t_k, guess.x, guess.u, glideslope_angle_max, gimbal_max, T_min, T_max, step = 1)
+
+figure
+plot_3DoF_time_histories(t_k, guess.x, guess.u)
 
 %% Construct Problem Object
 prob_3DoF = DeterministicProblem(x_0, N, u_hold, tf, f, guess, convex_constraints, min_fuel_objective);
@@ -98,14 +112,15 @@ prob_3DoF = DeterministicProblem(x_0, N, u_hold, tf, f, guess, convex_constraint
 
 %%
 Delta = calculate_defect(prob_3DoF, guess.x, guess.u, guess.p);
+norm(Delta)
 
 %% Test Discretization on Initial Guess
 
-guess.u(1, :) = T_min * 1.5;
+%guess.u(1, :) = T_min * 1.5;
 %guess.u(2, :) = T_min / 2000;
 guess.u(3, :) = vecnorm(guess.u(1:2, :));
 
-prob_3DoF = prob_3DoF.discretize(guess.x, guess.u, guess.p);
+[prob_3DoF, Delta_disc] = prob_3DoF.discretize(guess.x, guess.u, guess.p);
 
 x_disc = prob_3DoF.disc_prop(guess.u, guess.p);
 
@@ -126,11 +141,28 @@ tiledlayout(1, 3)
 nexttile
 plot(0:ptr_ops.iter_max, ptr_sol.objective);
 title("Objective vs Iteration")
+grid on
 
 nexttile
 plot(ptr_sol.delta_xp)
 title("Stopping Criteria vs Iteration")
+grid on
 
 nexttile
 plot(0:ptr_ops.iter_max, vecnorm(ptr_sol.Delta))
 title("Defect Norm vs Iteration")
+grid on
+
+%%
+i = 5;
+
+[t_cont_sol, x_cont_sol, u_cont_sol] = prob_3DoF.cont_prop(ptr_sol.u(:, :, i), ptr_sol.p(:, i));
+
+figure
+plot_3DoF_trajectory(t_k, ptr_sol.x(:, :, i), ptr_sol.u(:, :, i), glideslope_angle_max, gimbal_max, T_min, T_max, step = 1)
+
+figure
+comparison_plot_3DoF_trajectory({guess.x, x_cont, ptr_sol.x(:, :, i)}, ["Guess", "Continuous Propagation", "Discrete Propagation"], glideslope_angle_max, linestyle = [":", "-", "--"], title = "Continuous vs Discrete Propagation of Solution")
+
+figure
+comparison_plot_3DoF_time_histories({t_k, t_cont_sol, t_k}, {guess.x, x_cont_sol, ptr_sol.x(:, :, i)}, {guess.u, u_cont_sol, ptr_sol.u(:, :, i)}, ["Guess", "Cont", "Disc"], linestyle = [":", "-", "--"], title = "Continuous vs Discrete Propagation of Solution")

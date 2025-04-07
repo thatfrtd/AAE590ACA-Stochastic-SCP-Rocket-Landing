@@ -30,7 +30,7 @@ u_N = squeeze(pagemtimes(C_NB(:, :, 1:Nu), permute(reshape(u(1:2, :), [2, Nu, 1]
 
 plot(x(1, :), x(2, :)); hold on
 line([x_lim(1), 0, x_lim(2)], abs([x_lim(1), 0, x_lim(2)]) / tan(glideslope_angle), 'Color', 'k', 'LineStyle', '--'); hold on
-quiver(x(1, 1:options.step:Nu), x(2, 1:options.step:Nu), -u_N(1, 1:step:end), -u_N(2, 1:step:end), ShowArrowHead = "off", color = "r", AutoScaleFactor=0.4)
+quiver(x(1, 1:options.step:Nu), x(2, 1:options.step:Nu), -u_N(1, 1:options.step:end), -u_N(2, 1:options.step:end), ShowArrowHead = "off", color = "r", AutoScaleFactor=0.4)
 title(options.title)
 legend("", "Glideslope", "Thrust", Location="southoutside", Orientation="horizontal")
 xlabel("X [km]")

@@ -35,7 +35,7 @@ classdef Vehicle
             obj.I = options.I;
             obj.Len = Len;
             obj.radius = options.radius;
-            obj.max_gimbal = deg2rad(max_gimbal);
+            obj.max_gimbal = max_gimbal;
             obj.min_thrust = min_thrust;
             obj.max_thrust = max_thrust;
             obj.Name = options.Name;

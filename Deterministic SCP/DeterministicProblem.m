@@ -108,13 +108,13 @@ classdef DeterministicProblem
             u_min = min(obj.guess.u, [], 2);
             p_min = min(obj.guess.p);
 
-            scaling.S_x = diag(make_not_zero(x_max - x_min) / (z_ub - z_lb));
-            scaling.S_u = diag(make_not_zero(u_max - u_min) / (z_ub - z_lb));
-            scaling.S_p = diag(make_not_zero(p_max - p_min) / (z_ub - z_lb));
+            scaling.S_x = eye(obj.n.x);%diag(make_not_zero(x_max - x_min) / (z_ub - z_lb));
+            scaling.S_u = eye(obj.n.u);%diag(make_not_zero(u_max - u_min) / (z_ub - z_lb));
+            scaling.S_p = eye(obj.n.p);%diag(make_not_zero(p_max - p_min) / (z_ub - z_lb));
 
-            scaling.c_x = x_min - scaling.S_x * ones([obj.n.x, 1]) * z_lb;
-            scaling.c_u = u_min - scaling.S_u * ones([obj.n.u, 1]) * z_lb;
-            scaling.c_p = p_min - scaling.S_p * ones([obj.n.p, 1]) * z_lb;
+            scaling.c_x = zeros([obj.n.x, 1]);%x_min - scaling.S_x * ones([obj.n.x, 1]) * z_lb;
+            scaling.c_u = zeros([obj.n.u, 1]);%u_min - scaling.S_u * ones([obj.n.u, 1]) * z_lb;
+            scaling.c_p = zeros([obj.n.p, 1]);%p_min - scaling.S_p * ones([obj.n.p, 1]) * z_lb;
             
             function [not_zero] = make_not_zero(maybe_zero)
                 % If number is too close to zero, make it 1 so that the

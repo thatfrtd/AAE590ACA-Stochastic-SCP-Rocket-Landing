@@ -2,7 +2,7 @@ function [x_sol, u_sol, objective] = solve_ptr_convex_subproblem_no_p(prob, ptr_
 %SOLVE_PTR_CONVEX_SUBPROBLEM Summary of this function goes here
 %   Detailed explanation goes here
 
-cvx_begin
+cvx_begin quiet
     variable X(prob.n.x, prob.N)
     variable U(prob.n.u, prob.Nu)
     variable eta(1, prob.Nu)
@@ -57,6 +57,7 @@ cvx_end
 x_sol = X;
 u_sol = U;
 objective = cvx_optval;
+display(virtual_control_cost(V, v_prime, v_0, v_N, ptr_ops.w_vc))
 end
 
 function [J_tr] = trust_region_cost(eta, eta_p, w_tr, w_tr_p)
@@ -64,5 +65,5 @@ function [J_tr] = trust_region_cost(eta, eta_p, w_tr, w_tr_p)
 end
 
 function [J_vc] = virtual_control_cost(V, v_prime, v_0, v_N, w_vc)
-    J_vc = w_vc * (norm(v_prime, 1) + sum(norms(V, 1, 2)) + norm(v_0, 1) + norm(v_N, 1));
+    J_vc = w_vc * (norm(v_prime, 1) + sum(norms(V, 1, 1)) + norm(v_0, 1) + norm(v_N, 1));
 end
