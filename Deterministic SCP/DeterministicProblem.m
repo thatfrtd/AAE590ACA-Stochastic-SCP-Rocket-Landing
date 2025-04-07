@@ -48,16 +48,16 @@ classdef DeterministicProblem
             obj.n.u = size(guess.u, 1);
             obj.n.p = size(guess.p, 1);
             obj.n.cvx = numel(convex_constraints);
-            obj.n.ncvx = numel(nonconvex_constraints);
+            obj.n.ncvx = numel(options.nonconvex_constraints);
             obj.tf = tf;
             obj.u_hold = u_hold;
             obj.guess = guess;
             obj.cont.f = f;
             obj = linearize(obj);
             obj.convex_constraints = convex_constraints;
-            obj.nonconvex_constraints = nonconvex_constraints;
-            obj.initial_bc = initial_bc;
-            obj.terminal_bc = terminal_bc;
+            obj.nonconvex_constraints = options.nonconvex_constraints;
+            obj.initial_bc = options.initial_bc;
+            obj.terminal_bc = options.terminal_bc;
             obj.objective = objective;
             obj.scaling = obj.compute_scaling();
             obj.tolerances = odeset(RelTol=options.integration_tolerance, AbsTol=options.integration_tolerance);
@@ -66,16 +66,17 @@ classdef DeterministicProblem
         function prob = linearize(prob)
             %LINEARIZE 
 
-            x_sym = sym("x");
-            u_sym = sym("u");
-            p_sym = sym("p");
+            t_sym = sym("t");
+            x_sym = sym("x", [prob.n.x, 1]);
+            u_sym = sym("u", [prob.n.u, 1]);
+            p_sym = sym("p", [prob.n.p, 1]);
             
             % Linearize Dynamics
-            prob.cont.A = matlabFunction(jacobian(prob.cont.f(x_sym, u_sym, p_sym), x_sym));
-            prob.cont.B = matlabFunction(jacobian(prob.cont.f(x_sym, u_sym, p_sym), u_sym));
-            prob.cont.E = matlabFunction(jacobian(prob.cont.f(x_sym, u_sym, p_sym), p_sym));
+            prob.cont.A = matlabFunction(jacobian(prob.cont.f(t_sym, x_sym, u_sym, p_sym), x_sym),"Vars", [{t_sym}; {x_sym}; {u_sym}; {p_sym}]);
+            prob.cont.B = matlabFunction(jacobian(prob.cont.f(t_sym, x_sym, u_sym, p_sym), u_sym),"Vars", [{t_sym}; {x_sym}; {u_sym}; {p_sym}]);
+            prob.cont.E = matlabFunction(jacobian(prob.cont.f(t_sym, x_sym, u_sym, p_sym), p_sym),"Vars", [{t_sym}; {x_sym}; {u_sym}; {p_sym}]);
 
-            prob.cont.c = @(x, u, p) prob.cont.f(x, u, p) - A(x, u, p) * x - B(x, u, p) * u - E(x, u, p) * p;
+            prob.cont.c = @(t, x, u, p) prob.cont.f(t, x, u, p) - prob.cont.A(t, x, u, p) * x - prob.cont.B(t, x, u, p) * u - zero_if_empty(prob.cont.E(t, x, u, p) * p);
 
             % Linearize Nonconvex Constraints (Needed??)
 
@@ -95,50 +96,121 @@ classdef DeterministicProblem
             end
         end
 
-        function [obj] = compute_scaling(obj)
+        function [scaling] = compute_scaling(obj)
             z_ub = 1;
             z_lb = 0;
 
-            x_max = max(obj.guess.x, [], 1);
-            u_max = max(obj.guess.u, [], 1);
+            x_max = max(obj.guess.x, [], 2);
+            u_max = max(obj.guess.u, [], 2);
             p_max = max(obj.guess.p);
 
-            x_min = min(obj.guess.x, [], 1);
-            u_min = min(obj.guess.u, [], 1);
+            x_min = min(obj.guess.x, [], 2);
+            u_min = min(obj.guess.u, [], 2);
             p_min = min(obj.guess.p);
 
-            obj.S_x = diag((x_max - x_min) / (z_ub - z_lb));
-            obj.S_u = diag((u_max - u_min) / (z_ub - z_lb));
-            obj.S_p = diag((p_max - p_min) / (z_ub - z_lb));
+            scaling.S_x = diag(make_not_zero(x_max - x_min) / (z_ub - z_lb));
+            scaling.S_u = diag(make_not_zero(u_max - u_min) / (z_ub - z_lb));
+            scaling.S_p = diag(make_not_zero(p_max - p_min) / (z_ub - z_lb));
 
-            obj.c_x = x_min - S_x * ones([obj.n.x, 1]) * z_lb;
-            obj.c_u = u_min - S_u * ones([obj.n.u, 1]) * z_lb;
-            obj.c_p = p_min - S_p * ones([obj.n.p, 1]) * z_lb;
-        end
+            scaling.c_x = x_min - scaling.S_x * ones([obj.n.x, 1]) * z_lb;
+            scaling.c_u = u_min - scaling.S_u * ones([obj.n.u, 1]) * z_lb;
+            scaling.c_p = p_min - scaling.S_p * ones([obj.n.p, 1]) * z_lb;
+            
+            function [not_zero] = make_not_zero(maybe_zero)
+                % If number is too close to zero, make it 1 so that the
+                % scaling matrix stays invertible
 
-        function [xhat] = scale_x(prob, x)
-            xhat = pagemtimes(prob.scaling.S_x, x) + prob.scaling.c_x;
-        end
-
-        function [uhat] = scale_u(prob, u)
-            uhat = pagemtimes(prob.scaling.S_u, u) + prob.scaling.c_u;
-        end
-
-        function [phat] = scale_p(prob, p)
-            phat = prob.scaling.S_p * p + prob.scaling.c_p; % shape????
+                tol = 1e-2;
+                not_zero = (maybe_zero < tol) + (maybe_zero >= tol) .* maybe_zero;
+            end
         end
 
         function [x] = unscale_x(prob, xhat)
-            x = pagemldivide(prob.scaling.S_x, xhat - prob.scaling.c_x);
+            if numel(size(xhat)) == 3
+                x = pagemtimes(prob.scaling.S_x, xhat) + prob.scaling.c_x;
+            else
+                x = prob.scaling.S_x * xhat + repmat(prob.scaling.c_x, 1, size(xhat, 2));
+            end
         end
 
         function [u] = unscale_u(prob, uhat)
-            u = pagemldivide(prob.scaling.S_u, uhat - prob.scaling.c_u);
+            if numel(size(uhat)) == 3
+                u = pagemtimes(prob.scaling.S_u, uhat) + prob.scaling.c_u;
+            else
+                u = prob.scaling.S_u * uhat + repmat(prob.scaling.c_u, 1, size(uhat, 2));
+            end
         end
 
         function [p] = unscale_p(prob, phat)
-            p = prob.scaling.S_p \ (phat - prob.scaling.c_p); % shape????
+            if numel(size(phat)) == 2
+                if isempty(phat)
+                    p = phat;
+                else
+                    p = prob.scaling.S_p * phat + prob.scaling.c_p;
+                end
+            else
+                p = prob.scaling.S_p * phat + prob.scaling.c_p;
+            end
         end
+
+        function [xhat] = scale_x(prob, x)
+            xhat = pagemldivide(prob.scaling.S_x, x - prob.scaling.c_x);
+        end
+
+        function [uhat] = scale_u(prob, u)
+            uhat = pagemldivide(prob.scaling.S_u, u - prob.scaling.c_u);
+        end
+
+        function [phat] = scale_p(prob, p)
+            phat = prob.scaling.S_p \ (p - prob.scaling.c_p); % shape????
+        end
+
+        function [t_cont, x_cont, u_cont] = cont_prop(prob, u, p)
+            %DISC_PROP Summary of this function goes here
+            %   Detailed explanation goes here
+            t_k = linspace(0, prob.tf, prob.N);
+
+            if prob.u_hold == "ZOH"
+                u_func = @(t) interp1(t_k(1:prob.Nu), u', t, "previous", "extrap")';
+            elseif prob.u_hold == "FOH"
+                u_func = @(t) interp1(t_k, u', t)';
+            end
+
+            [t_cont, x_cont] = ode45(@(t, x) prob.cont.f(t, x, u_func(t), p), [0, prob.tf], prob.x0, prob.tolerances);
+            x_cont = x_cont';
+
+            if prob.u_hold == "ZOH"
+                u_cont = u_func(t_cont(1:(numel(t_cont) - 1)));
+            elseif prob.u_hold == "FOH"
+                u_cont = u_func(t_cont);
+            end
+        end
+
+        function [x_disc] = disc_prop(prob, u, p)
+            %DISC_PROP Summary of this function goes here
+            %   Detailed explanation goes here
+            x_disc = zeros([prob.n.x, prob.N - 1]);
+            x_disc(:, 1) = prob.x0;
+
+            if prob.u_hold == "ZOH"
+                for k = 1:(prob.N - 1)
+                    x_disc(:, k + 1) = prob.disc.A_k(:, :, k) * x_disc(:, k) ...
+                                 + prob.disc.B_k(:, :, k) * u(:, k) ...
+                                 + zero_if_empty(prob.disc.E_k(:, :, k) * p) ...
+                                 + prob.disc.c_k(:, :, k);
+                end
+            elseif prob.u_hold == "FOH"
+                for k = 1:(prob.N - 1)
+                    x_disc(:, k + 1) = prob.disc.A_k(:, :, k) * x_disc(:, k) ...
+                                 + prob.disc.B_minus_k(:, :, k) * u(:, k) ...
+                                 + prob.disc.B_plus_k(:, :, k) * u(:, k + 1) ...
+                                 + zero_if_empty(prob.disc.E_k(:, :, k) * p) ...
+                                 + prob.disc.c_k(:, :, k);
+                end
+            end
+        end
+
+
     end
 end
 

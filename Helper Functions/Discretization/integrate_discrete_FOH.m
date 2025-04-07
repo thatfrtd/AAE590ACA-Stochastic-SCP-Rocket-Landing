@@ -9,7 +9,7 @@ function [A_k, B_k_plus, B_k_minus, E_k, c_k] = integrate_discrete_FOH(x0, A, B,
     np = numel(p);
 
     STM0 = eye(nx);
-    B0 = zeros(size(B(0, x0, u(0))));
+    B0 = zeros(size(B(0, x0, u(tspan(1)))));
     E0 = zeros(nx, np);
     c0 = zeros([nx, 1]);
 
@@ -27,7 +27,7 @@ function [A_k, B_k_plus, B_k_minus, E_k, c_k] = integrate_discrete_FOH(x0, A, B,
     y_f = y(end, :);
 
     % Unpack solution
-    x = y_f(:, 1:nx);
+    x = y_f(:, 1:nx)';
     A_k = reshape(y_f(:, (nx + 1) : (nx * (nx + 1))), nx, nx);
     B_k_plus = A_k * reshape(y_f(:, (nx * (nx + 1) + 1) : (nx * (nx + 1) + nx * nu)), nx, nu);
     B_k_minus = A_k * reshape(y_f(:, (nx * (nx + 1) + nx * nu + 1) : (nx * (nx + 1) + 2 * nx * nu)), nx, nu);

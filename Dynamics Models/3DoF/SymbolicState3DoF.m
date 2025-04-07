@@ -1,47 +1,46 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% PSP ASA - AC TrajOpt
-% 3 Degree of Freedom Symbolic Equations of Motion Script
-% Author: Lucas Mohler, Travis Hastreiter 
-% Created On: 2 November, 2024
-% Description: Creates symbolic equations of motion (EoM) for 3DoF planar 
-% rocket landing problem. Creates function file and Simulink block for the 
-% EoMs and function files for the Jacobians.
-% Most Recent Change: Travis Hastreiter 5 November, 2024
+% AAE 590ACA
+% Stochastic SCP Rocket Landing Project
+% Author: Travis Hastreiter 
+% Created On: 6 April, 2025
+% Description: 3DoF rocket landing dynamics
+% Most Recent Change: 6 April, 2025
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-g = 9.81;
+g = 3.7114e-3; % [km / s2]
 
 syms mass L I;
-r = sym("r", [2;1]);
-v = sym("v", [2;1]);
+t = sym("t");
+r = sym("r", [2, 1]);
+v = sym("v", [2, 1]);
 theta = sym("theta", 1);
 w = sym("w", 1);
 x = [r;v;theta;w];
 
-thrust = sym("thrust", 1);
-gimbal = sym("gimbal", 1);
-u = [thrust;gimbal];
+thrust = sym("thrust", [2, 1]);
+thrust_mag = sym("thrust_mag", 1);
+u = [thrust; thrust_mag];
 
 rdot = v;
 thetadot = w;
-wdot = -L*thrust*sin(gimbal)/I;
+M = cross([-L; 0; 0], [thrust; 0]);
+wdot = M(3) / I;
 
-totalTheta = theta+gimbal;
-rotationMatrix = [cos(totalTheta) sin(totalTheta); sin(totalTheta) cos(totalTheta)];
-T_e = rotationMatrix * [thrust; 0];
-vdot = T_e/mass - [0; g];
+rotationMatrix = [cos(theta) -sin(theta); sin(theta) cos(theta)];
+T_e = rotationMatrix * thrust;
+vdot = T_e / mass - [0; g];
 
 xdot = [rdot; vdot; thetadot; wdot];
 
-j_a = jacobian(xdot, x);
-j_b = jacobian(xdot, u);
+%j_a = jacobian(xdot, x);
+%j_b = jacobian(xdot, u);
 
 % Create equations of motion function for optimizer
-matlabFunction(xdot,"File","3DoF/SymDynamics3DoF","Vars",[x; u; mass; L; I]);
+matlabFunction(xdot,"File","Dynamics Models/3DoF/SymDynamics3DoF","Vars", [{t}; {x}; {u}; {mass; L; I}]);
 
 % Create equations of motion block for Simulink model
-matlabFunctionBlock('EoM_3DoF/SymDynamics3DoF',xdot,'Vars',[x; u; mass; L; I])
+%matlabFunctionBlock('EoM_3DoF/SymDynamics3DoF',xdot,'Vars',[x; u; mass; L; I])
 
 % Create Jacobian functions for Kalman filter
-matlabFunction(j_a,"File","3DoF/SymXJacobian3DoF","Vars",[x; u; mass; L; I]);
-matlabFunction(j_b,"File","3DoF/SymUJacobian3DoF","Vars",[x; u; mass; L; I]);
+%matlabFunction(j_a,"File","3DoF/SymXJacobian3DoF","Vars",[x; u; mass; L; I]);
+%matlabFunction(j_b,"File","3DoF/SymUJacobian3DoF","Vars",[x; u; mass; L; I]);

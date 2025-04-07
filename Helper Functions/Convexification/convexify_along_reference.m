@@ -6,4 +6,8 @@ function [prob, Delta] = convexify_along_reference(prob, x_ref, u_ref, p_ref)
 % Discretize
 [prob, Delta] = prob.discretize(x_ref, u_ref, p_ref);
 
+if numel(Delta) ~= prob.Nu
+    Delta = [Delta, 0];
+end
+
 end

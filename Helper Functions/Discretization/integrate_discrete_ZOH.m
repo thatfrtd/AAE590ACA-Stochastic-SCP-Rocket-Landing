@@ -9,7 +9,7 @@ function [A_k, B_k, E_k, c_k, x_kp1] = integrate_discrete_ZOH(x0, A, B, E, c, f,
     np = numel(p);
 
     STM0 = eye(nx);
-    B0 = zeros(size(B(0, x0, u(tspan(1)), p)));
+    B0 = zeros(size(B(0, x0, u, p)));
     E0 = zeros(nx, np);
     c0 = zeros([nx, 1]);
 
@@ -23,7 +23,7 @@ function [A_k, B_k, E_k, c_k, x_kp1] = integrate_discrete_ZOH(x0, A, B, E, c, f,
     y_f = y(end, :); 
 
     % Unpack solution
-    x_kp1 = y_f(:, 1:nx);
+    x_kp1 = y_f(:, 1:nx)';
     A_k = reshape(y_f(:, (nx + 1) : (nx * (nx + 1))), nx, nx);
     B_k = A_k * reshape(y_f(:, (nx * (nx + 1) + 1) : (nx * (nx + 1) + nx * nu)), nx, nu);
     E_k = A_k * reshape(y_f(:, (nx * (nx + 1) + nx * nu + 1) : (nx * (nx + 1) + nx * nu + nx * np)), nx, np);
@@ -34,11 +34,11 @@ function [ydot] = STM_diff_eq_ZOH(t, y, A, B, E, c, f, u, p, n)
     x = y(1:n);
     STM = reshape(y((n + 1) : (n * (n + 1))), n, n);
 
-    xdot = f(t, x, u(t), p);
-    A_kdot = A(t, x, u(t), p) * STM;
-    B_kdot = STM \ B(t, x, u(t), p);
-    E_kdot = STM \ E(t, x, u(t), p);
-    c_kdot = STM \ c(t, x, u(t), p);
+    xdot = f(t, x, u, p);
+    A_kdot = A(t, x, u, p) * STM;
+    B_kdot = STM \ B(t, x, u, p);
+    E_kdot = STM \ E(t, x, u, p);
+    c_kdot = STM \ c(t, x, u, p);
 
     ydot = [xdot; A_kdot(:); B_kdot(:); E_kdot(:); c_kdot];
 end
