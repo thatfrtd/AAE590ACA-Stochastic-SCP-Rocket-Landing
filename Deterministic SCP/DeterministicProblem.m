@@ -4,6 +4,7 @@ classdef DeterministicProblem
     
     properties
         x0
+        xf
         N
         Nu
         n
@@ -17,15 +18,17 @@ classdef DeterministicProblem
         initial_bc
         terminal_bc
         objective
+        scale
         scaling
         sol
         tolerances
     end
     
     methods
-        function obj = DeterministicProblem(x0, N, u_hold, tf, f, guess, convex_constraints, objective, options)
+        function obj = DeterministicProblem(x0, xf, N, u_hold, tf, f, guess, convex_constraints, objective, options)
             arguments
                 x0
+                xf
                 N
                 u_hold
                 tf
@@ -34,8 +37,9 @@ classdef DeterministicProblem
                 convex_constraints % Cell array of constraint functions @(x, u, p)
                 objective
                 options.initial_bc = @(x, p) x - x0 % Has to be @(x, p)
-                options.terminal_bc = @(x, p) x - guess.x(:, end) % Has to be @(x, p)
+                options.terminal_bc = @(x, p) x - xf % Has to be @(x, p)
                 options.integration_tolerance = 1e-12
+                options.scale = true
                 options.nonconvex_constraints = [] % Cell array of constraint functions @(x, u, p, x_ref, u_ref, p_ref)
             end
             %DETERMINISTICPROBLEM Construct an instance of this class
@@ -59,6 +63,7 @@ classdef DeterministicProblem
             obj.initial_bc = options.initial_bc;
             obj.terminal_bc = options.terminal_bc;
             obj.objective = objective;
+            obj.scale = options.scale;
             obj.scaling = obj.compute_scaling();
             obj.tolerances = odeset(RelTol=options.integration_tolerance, AbsTol=options.integration_tolerance);
         end
@@ -108,13 +113,23 @@ classdef DeterministicProblem
             u_min = min(obj.guess.u, [], 2);
             p_min = min(obj.guess.p);
 
-            scaling.S_x = eye(obj.n.x);%diag(make_not_zero(x_max - x_min) / (z_ub - z_lb));
-            scaling.S_u = eye(obj.n.u);%diag(make_not_zero(u_max - u_min) / (z_ub - z_lb));
-            scaling.S_p = eye(obj.n.p);%diag(make_not_zero(p_max - p_min) / (z_ub - z_lb));
-
-            scaling.c_x = zeros([obj.n.x, 1]);%x_min - scaling.S_x * ones([obj.n.x, 1]) * z_lb;
-            scaling.c_u = zeros([obj.n.u, 1]);%u_min - scaling.S_u * ones([obj.n.u, 1]) * z_lb;
-            scaling.c_p = zeros([obj.n.p, 1]);%p_min - scaling.S_p * ones([obj.n.p, 1]) * z_lb;
+            if ~obj.scale
+                scaling.S_x = eye(obj.n.x);%diag(make_not_zero(x_max - x_min) / (z_ub - z_lb));
+                scaling.S_u = eye(obj.n.u);%diag(make_not_zero(u_max - u_min) / (z_ub - z_lb));
+                scaling.S_p = eye(obj.n.p);%diag(make_not_zero(p_max - p_min) / (z_ub - z_lb));
+    
+                scaling.c_x = zeros([obj.n.x, 1]);%x_min - scaling.S_x * ones([obj.n.x, 1]) * z_lb;
+                scaling.c_u = zeros([obj.n.u, 1]);%u_min - scaling.S_u * ones([obj.n.u, 1]) * z_lb;
+                scaling.c_p = zeros([obj.n.p, 1]);%p_min - scaling.S_p * ones([obj.n.p, 1]) * z_lb;
+            else
+                scaling.S_x = diag(make_not_zero(x_max - x_min) / (z_ub - z_lb));
+                scaling.S_u = diag(make_not_zero(u_max - u_min) / (z_ub - z_lb));
+                scaling.S_p = diag(make_not_zero(p_max - p_min) / (z_ub - z_lb));
+    
+                scaling.c_x = x_min - scaling.S_x * ones([obj.n.x, 1]) * z_lb;
+                scaling.c_u = u_min - scaling.S_u * ones([obj.n.u, 1]) * z_lb;
+                scaling.c_p = p_min - scaling.S_p * ones([obj.n.p, 1]) * z_lb;
+            end
             
             function [not_zero] = make_not_zero(maybe_zero)
                 % If number is too close to zero, make it 1 so that the

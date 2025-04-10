@@ -30,11 +30,11 @@ for i = 1:(N-1)
     u_current = u(:, i);
     
     % Define the state derivatives
-    x_dot = SymDynamics3DoF(0, x_current, u_current, vehicle.m, vehicle.L, vehicle.I(2));
     
-    % Euler integration for dynamics constraints
-    x_next = x_current + x_dot * delta_t;
-    
+    % Runge Kutta 4 integration for dynamics constraints
+    x_next = rk4(@(t, x, u, p) SymDynamics3DoF(t, x, u, vehicle.m, vehicle.L, vehicle.I(2)), delta_t * (i - 1), x_current, @(t) u_current, 0, delta_t);
+    %x_next = x_current + delta_t * SymDynamics3DoF(delta_t * (i - 1), x_current, u_current, vehicle.m, vehicle.L, vehicle.I(2));
+
     % Impose the dynamics constraint
     opti.subject_to(x(:, i+1) == x_next);
 end

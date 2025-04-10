@@ -1,4 +1,4 @@
-function [x_sol, u_sol, objective] = solve_ptr_convex_subproblem_no_p(prob, ptr_ops, x_ref, u_ref)
+function [x_sol, u_sol, sol_info] = solve_ptr_convex_subproblem_no_p(prob, ptr_ops, x_ref, u_ref)
 %SOLVE_PTR_CONVEX_SUBPROBLEM Summary of this function goes here
 %   Detailed explanation goes here
 
@@ -56,8 +56,23 @@ cvx_end
 
 x_sol = X;
 u_sol = U;
-objective = cvx_optval;
-display(virtual_control_cost(V, v_prime, v_0, v_N, ptr_ops.w_vc))
+
+sol_info.status = cvx_status;
+sol_info.vd = V;
+sol_info.vs = v_prime;
+sol_info.vbc_0 = v_0;
+sol_info.vbc_N = v_N;
+sol_info.J = prob.objective(prob.unscale_x(X), prob.unscale_u(U), 0);
+sol_info.J_tr = trust_region_cost(eta, 0, ptr_ops.w_tr, 0);
+sol_info.J_vc = virtual_control_cost(V, v_prime, v_0, v_N, ptr_ops.w_vc);
+sol_info.dJ = 100 * (prob.objective(prob.unscale_x(X), prob.unscale_u(U), 0) - prob.objective(prob.unscale_x(x_ref), prob.unscale_u(u_ref), 0)) / prob.objective(prob.unscale_x(x_ref), prob.unscale_u(u_ref), 0);
+sol_info.dx = vecnorm(X(:, 1:prob.Nu) - x_ref(:, 1:prob.Nu), ptr_ops.q, 1);
+sol_info.du = vecnorm(U - u_ref, ptr_ops.q, 1);
+sol_info.dp = 0;
+sol_info.eta = eta;
+sol_info.eta_x = 0;
+sol_info.eta_u = 0;
+sol_info.eta_p = 0;
 end
 
 function [J_tr] = trust_region_cost(eta, eta_p, w_tr, w_tr_p)

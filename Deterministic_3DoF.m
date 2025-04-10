@@ -12,7 +12,7 @@
 alpha = 0.5086; % [s / km]
 T_min = 4.97; % [kg km / s2]
 T_max = 13.26; % [kg km / s2]
-I = 15000 * (1e-3) ^ 2; % [kg km2] ASSUMING CONSTANT MOMENT OF INERTIA
+I = 150000 * (1e-3) ^ 2; % [kg km2] ASSUMING CONSTANT MOMENT OF INERTIA
 L = 3e-3; % [km] Distance from CoM to nozzle
 m_dry = 2000; % [kg]
 m_wet = 600; % [kg]
@@ -22,8 +22,8 @@ gimbal_max = deg2rad(8); % [rad]
 vehicle = Vehicle(m_dry, L, L * 3, gimbal_max, T_min, T_max, I = I);
 
 % Problem Parameters
-tf = 80; % [s]
-N = 50; % []
+tf = 60; % [s]
+N = 35; % []
 r_0 = [1.5; 2.0]; % [km]
 v_0 = [-0.0185; -0.0247]; % [km / s]
 theta_0 = deg2rad(90); % [rad]
@@ -41,10 +41,10 @@ u_hold = "ZOH";
 Nu = (u_hold == "ZOH") * (N - 1) + (u_hold == "FOH") * N;
 
 % PTR algorithm parameters
-ptr_ops.iter_max = 15;
-ptr_ops.Delta_min = 5e-2;
-ptr_ops.w_vc = 1e2;
-ptr_ops.w_tr = ones(1, Nu) * 1e-1;
+ptr_ops.iter_max = 20;
+ptr_ops.Delta_min = 5e-5;
+ptr_ops.w_vc = 1e4;
+ptr_ops.w_tr = ones(1, Nu) * 1e0;
 ptr_ops.w_tr_p = 1e-1;
 ptr_ops.update_w_tr = false;
 ptr_ops.delta_tol = 1e-3;
@@ -53,13 +53,15 @@ ptr_ops.alpha_x = 1;
 ptr_ops.alpha_u = 1;
 ptr_ops.alpha_p = 0;
 
+scale = false;
+
 %% Get Dynamics
 f = @(t, x, u, p) SymDynamics3DoF(t, x, u, vehicle.m, vehicle.L, vehicle.I(2));
 
 %% Specify Constraints
 % Convex state path constraints
 glideslope_constraint = @(x, u, p) norm(x(1:2)) - x(2) / cos(glideslope_angle_max);
-state_convex_constraints = {};
+state_convex_constraints = {glideslope_constraint};
 
 % Convex control constraints
 max_thrust_constraint = @(x, u, p) u(3) - T_max;
@@ -72,16 +74,15 @@ control_convex_constraints = {min_thrust_constraint,max_gimbal_constraint,max_th
 convex_constraints = [state_convex_constraints, control_convex_constraints];
 
 %% Specify Objective
-min_fuel_objective = @(x, u, p) sum(u(3,:).^2*0 + x(6,1:Nu).^2)% * delta_t;
+min_fuel_angular_velocity_objective = @(x, u, p) sum(u(3, :) / T_max + x(6, 1:Nu) .^ 2) * delta_t;
+min_fuel_objective = @(x, u, p) sum(u(3, :)) * delta_t;
 
 %% Create Guess
-sl_guess = guess_3DoF(x_0, x_f, N, Nu, delta_t, vehicle);
+sl_guess = guess_3DoF(x_0, x_f + [0; 0; 0; 0; 0; 0], N, Nu, delta_t, vehicle);
 
-% CasADi solution won't be perfect since it is implemented to use Euler
-% integration with the nonlinear EoMs
 CasADi_sol = CasADi_solve(x_0, sl_guess.x, sl_guess.u, vehicle, N, delta_t, glideslope_angle_max);
 
-guess = CasADi_sol;
+guess = sl_guess;
 guess.p = sl_guess.p;
 
 % figure
@@ -97,7 +98,7 @@ figure
 plot_3DoF_time_histories(t_k, guess.x, guess.u)
 
 %% Construct Problem Object
-prob_3DoF = DeterministicProblem(x_0, N, u_hold, tf, f, guess, convex_constraints, min_fuel_objective);
+prob_3DoF = DeterministicProblem(x_0, x_f, N, u_hold, tf, f, guess, convex_constraints, min_fuel_objective, scale = scale);
 
 %% Test Scaling
 % guess_scaled.x = prob_3DoF.scale_x(guess.x);
@@ -139,7 +140,9 @@ ptr_sol = ptr(prob_3DoF, ptr_ops);
 tiledlayout(1, 3)
 
 nexttile
-plot(0:ptr_ops.iter_max, ptr_sol.objective);
+plot(0:ptr_sol.converged_i, [prob_3DoF.objective(prob_3DoF.guess.x, prob_3DoF.guess.u, prob_3DoF.guess.p), [ptr_sol.info.J]]); hold on
+yline(CasADi_sol.objective); hold off
+legend("PTR Iterations", "CasADi Solution")
 title("Objective vs Iteration")
 grid on
 
@@ -149,12 +152,12 @@ title("Stopping Criteria vs Iteration")
 grid on
 
 nexttile
-plot(0:ptr_ops.iter_max, vecnorm(ptr_sol.Delta))
+plot(0:ptr_sol.converged_i, vecnorm(ptr_sol.Delta(:, 1:(ptr_sol.converged_i + 1)), 2, 1))
 title("Defect Norm vs Iteration")
 grid on
 
 %%
-i = 5;
+i = ptr_sol.converged_i;
 
 [t_cont_sol, x_cont_sol, u_cont_sol] = prob_3DoF.cont_prop(ptr_sol.u(:, :, i), ptr_sol.p(:, i));
 
@@ -162,7 +165,8 @@ figure
 plot_3DoF_trajectory(t_k, ptr_sol.x(:, :, i), ptr_sol.u(:, :, i), glideslope_angle_max, gimbal_max, T_min, T_max, step = 1)
 
 figure
-comparison_plot_3DoF_trajectory({guess.x, x_cont, ptr_sol.x(:, :, i)}, ["Guess", "Continuous Propagation", "Discrete Propagation"], glideslope_angle_max, linestyle = [":", "-", "--"], title = "Continuous vs Discrete Propagation of Solution")
+comparison_plot_3DoF_trajectory({guess.x, x_cont_sol, ptr_sol.x(:, :, i), CasADi_sol.x}, ["Guess", "Continuous Propagation", "Solution Output", "CasADi"], glideslope_angle_max, linestyle = [":", "-", "--", "-"], title = "Continuous vs Discrete Propagation of Solution")
 
 figure
 comparison_plot_3DoF_time_histories({t_k, t_cont_sol, t_k}, {guess.x, x_cont_sol, ptr_sol.x(:, :, i)}, {guess.u, u_cont_sol, ptr_sol.u(:, :, i)}, ["Guess", "Cont", "Disc"], linestyle = [":", "-", "--"], title = "Continuous vs Discrete Propagation of Solution")
+
