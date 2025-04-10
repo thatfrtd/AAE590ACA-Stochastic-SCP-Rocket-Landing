@@ -14,10 +14,10 @@ function [A_k, B_k_plus, B_k_minus, E_k, c_k, Delta] = discretize_dynamics_FOH(f
     c_k = zeros([nx, 1, N]);
     Delta = zeros([1, N - 1]);
 
-    u_ref = @(t) interp1(t_k, u_ref', t, "linear")';
+    u_ref = @(t) interp1(t_k(1:size(u_ref, 2)), u_ref', t, "linear", "extrap")';
 
     for k = 1:(N - 1)
         [A_k(:, :, k), B_k_plus(:, :, k), B_k_minus(:, :, k), E_k(:, :, k), c_k(:, :, k), x_kp1] = integrate_discrete_FOH(x_ref(:, k), A, B, E, c, f, u_ref, p_ref, [t_k(k), t_k(k + 1)], tolerances);
-        Delta(k) = norm(x_kp1 - x_ref(k + 1), 2);
+        Delta(k) = norm(x_kp1 - x_ref(:, k + 1), 2);
     end
 end

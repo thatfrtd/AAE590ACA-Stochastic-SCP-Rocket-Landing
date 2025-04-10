@@ -82,7 +82,8 @@ sl_guess = guess_3DoF(x_0, x_f + [0; 0; 0; 0; 0; 0], N, Nu, delta_t, vehicle);
 
 CasADi_sol = CasADi_solve(x_0, sl_guess.x, sl_guess.u, vehicle, N, delta_t, glideslope_angle_max);
 
-guess = sl_guess;
+guess = CasADi_sol;
+guess.u = interp1(t_k(1:size(guess.u, 2)), guess.u', t_k(1:Nu), "linear","extrap")';
 guess.p = sl_guess.p;
 
 % figure
