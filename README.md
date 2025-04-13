@@ -22,8 +22,8 @@ Stochastic Sequential Convex Programming using the Penaliezd Trust Region (PTR) 
 - [ ] [4/23] Sensitivity analysis to see what sources of uncertainty are most influential
 - [Milestone:] Full performance analysis
 ## Level 3 Roadmap
-- [ ] [4/26] 6DoF dynamics and optimal control problem defined (roll controlled by cold gas thrusters) 
-- [ ] [4/28] 6DoF baseline solution of deterministic optimal control problem with SCP
+- [X] [4/26] 6DoF dynamics and optimal control problem defined (roll controlled by cold gas thrusters) 
+- [X] [4/28] 6DoF baseline solution of deterministic optimal control problem with SCP
 - [ ] [4/28] 6DoF stochastic optimal control problem solution with stochastic SCP
 - [ ] [4/28] Assess accuracy of uncertainty propagation
 - [Milestone:] Full rocket landing problem
