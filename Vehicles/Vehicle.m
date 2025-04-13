@@ -11,6 +11,7 @@ classdef Vehicle
         max_gimbal (1, 1) double % [rad]
         min_thrust (1, 1) double % [N]
         max_thrust (1, 1) double % [N]
+        alpha (1, 1) double % [s / km]
         Name (1,1) string
     end
     
@@ -28,6 +29,7 @@ classdef Vehicle
                 options.I = Vehicle.estimateMOI(m, Len)
                 options.radius = Len / 4
                 options.Name =  "vehicle"
+                options.alpha = 0
             end
 
             obj.m = m;
@@ -38,6 +40,7 @@ classdef Vehicle
             obj.max_gimbal = max_gimbal;
             obj.min_thrust = min_thrust;
             obj.max_thrust = max_thrust;
+            obj.alpha = options.alpha;
             obj.Name = options.Name;
         end
 
