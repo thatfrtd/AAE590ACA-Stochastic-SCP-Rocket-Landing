@@ -46,6 +46,7 @@ classdef DeterministicProblem
             %   Detailed explanation goes here
 
             obj.x0 = x0;
+            obj.xf = xf;
             obj.N = N;
             obj.Nu = (u_hold == "ZOH") * (N - 1) + (u_hold == "FOH") * N;
             obj.n.x = numel(x0);

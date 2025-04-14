@@ -23,7 +23,7 @@ vehicle = Vehicle(m_dry, L, L * 3, gimbal_max, T_min, T_max, I = I);
 
 % Problem Parameters
 tf = 60; % [s]
-N = 15; % []
+N = 25; % []
 r_0 = [0.5; -0.2; 2.0]; % [km]
 v_0 = [0.0; 0.0; -0.0647] * 0.1; % [km / s]
 [theta1_0, theta2_0, theta3_0] = dcm2angle(angle2dcm(0, deg2rad(-90), 0,"ZYX"), "XYX"); % [rad]

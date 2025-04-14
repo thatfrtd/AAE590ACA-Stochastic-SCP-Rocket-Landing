@@ -47,26 +47,26 @@ zlim(z_lim)
 nexttile
 
 cmap = colormap;
-u_color = interp1(linspace(1, Nu, size(cmap, 1)), cmap, 1:Nu);
+u_color = interp1(linspace(T_min / T_max, 1, size(cmap, 1)), cmap, u(4, :) / T_max, "linear", "extrap");
 
 gimbal_angle = acos(u(1, :) ./ u(4, :));
+gimbal_clock = atan2(u(3, :), u(2, :));
 
 for i = 1:(Nu - 1)
-    polarplot(gimbal_angle(i:(i + 1)), u(4, i:(i + 1)) / T_max, Color = u_color(i, :), LineWidth=0.5, Marker="o", MarkerFaceColor=u_color(i, :)); hold on
+    polarplot(gimbal_clock(i:(i + 1)), rad2deg(gimbal_angle(i:(i + 1))), Color = u_color(i, :), LineWidth=1, Marker="o", MarkerFaceColor=u_color(i, :)); hold on
 end
-polarregion([-gimbal_max, gimbal_max], [T_min / T_max, 1])
+polarregion([-pi, pi], [0, rad2deg(gimbal_max)])
 hold off
 
 pax = gca;
 pax.ThetaZeroLocation = "bottom";
 
-cb = colorbar(pax, "southoutside",TickLabels=[t(1), round(t(end) / 2), t(end)]);
-xlabel(cb, "Time [s]")
+cb = colorbar(pax, "southoutside",TickLabels=round(linspace(T_min / T_max, 1, 11) * 100, 2));
+xlabel(cb, "Thrust [%]")
 
-rmax = 1.1;
+rmax = rad2deg(1.3 * gimbal_max);
 rlim([0 rmax]);
 
-thetalim(rad2deg(gimbal_max) * [-2, 2])
 title(sprintf("Control Trajectory\n"))
 
 sgtitle(sprintf("6DoF Rocket Landing Trajectory"))
