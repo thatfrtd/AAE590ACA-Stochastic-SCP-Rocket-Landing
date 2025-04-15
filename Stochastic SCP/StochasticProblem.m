@@ -199,8 +199,20 @@ classdef StochasticProblem
             phat = prob.scaling.S_p \ (p - prob.scaling.c_p); % shape????
         end
 
+        function [t_cont, x_cont, u_cont] = cont_prop_without_feedback_control(prob, u_ref, p, tspan)
+            %CONT_PROP_WITHOUT_FEEDBACK_CONTROL Summary of this function goes here
+            %   Detailed explanation goes here
+            t_k = linspace(0, prob.tf, prob.N);
+
+            u_func = @(t, x) interp1(t_k(1:prob.Nu), u_ref', t, "previous", "extrap")';
+
+            [t_cont, x_cont] = sode45(prob.cont.f, prob.cont.G, u_func, p, w, tspan, prob.stoch.delta_t, prob.x0, prob.tolerances);
+
+            u_cont = u_func(t_cont(1:(numel(t_cont) - 1)));
+        end
+
         function [t_cont, x_cont, xhat_cont, Phat_cont, u_cont] = cont_prop(prob, x_ref, u_ref, p, K)
-            %DISC_PROP Summary of this function goes here
+            %CONT_PROP Summary of this function goes here
             %   Detailed explanation goes here
             t_k = linspace(0, prob.tf, prob.N);
             x_ref_func = @(t) linspace(t_k, x_ref, t);
