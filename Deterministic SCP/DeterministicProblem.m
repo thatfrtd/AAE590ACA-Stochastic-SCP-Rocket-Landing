@@ -181,7 +181,13 @@ classdef DeterministicProblem
             phat = prob.scaling.S_p \ (p - prob.scaling.c_p); % shape????
         end
 
-        function [t_cont, x_cont, u_cont] = cont_prop(prob, u, p)
+        function [t_cont, x_cont, u_cont] = cont_prop(prob, u, p, options)
+            arguments
+                prob
+                u
+                p
+                options.tspan = [0, prob.tf]
+            end
             %DISC_PROP Summary of this function goes here
             %   Detailed explanation goes here
             t_k = linspace(0, prob.tf, prob.N);
@@ -192,7 +198,7 @@ classdef DeterministicProblem
                 u_func = @(t) interp1(t_k, u', t)';
             end
 
-            [t_cont, x_cont] = ode45(@(t, x) prob.cont.f(t, x, u_func(t), p), [0, prob.tf], prob.x0, prob.tolerances);
+            [t_cont, x_cont] = ode45(@(t, x) prob.cont.f(t, x, u_func(t), p), options.tspan, prob.x0, prob.tolerances);
             x_cont = x_cont';
 
             if prob.u_hold == "ZOH"
