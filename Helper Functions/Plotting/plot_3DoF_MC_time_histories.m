@@ -1,4 +1,4 @@
-function [] = plot_3DoF_MC_time_histories(t_mean, x_mean, u_mean, t_fb, x_MC_fb, u_MC_fb, t_k, X_k, S_k, t_no_fb, x_MC_no_fb, T_max, T_min, max_gimbal)
+function [] = plot_3DoF_MC_time_histories(t_mean, x_mean, u_mean, t_fb, x_MC_fb, u_MC_fb, t_k, X_k, S_k, t_no_fb, x_MC_no_fb, T_max, T_min, max_gimbal, use_legend)
 %PLOT_3DOF_MC_TIME_HISTORIES Summary of this function goes here
 %   Detailed explanation goes here
 
@@ -21,14 +21,17 @@ for x = 1:6
     
     nexttile
     for i = 1:m
-        plot(t_fb, ops{x}(x_MC_fb(x, :, i)), Color = [192, 192, 192] / 256); hold on
+        plot(t_fb, ops{x}(x_MC_fb(x, :, i)), Color = [192, 192, 192] / 256, HandleVisibility='off'); hold on
     end
-    plot(t_mean, ops{x}(x_mean(x, :)), Color = "k",LineWidth=1); hold on
-    plot(t_mean, ops{x}(x_mean(x, :) + x_3sigbound_cont), Color = [100, 100, 100] / 256, LineStyle=":", LineWidth=1); hold on
-    plot(t_mean, ops{x}(x_mean(x, :) - x_3sigbound_cont), Color = [100, 100, 100] / 256, LineStyle=":", LineWidth=1); hold off
+    plot(t_mean, ops{x}(x_mean(x, :)), Color = "k",LineWidth=1, DisplayName="Nominal"); hold on
+    plot(t_mean, ops{x}(x_mean(x, :) + x_3sigbound_cont), Color = [100, 100, 100] / 256, LineStyle=":", LineWidth=1, DisplayName="99.9% Bound"); hold on
+    plot(t_mean, ops{x}(x_mean(x, :) - x_3sigbound_cont), Color = [100, 100, 100] / 256, LineStyle=":", LineWidth=1, HandleVisibility='off'); hold off
     title(titles(x) + " vs Time with Optimized Feedback Policies")
     xlabel("Time [s]")
     ylabel(ylabels(x))
+    if use_legend
+        legend("Location","best")
+    end
     grid on
     
     nexttile

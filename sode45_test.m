@@ -192,7 +192,7 @@ grid on
 
 %%
 S_k = pagemtimes(K_k, X_k(:, :, 1:prob_3DoF.Nu));
-plot_3DoF_MC_time_histories(tspan, x_cont_sol, ptr_sol.u(:, :, ptr_sol.converged_i), t_fb(:, 1), x_fb, u_fb, t_k, X_k, S_k, t(:, 1), x, vehicle.max_thrust, vehicle.min_thrust, vehicle.max_gimbal)
+plot_3DoF_MC_time_histories(tspan, x_cont_sol, ptr_sol.u(:, :, ptr_sol.converged_i), t_fb(:, 1), x_fb, u_fb, t_k, X_k, S_k, t(:, 1), x, vehicle.max_thrust, vehicle.min_thrust, vehicle.max_gimbal, true)
 
 %%
 plot_3DoF_MC_trajectories(tspan, x_cont_sol, t_fb(:, 1), x_fb, ptr_sol.x(:, :, ptr_sol.converged_i), t_k, X_k, t(:, 1), x, P_k(:, :, 1)/10, glideslope_angle_max)
