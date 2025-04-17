@@ -1,0 +1,33 @@
+function [A_proj] = project_ellipsoid(A_array, proj_plane)
+%PROJECT_ELLIPSOID Summary of this function goes here
+%   Detailed explanation goes here
+
+N = size(A_array, 3);
+
+A_proj = zeros([numel(proj_plane), numel(proj_plane), N]);
+
+for i = 1:N
+    A = A_array(:, :, i);
+
+    J_mask = logical(blkdiag(ones(numel(proj_plane)), zeros(size(A, 1) - numel(proj_plane))));
+    J_mask_shifted = circshift(J_mask,[proj_plane(1) + size(A_array, 1) - 1,proj_plane(1) + size(A_array, 1) - 1]);
+    
+    J = reshape(A(J_mask_shifted), [numel(proj_plane), numel(proj_plane)]);
+    
+    K_mask = logical(blkdiag(zeros(numel(proj_plane)), ones(size(A, 1) - numel(proj_plane))));
+    
+    K_mask_shifted = circshift(K_mask,[proj_plane(1) + size(A_array, 1) - 1,proj_plane(1) + size(A_array, 1) - 1]);
+    
+    K = reshape(A(K_mask_shifted), [(size(A, 1) - numel(proj_plane)), (size(A, 1) - numel(proj_plane))]);
+    
+    L_mask = zeros(size(A));
+    L_mask((numel(proj_plane) + 1):end, 1:numel(proj_plane)) = 1;
+    
+    L_mask_shifted = logical(circshift(L_mask,[proj_plane(1) + size(A_array, 1) - 1), proj_plane(1) + size(A_array, 1) - 1]);
+    
+    L = reshape(A(L_mask_shifted), [(size(A, 1) - numel(proj_plane)), numel(proj_plane)]);
+    
+    A_proj(:, :, i) = J - L' * inv(K) * L;
+end
+end
+

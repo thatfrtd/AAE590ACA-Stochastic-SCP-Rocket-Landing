@@ -96,7 +96,6 @@ classdef StochasticProblem
 
             % Linearize Measurement
             prob.filter.C = matlabFunction(jacobian(prob.filter.f_0(t_sym, x_sym, u_sym, p_sym), x_sym),"Vars", [{t_sym}; {x_sym}; {u_sym}; {p_sym}]);
-            prob.filter.D = matlabFunction(jacobian(prob.filter.g_0(t_sym, x_sym, u_sym, p_sym), x_sym),"Vars", [{t_sym}; {x_sym}; {u_sym}; {p_sym}]);
 
             % Linearize Nonconvex Constraints (Needed??)
 
@@ -209,6 +208,16 @@ classdef StochasticProblem
             [t_cont, x_cont] = sode45(prob.cont.f, prob.cont.G, u_func, p, w, tspan, prob.stoch.delta_t, prob.x0, prob.tolerances);
 
             u_cont = u_func(t_cont(1:(numel(t_cont) - 1)));
+        end
+
+        function [t_cont, x_cont, u_cont] = cont_prop_feedback_no_kalman_filter(prob, x_ref, u_ref, p, K_k)
+            %CONT_PROP Summary of this function goes here
+            %   Detailed explanation goes here
+            t_k = linspace(0, prob.tf, prob.N);
+
+            N_sub = 15;
+
+            [t_cont, x_cont, u_cont] = propagate_cont_feedback_no_kalman_filter(prob.x0, x_ref, u_ref, K_k, prob.cont.f, prob.cont.G, t_k, N_sub, prob.stoch.w, prob.stoch.delta_t, prob.tolerances);
         end
 
         function [t_cont, x_cont, xhat_cont, Phat_cont, u_cont] = cont_prop(prob, x_ref, u_ref, p, K)
