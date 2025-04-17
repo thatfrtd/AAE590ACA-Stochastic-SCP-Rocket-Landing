@@ -13,7 +13,7 @@ Stochastic Sequential Convex Programming using the Penaliezd Trust Region (PTR) 
 - [x] [4/12] Implement SCP and solve the baseline deterministic optimal control problem
 - [ ] [4/16] Solve stochastic optimal control problem (convexified and turned into an approximate deterministic one) with stochastic SCP
 - [Milestone:] Basic stochastic implementation
-- [ ] [4/16] Create a Monte Carlo simulation to help analyze the constraint satisfaction
+- [x] [4/16] Create a Monte Carlo simulation to help analyze the constraint satisfaction
 ## Level 2 Roadmap
 - [ ] [4/19] Implement Gates control error model and unmodeled external disturbances
 - [Milestone:] Full stochastic implementation
