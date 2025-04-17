@@ -3,7 +3,8 @@
 % Stochastic SCP Rocket Landing Project
 % Author: Travis Hastreiter 
 % Created On: 15 April, 2025
-% Description: Test of stochastic propagation without feedback control
+% Description: Test of stochastic propagation without optimized feedback 
+% control
 % Most Recent Change: 15 April, 2025
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
