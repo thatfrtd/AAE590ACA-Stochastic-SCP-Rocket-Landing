@@ -1,6 +1,7 @@
 function [A_proj] = project_ellipsoid(A_array, proj_plane)
 %PROJECT_ELLIPSOID Summary of this function goes here
-%   Detailed explanation goes here
+%   Algorithm from: 
+% https://math.stackexchange.com/questions/2431159/how-to-obtain-the-equation-of-the-projection-shadow-of-an-ellipsoid-into-2d-plan
 
 N = size(A_array, 3);
 
