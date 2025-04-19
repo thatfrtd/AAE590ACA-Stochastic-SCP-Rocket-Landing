@@ -49,19 +49,6 @@ grid on
 colororder(ax, newcolors)
 
 ax = nexttile;
-
-for c = 1:Nc
-    plot(ax, t{c}(1:numel(u{c}(3, :))), u{c}(3, :), LineWidth = 2, LineStyle = options.linestyle(c), DisplayName=names(c)); hold on
-end
-legend(ax, names)
-title("Thrust vs Time")
-xlabel("Time [s]")
-ylabel("Thrust [kg km / s2]")
-grid on
-
-colororder(ax, options.colorpallete)
-
-ax = nexttile;
 for c = 1:Nc
     plot(ax, t{c}, wrapTo180(rad2deg(x{c}(5, :))), LineWidth = 2, LineStyle = options.linestyle(c), DisplayName=names(c)); hold on
 end
@@ -81,6 +68,19 @@ legend(ax, names)
 title("Angular Velocity vs Time")
 xlabel("Time [s]")
 ylabel("Angular Velocity [deg / s]")
+grid on
+
+colororder(ax, options.colorpallete)
+
+ax = nexttile;
+
+for c = 1:Nc
+    plot(ax, t{c}(1:numel(u{c}(3, :))), u{c}(3, :), LineWidth = 2, LineStyle = options.linestyle(c), DisplayName=names(c)); hold on
+end
+legend(ax, names)
+title("Thrust vs Time")
+xlabel("Time [s]")
+ylabel("Thrust [kg km / s2]")
 grid on
 
 colororder(ax, options.colorpallete)

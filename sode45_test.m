@@ -93,16 +93,14 @@ sigma_x0 = [10e-3; ... % r_x
             deg2rad(0.2); ... % theta
             deg2rad(0.02)];  % w
 
-sigma_accelx = 0.5e-3 * 0;
-sigma_accely = 0.1e-3 * 0;
-sigma_alpha = deg2rad(2e-2) * 0;
-G = @(t, x, u, p) [[zeros([2, 3]); ... % velocity
+sigma_accelx = 0.5e-4;
+sigma_accely = 0.1e-4;
+sigma_alpha = deg2rad(2e-2);
+G = @(t, x, u, p) [zeros([2, 3]); ... % velocity
                    [sigma_accelx; sigma_accely] .* eye([2, 3]); ... % acceleration
                    zeros([1, 3]); ... % angular velocity
-                   sigma_alpha * [0, 0, 1]], ... % angular acceleration
-                   zeros(6, 3)]; 
-
-w = @(n) [randn([3, n]); zeros([3, n])];
+                   sigma_alpha * [0, 0, 1]]; ... % angular acceleration
+w = @(n) randn([3, n]);
 delta_t = 1e-0;
 
 tspan = 0:delta_t:prob_3DoF.tf;
@@ -110,7 +108,7 @@ tolerances = odeset(RelTol=1e-12, AbsTol=1e-12);
 
 [t_cont_sol, x_cont_sol, u_cont_sol] = prob_3DoF.cont_prop(ptr_sol.u(:, :, ptr_sol.converged_i), ptr_sol.p(:, ptr_sol.converged_i), tspan = tspan);
 
-m = 20;
+m = 100;
 
 x_0_m = prob_3DoF.x0 + sigma_x0 .* randn([prob_3DoF.n.x, m]);
 
@@ -144,7 +142,10 @@ for k = 1:(numel(t_k) - 1)
 end
 
 %%
+stoch_prob_3DoF = StochasticProblem.stochastify_discrete_problem(prob_3DoF, G, @(t,x,u,p) x, @(t,x,u,p) eye(6), diag(sigma_x0 .^ 2), diag(sigma_x0 .^ 2), sol = ptr_sol);
+[stoch_prob_3DoF, Delta] = stoch_prob_3DoF.discretize(stoch_prob_3DoF.guess.x, stoch_prob_3DoF.guess.u, stoch_prob_3DoF.guess.p);
 
+%%
 proj_P_r = project_ellipsoid(P_k, [1,2]);
 
 %%
@@ -203,42 +204,60 @@ plot_3DoF_MC_trajectories(tspan, x_cont_sol, t_fb(:, 1), x_fb, ptr_sol.x(:, :, p
 glideslope_func = @(x, i) max(squeeze(acosd(x(2, 1:(end-i), :) ./ vecnorm(x(1:2, 1:(end-i), :), 2, 1))), [], 1);
 plot_MC_constraint_hist(glideslope_func, [100, 10], x_fb, x, rad2deg(glideslope_angle_max), "Max Glideslope Angle", "Max Glideslope Angle [deg]", 7)
 
-%% Analyze distribution of trajectories to check if it matches expectations
-tiledlayout(2, 2);
+%%
+P0 = P_k(:, :, 1);
+Pf = P_k(:, :, 1);
 
-nexttile
-plot(t(:, 1), squeeze(x(1, :, :))); hold on
-plot(t(:, 1), sigma_accelx * sqrt(t(:, 1)), Color = "k"); hold on
-plot(t(:, 1), -sigma_accelx * sqrt(t(:, 1)), Color = "k"); hold off
-xlabel("Time")
-ylabel("x_1")
-legend("x_1", "", "3 \sigma Bound")
-title("x_1 Trajectories")
+g_0_stds = zeros([6, 1]) + 0.01;
 
-nexttile
-plot(t, squeeze(x(2, :, :))); hold on
-plot(t, 3 * sigma_alpha * sqrt(t), Color = "k"); hold on
-plot(t, -3 * sigma_alpha * sqrt(t), Color = "k"); hold off
-xlabel("Time")
-ylabel("x_2")
-legend("x_2", "", "3 \sigma Bound")
-title("x_2 Trajectories")
+f_0 = @(t,x,u,p) x;
+g_0 = @(t, x, u, p) diag(g_0_stds);
 
-% Estimate standard deviation over time normalized by sqrt(t) to check if
-% it matches sigma_1, sigma_2
-stds = std(x,0,3) ./ sqrt(t(:, 1))';
-
-nexttile
-histogram(stds(1, :), 10)
-xlabel("Normalized x_1")
-title("x_1 Standard Deviation Distribution Normalized by sqrt(t)")
-
-nexttile
-histogram(stds(2, :), 10)
-xlabel("Normalized x_2")
-title("x_2 Standard Deviation Distribution Normalized by sqrt(t)")
+stoch_prob_3DoF = StochasticProblem.stochastify_discrete_problem(prob_3DoF, G, f_0, g_0, P0, Pf, sol = ptr_sol);
+[stoch_prob_3DoF, Delta] = stoch_prob_3DoF.discretize(stoch_prob_3DoF.guess.x, stoch_prob_3DoF.guess.u, stoch_prob_3DoF.guess.p);
 
 %%
-xs = squeeze(x(1, :, :));
-hist3([t(:), xs(:)], [30, 30],'CdataMode','auto');
-view(2)
+
+x_0_true = stoch_prob_3DoF.sample_initial_condition(); 
+x_0_est = stoch_prob_3DoF.sample_initial_condition();
+
+w_k_func = stoch_prob_3DoF.create_w_func();
+v_k = stoch_prob_3DoF.stoch.v(stoch_prob_3DoF.N);
+
+[t_k, x_disc, xhat_disc, Phat_disc, u_disc] = stoch_prob_3DoF.disc_prop(stoch_prob_3DoF.guess.x, stoch_prob_3DoF.guess.u, stoch_prob_3DoF.guess.p, K_k, x_0 = [x_0_true, x_0_est], v_k = v_k, w_k_func = w_k_func);
+
+
+[t_cont, x_cont, xhat_cont, Phat_cont, u_cont] = stoch_prob_3DoF.cont_prop(stoch_prob_3DoF.guess.x, stoch_prob_3DoF.guess.u, stoch_prob_3DoF.guess.p, K_k, x_0 = [x_0_true, x_0_est], v_k = v_k, w_k_func = w_k_func);
+
+%%
+%plot_3DoF_time_histories(t_k, xhat_disc - x_disc, u_disc)
+comparison_plot_3DoF_time_histories({t_cont, t_k}, {xhat_cont - x_cont, xhat_disc - x_disc}, {u_cont, u_disc}, ["Cont Err", "Disc Err"], linestyle=["-.", "--"])
+%%
+Xhat_k = zeros(size(Phat_disc));
+Xhat_k_cont = zeros(size(Phat_cont));
+for k = 1:numel(t_k)
+    Xhat_k(:, :, k) = chol(Phat_disc(:, :, k), "lower");
+end
+for k = 1:numel(t_cont)
+    Xhat_k_cont(:, :, k) = chol(Phat_cont(:, :, k), "lower");
+end
+Shat_k = pagemtimes(K_k, Xhat_k(:, :, 1:prob_3DoF.Nu));
+k_0 = min(floor(linspace(1, numel(t_k), numel(t_cont))), 14);
+Shat_k_cont = pagemtimes(K_k(:, :, k_0), Xhat_k_cont);
+
+plot_3DoF_MC_trajectories(t_k, x_disc, t_k, xhat_disc, xhat_disc, t_k, Xhat_k, t_k, xhat_disc, Pf, glideslope_angle_max)
+plot_3DoF_MC_time_histories(t_k, x_disc, u_disc, t_k, xhat_disc, u_disc, t_k, Xhat_k, Shat_k, t_k, xhat_disc, T_max, T_min, gimbal_max, true)
+
+%%
+plot_3DoF_MC_trajectories(t_cont, x_cont, t_k, xhat_cont, xhat_cont, t_cont, Xhat_k_cont, t_k, xhat_disc, Pf, glideslope_angle_max)
+plot_3DoF_MC_time_histories(t_cont, x_cont, u_cont, t_cont, xhat_cont, u_cont, t_cont, Xhat_k_cont, Shat_k_cont, t_k, xhat_disc, T_max, T_min, gimbal_max, true)
+
+%%
+comparison_plot_3DoF_trajectory({x_disc, xhat_disc}, ["True", "Est"], glideslope_angle_max)
+figure
+comparison_plot_3DoF_time_histories({t_k, t_k}, {x_disc, xhat_disc}, {u_disc, u_disc}, ["True", "Est"], linestyle=["-", "--"])
+
+%%
+comparison_plot_3DoF_trajectory({x_cont, xhat_cont, xhat_disc}, ["True", "Cont KF", "Disc KF"], glideslope_angle_max)
+figure
+comparison_plot_3DoF_time_histories({t_cont, t_cont, t_k}, {x_cont, xhat_cont, xhat_disc}, {u_cont, u_cont, u_disc}, ["True", "Cont", "Disc"], linestyle=["-", "-.", "--"])

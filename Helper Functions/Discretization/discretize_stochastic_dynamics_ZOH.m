@@ -10,7 +10,7 @@ function [A_k, B_k, E_k, c_k, G_k, Delta] = discretize_stochastic_dynamics_ZOH(f
     B_k = zeros([nx, nu, N]);
     E_k = zeros([nx, np, N]);
     c_k = zeros([nx, 1, N]);
-    G_k = zeros([size(G(0, x_ref(:, 1), u_ref(:, 1), 0)), N]);
+    G_k = zeros(size(A_k));
     Delta = zeros([1, N - 1]);
     
     for k = 1:(N - 1)

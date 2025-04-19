@@ -13,7 +13,8 @@ ylabels = ["r_x [km]", "r_y [km]", "v_x [m / s]", "v_y [m / s]", "\theta [deg]",
 ops = {@(x) x, @(x) x, @(x) 1000 * x, @(x) 1000 * x, @(x) rad2deg(x), @(x) rad2deg(x)};
 
 for x = 1:6
-    x_3sigbound = 3 * sqrt(squeeze(project_ellipsoid(P_k, x)))';
+    %x_3sigbound = 3 * sqrt(squeeze(project_ellipsoid(P_k, x)))';
+    x_3sigbound = 3 * sqrt(squeeze(P_k(x, x, :)))';
     x_3sigbound_cont = interp1(t_k, x_3sigbound, t_mean);
     
     figure

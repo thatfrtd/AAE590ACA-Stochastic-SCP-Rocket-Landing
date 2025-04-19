@@ -6,7 +6,7 @@
 % Description: Test of Monte Carlo and sensitivity analysis with UQLab.
 % First optimize then do a number of MC runs to estimate the constraint
 % satisfaction. 
-% Most Recent Change: 19 April, 2025
+% Most Recent Change: 17 April, 2025
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % NEED TO MAKE STOCHASTIC MODEL??
 %% Run Deterministic 3DoF
@@ -82,11 +82,11 @@ myInput = uq_createInput(InputOpts);
 %%
 X = uq_getSample(100);
 
+%%
 Y = zeros(size(X, 1), 2);
-% Manually do iterations so we can see what iteration it is on
 for i = 1:size(X, 1)
-    Y(i, :) = uq_evalModel(myModel, X(i, :));
-    fprintf("Iteration %g out of %g Completed\n", i, size(X, 1))
+    Y(i, :) = uq_evalModel(X(i, :));
+    fprintf("Iteration %g Completed\n", i)
 end
 
 %%
@@ -104,14 +104,13 @@ MetaOpts.Method = 'LARS';
 %PCEOpts.TruncOptions.qNorm = 0.7;
 %PCEOpts.TruncOptions.MaxInteraction = 2;
 
-% If wanting UQLab to run iterations for us (no loading bar...)
 %PCEOpts.ExpDesign.NSamples = 200;
 %PCEOpts.ExpDesign.Sampling = 'LHS';
 
 % Can also specify results from existing data
 PCEOpts.ExpDesign.Sampling = "user";
 PCEOpts.ExpDesign.X = X;
-PCEOpts.ExpDesign.Y = Y;
+PCEOpts.ExpDesign.Y = myPCE.ExpDesign.Y;
 % Or from a data file
 %PCEOpts.DataFile = "data.mat"; % Has to have only .X and .Y as variables
 
@@ -119,14 +118,12 @@ myPCE = uq_createModel(PCEOpts);
 
 uq_display(myPCE, 1:2)
 
-%% Look at Surrogate Model Error Visually
+%%
 
 Y_test = uq_evalModel(myPCE, myPCE.ExpDesign.X);
 
-% Percent error
-scatter(myPCE.ExpDesign.X(:, 3), 100 * (myPCE.ExpDesign.Y(:, 1) - Y_test(:, 1)) ./ myPCE.ExpDesign.Y(:, 1)); hold on
-scatter(myPCE.ExpDesign.X(:, 3), 100 * (myPCE.ExpDesign.Y(:, 2) - Y_test(:, 2)) ./ myPCE.ExpDesign.Y(:, 2)); hold off
-
+scatter(myPCE.ExpDesign.Y(:, 1), (myPCE.ExpDesign.Y(:, 1) - Y_test(:, 1)) ./ myPCE.ExpDesign.Y(:, 1)); hold on
+scatter(myPCE.ExpDesign.Y(:, 2), (myPCE.ExpDesign.Y(:, 2) - Y_test(:, 2)) ./ myPCE.ExpDesign.Y(:, 2)); hold off
 %% Sobol Indices Sensitivity Analysis
 % Set up analysis
 SobolOpts.Type = 'Sensitivity';
