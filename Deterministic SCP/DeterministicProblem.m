@@ -34,13 +34,13 @@ classdef DeterministicProblem
                 tf
                 f
                 guess % Has to have values .x, .u, .p
-                convex_constraints % Cell array of constraint functions @(x, u, p)
+                convex_constraints % Cell array of constraint functions @(t, x, u, p)
                 objective
                 options.initial_bc = @(x, p) x - x0 % Has to be @(x, p)
                 options.terminal_bc = @(x, p) x - xf % Has to be @(x, p)
                 options.integration_tolerance = 1e-12
                 options.scale = true
-                options.nonconvex_constraints = [] % Cell array of constraint functions @(x, u, p, x_ref, u_ref, p_ref)
+                options.nonconvex_constraints = [] % Cell array of constraint functions @(t, x, u, p, x_ref, u_ref, p_ref)
             end
             %DETERMINISTICPROBLEM Construct an instance of this class
             %   Detailed explanation goes here
