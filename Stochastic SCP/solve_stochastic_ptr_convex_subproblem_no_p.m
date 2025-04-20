@@ -2,6 +2,7 @@ function [x_sol, u_sol, sol_info] = solve_stochastic_ptr_convex_subproblem_no_p(
 %SOLVE_PTR_CONVEX_SUBPROBLEM Summary of this function goes here
 %   Detailed explanation goes here
 P_yk_sqrt = get_P_k_root(prob.disc.P, prob.disc.C, prob.disc.D);
+
 cvx_begin quiet
     variable X(prob.n.x, prob.N)
     variable U(prob.n.u, prob.Nu)
@@ -10,29 +11,12 @@ cvx_begin quiet
     variable v_prime(prob.n.ncvx)
     variable v_0(prob.n.x, 1)
     variable v_N(prob.n.x, 1)
-    variable X_C(prob.n.x * prob.N, prob.N) % This is for the covariance propoagation. This mf changes dimensions every iteration
-    variable S_k(prob.n.u, prob.n.x, prob.N)
+    variable X_C(prob.n.x, ) % This is for the covariance propoagation. This mf changes dimensions every iteration
+    variable S_k(prob.n.u, (prob.N^2 + prob.N)/2 *prob.n.x)
     minimize( prob.objective(prob.unscale_x(X), prob.unscale_u(U), 0) ...
         + virtual_control_cost(V, v_prime, v_0, v_N, ptr_ops.w_vc) ...
         + trust_region_cost(eta, 0, ptr_ops.w_tr, 0) ) % Need to update this to include minimization of S
     subject to
-        % Dynamics
-        if prob.u_hold == "ZOH"
-            for k = 1:(prob.N - 1)
-                X(:, k + 1) == prob.disc.A_k(:, :, k) * prob.unscale_x(X(:, k)) ...
-                             + prob.disc.B_k(:, :, k) * prob.unscale_u(U(:, k)) ...
-                             + prob.disc.c_k(:, :, k) ...
-                             + V(:, k);
-            end
-        elseif prob.u_hold == "FOH"
-            for k = 1:(prob.N - 1)
-                X(:, k + 1) == prob.disc.A_k(:, :, k) * prob.unscale_x(X(:, k)) ...
-                             + prob.disc.B_minus_k(:, :, k) * prob.unscale_u(U(:, k)) ...
-                             + prob.disc.B_plus_k(:, :, k) * prob.unscale_u(U(:, k + 1)) ...
-                             + prob.disc.c_k(:, :, k) ...
-                             + V(:, k);
-            end
-        end
         
         % Stochastic/Kalman Implementaion
         if prob.u_hold == "ZOH"
@@ -42,11 +26,14 @@ cvx_begin quiet
                              + prob.disc.E_k(:, :, k) * prob.unscale_p(p) ...
                              + prob.disc.c_k(:, :, k) ...
                              + V(:, k);
-                X(:, k + 1) == prob.disc.A_k(:, :, k) * prob.unscale_x(X(:, k)) ...
-                             + prob.disc.B_k(:, :, k) * prob.unscale_u(U(:, k)) ...
-                             + prob.disc.c_k(:, :, k);
-                S_k = K*X_C;
-                X_C(1:((k+1)*prob.n.x), k + 1) == [A*X + B*S_k, prob.disc.L(:,:,k) * P_yk_sqrt(:,:,k)]; % Dimensions don't work here, will have to replace with new method of doing it
+ 
+            
+                X_C(:, 1:((k+1)*(k+2)/2)*prob.n.x) == [A*X + B*S_k, ...
+                                                   prob.disc.L(:,:,k) * P_yk_sqrt(:,:,k)]; % Dimensions don't work here, will have to replace with new method of doing it
+
+                P_hat_N = X_C * X_C'; % Need to fix dimensions of X
+
+                norm(sqrtm(inv(prob.Pf - P_hat_N))*X_C, 2) - 1 <= 0; % Covariance path constraint
             end
         elseif prob.u_hold == "FOH"
             for k = 1:(prob.N - 1)
