@@ -17,8 +17,8 @@ classdef StochasticProblem
         disc % Has .A_k, .B_k, .E_k, .c_k, .G_k, .C_k, .D_k, .Ptilde_minus_k, .Ptilde_k, .L_k
         filter % Has f_0, g_0, .C
         stoch % Has .w, .v, .delta_t
-        convex_constraints % Cell array of convex constraint functions @(x, u, p)
-        nonconvex_constraints % Cell array of nonconvex constraint functions @(x, u, p, x_ref, u_ref, p_ref)
+        convex_constraints % Cell array of convex constraint functions @(x, u, p, X_k, S_k)
+        nonconvex_constraints % Cell array of nonconvex constraint functions @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref)
         initial_bc % Has to be @(x, p)
         terminal_bc % Has to be @(x, p)
         objective % Has to be @(x, u, p)
@@ -44,12 +44,12 @@ classdef StochasticProblem
                 g_0
                 guess % Has to have values .x, .u, .p, .X_k, .S_k
                 convex_constraints % Cell array of constraint functions @(x, u, p)
-                objective % Has to be @(x, p)
+                objective % Has to be @(x, u, p, X_k, S_k)
                 options.initial_bc = @(x, p) x - x0 % Has to be @(x, p)
                 options.terminal_bc = @(x, p) x - xf % Has to be @(x, p)
                 options.integration_tolerance = 1e-12
                 options.scale = true
-                options.nonconvex_constraints = [] % Cell array of constraint functions @(x, u, p, x_ref, u_ref, p_ref)
+                options.nonconvex_constraints = [] % Cell array of constraint functions @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref)
                 options.w = @(n) randn([size(G(0, x0, guess.u(:, 1), guess.p), 2), n])
                 options.v = @(n) randn([numel(f_0(0, x0, guess.u(:, 1), guess.p)), n])
                 options.delta_t = 1e0
@@ -332,6 +332,9 @@ classdef StochasticProblem
                 options.v = @(n) randn([numel(f_0(0, disc_prob.x0, disc_prob.guess.u(:, 1), disc_prob.guess.p)), n])
                 options.delta_t = 1e0
                 options.sol = []
+                options.objective = []
+                options.convex_constraints = []
+                options.nonconvex_constraints = []
             end
             
             if ~isempty(options.sol)
@@ -346,12 +349,24 @@ classdef StochasticProblem
                 stoch_guess = disc_prob.guess;
             end
 
+            if isnumeric(options.objective)
+                options.objecive = disc_prob.objective;
+            end
+
+            if isnumeric(options.convex_constraints)
+                options.convex_constraints = disc_prob.convex_constraints;
+            end
+
+            if isnumeric(options.nonconvex_constraints)
+                options.nonconvex_constraints = disc_prob.nonconvex_constraints;
+            end
+
     
             stoch_prob = StochasticProblem(disc_prob.x0, disc_prob.xf, P0, Pf, disc_prob.N, disc_prob.u_hold, disc_prob.tf, ...
-                disc_prob.cont.f, G, f_0, g_0, stoch_guess, disc_prob.convex_constraints, ...
-                disc_prob.objective, initial_bc = disc_prob.initial_bc, terminal_bc = disc_prob.terminal_bc, ...
+                disc_prob.cont.f, G, f_0, g_0, stoch_guess, options.convex_constraints, ...
+                options.objective, initial_bc = disc_prob.initial_bc, terminal_bc = disc_prob.terminal_bc, ...
                 integration_tolerance = disc_prob.tolerances.AbsTol, scale = disc_prob.scale, ...
-                nonconvex_constraints = disc_prob.nonconvex_constraints, w = options.w, v = options.v, delta_t = options.delta_t);
+                nonconvex_constraints = options.nonconvex_constraints, w = options.w, v = options.v, delta_t = options.delta_t);
         end
     end
 end
