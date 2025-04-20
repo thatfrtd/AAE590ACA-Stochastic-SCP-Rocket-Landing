@@ -24,7 +24,7 @@ sigma_x0 = [10e-3; ... % r_x
             50e-3; ... % r_y
             5e-3; ... % v_x
             5e-3; ... % v_y
-            1]; % mass
+            1e-4]; % mass
 P0 = diag(sigma_x0 .^ 2);
 
 % Final state
@@ -32,13 +32,13 @@ sigma_xf = [10e-3; ... % r_x
             50e-3; ... % r_y
             5e-3; ... % v_x
             5e-3; ... % v_y
-            1]; % mass
+            1e-4]; % mass
 Pf = diag(sigma_xf .^ 2);
 
 % Disturbance
 sigma_accelx = 0.5e-4;
 sigma_accely = 0.1e-4;
-sigma_m = 1e-2;
+sigma_m = 1e-4;
 G = @(t, x, u, p) [zeros([2, 3]); ... % velocity
                    [sigma_accelx; sigma_accely] .* eye([2, 3]); ... % acceleration
                    [zeros([1, 2]), sigma_m]]; ... % mass flow 
@@ -110,6 +110,6 @@ S_k = pagemtimes(K_k, X_k(:, :, 1:prob_2DoF.Nu));
 
 %%
 plot_3DoF_MC_trajectories(t_k, stoch_prob_2DoF.guess.x, t_k, xhat_fb, stoch_prob_2DoF.guess.x, t_k, X_k, t_k, xhat_no_fb, Pf, pi / 2 - gamma_min)
-%plot_2DoF_MC_time_histories(t_k, stoch_prob_2DoF.guess.x, stoch_prob_2DoF.guess.u, t_k, xhat_fb, u_fb, t_k, X_k, S_k, t_k, xhat_no_fb, T_max, T_min, true)
+plot_2DoF_MC_time_histories(t_k, stoch_prob_2DoF.guess.x, stoch_prob_2DoF.guess.u, t_k, xhat_fb, u_fb, t_k, X_k, S_k, t_k, xhat_no_fb, T_max, T_min, true)
 
 %%

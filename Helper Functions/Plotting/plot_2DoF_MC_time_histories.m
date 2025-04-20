@@ -10,7 +10,7 @@ P_k = pagemtimes(X_k, pagetranspose(X_k));
 titles = ["X Position", "Y Position", "X Velocity", "Y Velocity", "Mass"];
 ylabels = ["r_x [km]", "r_y [km]", "v_x [m / s]", "v_y [m / s]", "m [kg]"];
 
-ops = {@(x) x, @(x) x, @(x) 1000 * x, @(x) 1000 * x, @(x) x};
+ops = {@(x) x, @(x) x, @(x) 1000 * x, @(x) 1000 * x, @(x) exp(x)};
 
 for x = 1:5
     %x_3sigbound = 3 * sqrt(squeeze(project_ellipsoid(P_k, x)))';
@@ -55,15 +55,15 @@ epsilon = 1e-3; % 99.9%
 thrust_3sigbound = squeeze(sigma_mag_confidence(epsilon / 2, nu) * pagenorm(S_k,2));
 
 for i = 1:m
-    stairs(t_fb(1:size(u_MC_fb, 2)), u_MC_fb(3, :, i), Color = [192, 192, 192] / 256, HandleVisibility='off'); hold on
+    stairs(t_fb(1:size(u_MC_fb, 2)), u_MC_fb(3, :, i) .* exp(x_MC_fb(5, 1:size(u_MC_fb, 2))), Color = [192, 192, 192] / 256, HandleVisibility='off'); hold on
 end
 
 u_mean_full = interp1(t_k(1:size(u_mean, 2)), u_mean', t_k, "previous", "extrap")';
 thrust_3sigbound_full = interp1(t_k(1:size(u_mean, 2)), thrust_3sigbound, t_k, "previous", "extrap");
 
-stairs(t_k, u_mean_full(3, :), Color = "k",LineWidth=1, DisplayName="Nominal"); hold on
-stairs(t_k, u_mean_full(3, :) + thrust_3sigbound_full, Color = [100, 100, 100] / 256, LineStyle=":", LineWidth=1, DisplayName="99.9% Bound"); hold on
-stairs(t_k, u_mean_full(3, :) - thrust_3sigbound_full, Color = [100, 100, 100] / 256, LineStyle=":", LineWidth=1,HandleVisibility='off'); hold on
+stairs(t_k, u_mean_full(3, :) .* exp(x_mean(5, 1:size(u_mean_full, 2))), Color = "k",LineWidth=1, DisplayName="Nominal"); hold on
+stairs(t_k, (u_mean_full(3, :) + thrust_3sigbound_full) .* exp(x_mean(5, 1:size(u_mean_full, 2))), Color = [100, 100, 100] / 256, LineStyle=":", LineWidth=1, DisplayName="99.9% Bound"); hold on
+stairs(t_k, (u_mean_full(3, :) - thrust_3sigbound_full) .* exp(x_mean(5, 1:size(u_mean_full, 2))), Color = [100, 100, 100] / 256, LineStyle=":", LineWidth=1,HandleVisibility='off'); hold on
 yline(T_max, LineWidth = 1, LineStyle="--", Color="k", DisplayName = "Constraint"); hold on
 yline(T_min, LineWidth = 1, LineStyle="--", Color="k", HandleVisibility='off'); hold off
 title("Thrust Magnitude vs Time with Optimized Feedback Policies")
