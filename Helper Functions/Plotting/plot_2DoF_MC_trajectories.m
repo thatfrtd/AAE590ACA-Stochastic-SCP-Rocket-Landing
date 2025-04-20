@@ -1,4 +1,4 @@
-function [] = plot_3DoF_MC_trajectories(t_mean, x_mean, t_fb, x_MC_fb, x_ref, t_k, X_k, t_no_fb, x_MC_no_fb, Pf, glideslope_angle)
+function [] = plot_2DoF_MC_trajectories(t_mean, x_mean, t_fb, x_MC_fb, x_ref, t_k, X_k, t_no_fb, x_MC_no_fb, Pf, glideslope_angle)
 %PLOT_3DOF_MC_TRAJECTORIES Summary of this function goes here
 %   Detailed explanation goes here
 
@@ -13,7 +13,7 @@ tiledlayout(1, 2, "TileSpacing","compact")
 %% Feedback controlled
 nexttile
 
-proj_P_r = project_ellipsoid(P_k, [1,2]);
+%proj_P_r = project_ellipsoid(P_k, [1,2]);
 
 %[P_eigvecs, P_eigvals] = pageeig(proj_P_r);
 [P_eigvecs, P_eigvals] = pageeig(P_k(1:2, 1:2, :)); % Looks more correct then projecting ellipsoid...

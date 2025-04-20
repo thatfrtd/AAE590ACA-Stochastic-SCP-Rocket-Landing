@@ -101,17 +101,17 @@ end
 guess = sl_guess;
 
 %% Construct Problem Object
-prob_3DoF = DeterministicProblem(x_0, x_f, N, u_hold, tspan(end), f, guess, convex_constraints, min_fuel_objective, scale = false, terminal_bc = terminal_bc);
+prob_2DoF = DeterministicProblem(x_0, x_f, N, u_hold, tspan(end), f, guess, convex_constraints, min_fuel_objective, scale = false, terminal_bc = terminal_bc);
 
 %% Test Discretization
-[prob_3DoF, Delta_disc] = prob_3DoF.discretize(guess.x, guess.u, guess.p);
+[prob_2DoF, Delta_disc] = prob_2DoF.discretize(guess.x, guess.u, guess.p);
 
 %% Check with Matrix Exponential
-A_k_exp = expm((t_k(2) - t_k(1)) * prob_3DoF.cont.A(0, x_0, guess.u(:, 1), 0));
-A_k_ck = sum(pagenorm(prob_3DoF.disc.A_k(:, :, 1:Nu) - A_k_exp), "all") < default_tolerance; % Checks out
+A_k_exp = expm((t_k(2) - t_k(1)) * prob_2DoF.cont.A(0, x_0, guess.u(:, 1), 0));
+A_k_ck = sum(pagenorm(prob_2DoF.disc.A_k(:, :, 1:Nu) - A_k_exp), "all") < default_tolerance; % Checks out
 
 %% Solve Problem with PTR
-ptr_sol = ptr(prob_3DoF, ptr_ops);
+ptr_sol = ptr(prob_2DoF, ptr_ops);
 
 X = ptr_sol.x(:, :, ptr_sol.converged_i);
 U = ptr_sol.u(:, :, ptr_sol.converged_i);
