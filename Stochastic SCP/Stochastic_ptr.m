@@ -7,6 +7,8 @@ function [ptr_sol] = Stochastic_ptr(prob, ptr_ops)
 x_ref = zeros([prob.n.x, prob.N, ptr_ops.iter_max + 1]);
 u_ref = zeros([prob.n.u, prob.Nu, ptr_ops.iter_max + 1]);
 p_ref = zeros([prob.n.p, ptr_ops.iter_max + 1]);
+X_ref = zeros([prob.n.x, prob.n.x * prob.N * (prob.N + 1) / 2, ptr_ops.iter_max + 1]);
+S_ref = zeros([prob.n.u, prob.n.u * prob.N, ptr_ops.iter_max + 1]);
 
 x_ref(:, :, 1) = prob.scale_x(prob.guess.x);
 u_ref(:, :, 1) = prob.scale_u(prob.guess.u);
@@ -25,7 +27,7 @@ disp(" k |       status      |   vd  |   vs  |  vbc_0 |  vbc_N |    J    |   J_t
 for i = 1:(ptr_ops.iter_max)
     % Solve convex subproblem and update reference
     if prob.n.p == 0
-        [x_ref(:, :, i + 1), u_ref(:, :, i + 1), sol_info] = solve_stochastic_ptr_convex_subproblem_no_p(prob, ptr_ops, x_ref(:, :, i), u_ref(:, :, i));
+        [x_ref(:, :, i + 1), u_ref(:, :, i + 1), X_ref(:, :, i + 1), S_ref(:, :, i + 1), sol_info] = solve_stochastic_ptr_convex_subproblem_no_p_2(prob, ptr_ops, x_ref(:, :, i), u_ref(:, :, i), S_ref(:, :, i));
     else
         [x_ref(:, :, i + 1), u_ref(:, :, i + 1), p_ref(:, i + 1), sol_info] = solve_stochastic_ptr_convex_subproblem(prob, ptr_ops, x_ref(:, :, i), u_ref(:, :, i), p_ref(:, i));
     end

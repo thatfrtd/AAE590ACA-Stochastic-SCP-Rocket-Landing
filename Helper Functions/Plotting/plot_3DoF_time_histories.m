@@ -23,13 +23,6 @@ ylabel("Velocity [m / s]")
 grid on
 
 nexttile
-plot(t(1:Nu), u(3, :))
-title("Thrust vs Time")
-xlabel("Time [s]")
-ylabel("Thrust [kg km / s2]")
-grid on
-
-nexttile
 plot(t, wrapTo180(rad2deg(x(5, :))));
 title("Orientation vs Time")
 xlabel("Time [s]")
@@ -41,6 +34,13 @@ plot(t, rad2deg(x(6, :)));
 title("Angular Velocity vs Time")
 xlabel("Time [s]")
 ylabel("Angular Velocity [deg / s]")
+grid on
+
+nexttile
+plot(t(1:Nu), u(3, :))
+title("Thrust vs Time")
+xlabel("Time [s]")
+ylabel("Thrust [kg km / s2]")
 grid on
 
 nexttile

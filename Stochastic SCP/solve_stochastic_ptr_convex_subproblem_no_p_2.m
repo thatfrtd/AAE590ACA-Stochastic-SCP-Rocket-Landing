@@ -1,8 +1,9 @@
-function [x_sol, u_sol, sol_info] = solve_ptr_convex_subproblem_no_p(prob, ptr_ops, x_ref, u_ref)
+function [x_sol, u_sol, X_sol, S_sol, sol_info] = solve_stochastic_ptr_convex_subproblem_no_p_2(prob, ptr_ops, x_ref, u_ref, S_k_ref)
 %SOLVE_PTR_CONVEX_SUBPROBLEM Summary of this function goes here
 %   Detailed explanation goes here
+P_yk_sqrt = sqrtm_array(prob.disc.Ptilde_minus_k);
 
-t_k = linspace(0, prob.tf, prob.N);
+tri = @(k) k * (k + 1) / 2 * prob.n.x;
 
 cvx_begin quiet
     variable X(prob.n.x, prob.N)
@@ -12,45 +13,40 @@ cvx_begin quiet
     variable v_prime(prob.n.ncvx)
     variable v_0(prob.n.x, 1)
     variable v_N(prob.n.x, 1)
-    minimize( prob.objective(prob.unscale_x(X), prob.unscale_u(U), 0) ...
+    variable X_C(prob.n.x, tri(prob.N)) % This is for the covariance propoagation. This mf changes dimensions every iteration
+    variable S_k(prob.n.u, prob.n.x * prob.N)
+    minimize( prob.objective(prob.unscale_x(X), prob.unscale_u(U), 0, X_C, S_k) ...
         + virtual_control_cost(V, v_prime, v_0, v_N, ptr_ops.w_vc) ...
         + trust_region_cost(eta, 0, ptr_ops.w_tr, 0) )
     subject to
         % Dynamics
-        if prob.u_hold == "ZOH"
-            for k = 1:(prob.N - 1)
-                X(:, k + 1) == prob.disc.A_k(:, :, k) * prob.unscale_x(X(:, k)) ...
-                             + prob.disc.B_k(:, :, k) * prob.unscale_u(U(:, k)) ...
-                             + prob.disc.c_k(:, :, k) ...
-                             + V(:, k);
-            end
-        elseif prob.u_hold == "FOH"
-            for k = 1:(prob.N - 1)
-                X(:, k + 1) == prob.disc.A_k(:, :, k) * prob.unscale_x(X(:, k)) ...
-                             + prob.disc.B_minus_k(:, :, k) * prob.unscale_u(U(:, k)) ...
-                             + prob.disc.B_plus_k(:, :, k) * prob.unscale_u(U(:, k + 1)) ...
-                             + prob.disc.c_k(:, :, k) ...
-                             + V(:, k);
-            end
-        end
+        for k = 1:(prob.N - 1)
+            X(:, k + 1) == prob.disc.A_k(:, :, k) * prob.unscale_x(X(:, k)) ...
+                         + prob.disc.B_k(:, :, k) * prob.unscale_u(U(:, k)) ...
+                         + prob.disc.c_k(:, :, k) ...
+                         + V(:, k);
 
+            X_C(:, (tri(k) + 1):tri(k + 1)) == [prob.disc.A_k(:, :, k) * X_C(:, (tri(k - 1) + 1):tri(k)) + prob.disc.B_k(:, :, k) * S_k(:, (k - 1) * prob.n.x + (1:prob.n.x)), prob.disc.L_k(:, :, k + 1) * P_yk_sqrt(:, :, k)];
+        end
         % Constraints
         for k = 1:prob.Nu
             % Convex Constraints
             for cc = 1:prob.n.cvx
-                prob.convex_constraints{cc}(t_k(k), prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0) <= 0;
+                prob.convex_constraints{cc}(prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, X_k, S_k) <= 0;
             end
             % Nonconvex Constraints
             for nc = 1:prob.n.ncvx
-                prob.nonconvex_constraints{nc}(t_k(k), prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, x_ref, u_ref, 0) ...
+                prob.nonconvex_constraints{nc}(prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, x_ref, u_ref(:, k), 0, S_k_ref(:, (k - 1) * prob.n.x + (1:prob.n.x)), k) ...
                     - v_prime(nc) <= 0;
             end
         end
         v_prime >= 0;
 
         % Boundary Conditions
-        prob.initial_bc(prob.unscale_x(X(:, 1)), 0) + v_0 == 0;
-        prob.terminal_bc(prob.unscale_x(X(:, prob.N)), 0) + v_N == 0;
+        prob.initial_bc(prob.unscale_x(X(:, 1)), 0) + v_0 == 0; % Initial mean state
+        sqrtm(prob.P0 - prob.disc.Ptilde_k(:, :, 1)) == X_C(:, 1:prob.n.x); % Initial covariance
+        prob.terminal_bc(prob.unscale_x(X(:, prob.N)), 0) + v_N == 0; % Final mean state
+        norm(sqrtm(prob.Pf - prob.disc.Ptilde_k(:, :, end)) \ X_C(:, (tri(prob.N - 1) + 1):tri(prob.N))) - 1 <= 0; % Final covariance
 
         % Trust Region Constraints
         ptr_ops.alpha_x * norms(X(:, 1:prob.Nu) - x_ref(:, 1:prob.Nu), ptr_ops.q, 1) + ptr_ops.alpha_u * norms(U - u_ref, ptr_ops.q, 1) <= eta;
@@ -58,6 +54,8 @@ cvx_end
 
 x_sol = X;
 u_sol = U;
+X_sol = X_C;
+S_sol = S_k;
 
 sol_info.status = cvx_status;
 sol_info.vd = V;

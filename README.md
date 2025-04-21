@@ -7,7 +7,7 @@ Stochastic Sequential Convex Programming using the Penaliezd Trust Region (PTR) 
 - [x] [4/6] Convexify nonconvex elements of deterministic problem where appropriate
 - [x] [4/6] Solve deterministic optimal control problem with SCP using [SCPToolbox.jl](https://github.com/UW-ACL/SCPToolbox.jl/tree/master) to get a baseline solution to help us implement SCP ourselves
 - [Milestone:] Problem formulation
-- [ ] [4/12] Implement the LTV Kalman filter from equations in Oguri paper for accurate state estimation throughout the trajectory.
+- [x] [4/12] Implement the LTV Kalman filter from equations in Oguri paper for accurate state estimation throughout the trajectory.
 - [ ] [4/12] Convexify stochastic elements of problem
 - [Milestone:] Convex sub-problem formulation
 - [x] [4/12] Implement SCP and solve the baseline deterministic optimal control problem

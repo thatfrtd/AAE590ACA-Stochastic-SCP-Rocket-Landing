@@ -60,14 +60,14 @@ f = @(t, x, u, p) SymDynamics3DoF(t, x, u, vehicle.m, vehicle.L, vehicle.I(2));
 
 %% Specify Constraints
 % Convex state path constraints
-glideslope_constraint = @(x, u, p) norm(x(1:2)) - x(2) / cos(glideslope_angle_max);
+glideslope_constraint = @(t, x, u, p) norm(x(1:2)) - x(2) / cos(glideslope_angle_max);
 state_convex_constraints = {glideslope_constraint};
 
 % Convex control constraints
-max_thrust_constraint = @(x, u, p) u(3) - T_max;
-min_thrust_constraint = @(x, u, p) T_min - u(3);
-max_gimbal_constraint = @(x, u, p) u(3) - u(1) / cos(gimbal_max);
-lcvx_thrust_constraint = @(x, u, p) norm(u(1:2))- u(3); 
+max_thrust_constraint = @(t, x, u, p) u(3) - T_max;
+min_thrust_constraint = @(t, x, u, p) T_min - u(3);
+max_gimbal_constraint = @(t, x, u, p) u(3) - u(1) / cos(gimbal_max);
+lcvx_thrust_constraint = @(t, x, u, p) norm(u(1:2))- u(3); 
 control_convex_constraints = {min_thrust_constraint,max_gimbal_constraint,max_thrust_constraint,lcvx_thrust_constraint};
 
 % Combine convex constraints
