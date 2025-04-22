@@ -18,7 +18,7 @@ T_max = 13.26; % [kg km / s2]
 % Problem Parameters
 delta_t = 3; % [s]
 N = 20; % []
-r_0 = [0; 1.5]; % [km]
+r_0 = [1; 1.5]; % [km]
 v_0 = [0; 0]; % [km / s]
 m_0 = 2000; % [kg]
 gamma_min = deg2rad(3); % [rad]
