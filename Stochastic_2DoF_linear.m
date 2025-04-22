@@ -31,15 +31,15 @@ end
 
 %% Define Stochastic Elements
 % Initial estimated state
-sigma_xhat0 = [1e-3; ... % r_x
-            2e-3; ... % r_y
-            1e-3; ... % v_x
-            1e-3; ... % v_y
-            1e-4]; % mass
+sigma_xhat0 = [10e-3; ... % r_x
+            20e-3; ... % r_y
+            10e-3; ... % v_x
+            10e-3; ... % v_y
+            10e-4]; % mass
 Phat0 = diag(sigma_xhat0 .^ 2);
 
 % Initial state estimation error
-sigma_xtilde0 = [1e-4; ... % r_x
+sigma_xtilde0 = 5 * [1e-4; ... % r_x
             5e-4; ... % r_y
             1e-4; ... % v_x
             1e-4; ... % v_y
@@ -125,18 +125,21 @@ K_k_opt = recover_gain_matrix(stoch_ptr_sol.X(:, :, stoch_ptr_sol.converged_i), 
 
 %% Check Convergence for Gamma_k
 Gamma_k = zeros([stoch_prob_2DoF.N, stoch_ptr_sol.converged_i]);
-thrust_mag_error_k = zeros([stoch_prob_2DoF.N, stoch_ptr_sol.converged_i]);
+thrust_mag_k = zeros([stoch_prob_2DoF.N, stoch_ptr_sol.converged_i]);
+thrust_mag_nom_k = zeros([stoch_prob_2DoF.N, stoch_ptr_sol.converged_i]);
 for ms = 1:stoch_ptr_sol.converged_i
     for km = 1:(stoch_prob_2DoF.N - 1)
         Gamma_k(km, ms) = thrust_magnitude_bound(stoch_ptr_sol.S(:, :, ms), squeeze(stoch_ptr_sol.u(:, :, ms)), km, t_k, T_max, m_0, alpha, nu);
-        thrust_mag_error_k(km, ms) = norm(stoch_ptr_sol.u(1:2, km, ms)) + n_sigma_99p9 * norm(stoch_ptr_sol.S(:, (tri(km - 1) + 1):tri(km), ms));
+        thrust_mag_k(km, ms) = norm(stoch_ptr_sol.u(1:2, km, ms)) + n_sigma_99p9 * norm(stoch_ptr_sol.S(:, (tri(km - 1) + 1):tri(km), ms));
+        thrust_mag_nom_k(km, ms) = norm(stoch_ptr_sol.u(1:2, km, ms));
     end
+    ms
 end
-
+%%
 figure
-tiledlayout(1, 3)
+tiledlayout(2, 2)
 nexttile
-plot(t_k, Gamma_k)
+plot(t_k(1:(end - 1)), Gamma_k(1:(end - 1), :) .* squeeze(exp(stoch_ptr_sol.x(5, 1:(end - 1), 1:stoch_ptr_sol.converged_i))))
 title("\Gamma_k vs Time for All Iterations")
 xlabel("Time [s]")
 ylabel("[km / s2]")
@@ -156,9 +159,16 @@ legend("Iter " + string(2:stoch_ptr_sol.converged_i) + " minus " + string(1:(sto
 grid on
 
 nexttile
-plot(t_k, abs((Gamma_k - thrust_mag_error_k) / Gamma_k) * 100);
-title("%(Gamma_k - ||u_k||) vs Time for All Iterations")
-yscale("log")
+plot(t_k(1:(end - 1)), thrust_mag_k(1:(end - 1),:) .* squeeze(exp(stoch_ptr_sol.x(5, 1:(end - 1), 1:stoch_ptr_sol.converged_i))));
+title("||u_k|| vs Time for All Iterations")
+xlabel("Time [s]")
+ylabel("[km / s2]")
+legend("Iter " + string(1:stoch_ptr_sol.converged_i), Location="southeast")
+grid on
+
+nexttile
+plot(t_k(1:(end - 1)), thrust_mag_nom_k(1:(end - 1),:) .* squeeze(exp(stoch_ptr_sol.x(5, 1:(end - 1), 1:stoch_ptr_sol.converged_i))));
+title("||u_k|| vs Time for All Iterations")
 xlabel("Time [s]")
 ylabel("[km / s2]")
 legend("Iter " + string(1:stoch_ptr_sol.converged_i), Location="southeast")
@@ -176,7 +186,7 @@ Phat_ofb = zeros([stoch_prob_2DoF.n.x, stoch_prob_2DoF.n.x, stoch_prob_2DoF.N, m
 u_ofb = zeros([stoch_prob_2DoF.n.u, stoch_prob_2DoF.Nu, m]);
 
 parfor i = 1:m
-    [t_ofb(:, i), x_ofb(:, :, i), xhat_ofb(:, :, i), Phat_ofb(:, :, :, i), u_ofb(:, :, i)] = stoch_prob_2DoF.disc_prop(stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.u(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.p(:, stoch_ptr_sol.converged_i), K_k_opt * 3);
+    [t_ofb(:, i), x_ofb(:, :, i), xhat_ofb(:, :, i), Phat_ofb(:, :, :, i), u_ofb(:, :, i)] = stoch_prob_2DoF.disc_prop(stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.u(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.p(:, stoch_ptr_sol.converged_i), K_k_opt);
     i
 end
 
@@ -227,10 +237,10 @@ end
 
 P_k_opt = Phat_k_opt + stoch_prob_2DoF.disc.Ptilde_k;
 %%
-%figure
-plot_2DoF_MC_trajectories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, x_ofb, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, P_k_opt, t_k, xhat_no_fb, Pf, pi / 2 - gamma_min)
 
-%plot_2DoF_MC_time_histories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.u(:, :, stoch_ptr_sol.converged_i), t_k, x_ofb, u_ofb, t_k, stoch_ptr_sol.X(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.S(:, :, stoch_ptr_sol.converged_i), t_k, xhat_no_fb, T_max, T_min, true)
+plot_2DoF_MC_trajectories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, x_ofb, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, P_k_opt, t_k, xhat_no_fb, Pf, pi / 2 - gamma_min)
+%%
+plot_2DoF_MC_time_histories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.u(:, :, stoch_ptr_sol.converged_i), t_k, x_ofb, u_ofb, t_k, stoch_ptr_sol.X(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.S(:, :, stoch_ptr_sol.converged_i), t_k, xhat_no_fb, T_max, T_min, true)
 
 %%
 plot_2DoF_MC_trajectories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, x_fb, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, P_k_opt, t_k, xhat_no_fb, Pf, pi / 2 - gamma_min)

@@ -24,7 +24,7 @@ m_0 = 2000; % [kg]
 gamma_min = deg2rad(3); % [rad]
 
 L = 3e-3;
-vehicle = Vehicle(m_0 - 600, L, L * 3, 0, T_min, T_max);
+vehicle = Vehicle(m_0 - 600, L, L * 3, 0, T_min, T_max, alpha = alpha);
 
 x_0 = [r_0; v_0; log(m_0)];
 x_f = zeros(4, 1);
