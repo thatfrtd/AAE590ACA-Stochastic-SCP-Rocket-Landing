@@ -256,7 +256,7 @@ classdef StochasticProblem
             [t_cont, x_cont, xhat_cont, Phat_cont, u_cont] = propagate_cont_feedback_kalman_filter(options.x_0, prob.Ptilde0, p, prob.cont.f, prob.cont.G, prob.cont.A, prob.cont.B, prob.cont.c, x_ref, u_ref, K, prob.disc.L_k, prob.disc.C_k, prob.disc.D_k, prob.filter.f_0, prob.filter.g_0, t_k, [0, prob.tf], options.N_sub, options.w_k_func, options.v_k, prob.tolerances);
         end
 
-        function [t_k, x_disc, xhat_disc, Phat_disc, u_disc] = disc_prop(prob, x_ref, u_ref, p, K, options)
+        function [t_k, x_disc, xtilde_disc, Ptilde_disc, u_disc] = disc_prop(prob, x_ref, u_ref, p, K, options)
             arguments
                 prob
                 x_ref
@@ -271,13 +271,13 @@ classdef StochasticProblem
             %   Detailed explanation goes here
             x_disc = zeros([prob.n.x, prob.N]);
             x_disc(:, 1) = options.x_0(:, 1);
-            xhat_disc = x_disc;
-            xhat_disc(:, 1) = options.x_0(:, 2);
+            xtilde_disc = x_disc;
+            xtilde_disc(:, 1) = options.x_0(:, 2);
 
             u_disc = zeros([prob.n.u, prob.N - 1]);
 
-            Phat_disc = zeros([prob.n.x, prob.n.x, prob.N]);
-            Phat_disc(:, :, 1) = prob.Ptilde0;
+            Ptilde_disc = zeros([prob.n.x, prob.n.x, prob.N]);
+            Ptilde_disc(:, :, 1) = prob.Ptilde0;
 
             t_k = linspace(0, prob.tf, prob.N);
             w_k_func = options.w_k_func;
@@ -288,7 +288,7 @@ classdef StochasticProblem
 
             for k = 1:(prob.N - 1)
                 % Compute control
-                u_disc(:, k) = u_ref(:, k) + K(:, :, k) * (xhat_disc(:, k) - x_ref(:, k));
+                u_disc(:, k) = u_ref(:, k) + K(:, :, k) * (xtilde_disc(:, k) - x_ref(:, k));
 
                 % Time update
                 % True state
@@ -297,17 +297,17 @@ classdef StochasticProblem
                 x_disc(:, k + 1) = x_cont_k(:, end);
                 
                 % Estimated state
-                xhat_disc(:, k + 1) = prob.disc.A_k(:, :, k) * xhat_disc(:, k) ...
+                xtilde_disc(:, k + 1) = prob.disc.A_k(:, :, k) * xtilde_disc(:, k) ...
                              + prob.disc.B_k(:, :, k) * u_disc(:, k) ...
                              + zero_if_empty(prob.disc.E_k(:, :, k) * p) ...
                              + prob.disc.c_k(:, :, k);
-                Phat_disc(:, :, k + 1) = covariance_time_update(prob.disc.A_k(:, :, k), Phat_disc(:, :, k), prob.disc.G_k(:, :, k));
+                Ptilde_disc(:, :, k + 1) = covariance_time_update(prob.disc.A_k(:, :, k), Ptilde_disc(:, :, k), prob.disc.G_k(:, :, k));
 
                 % Measurement update
-                y_k = prob.filter.f_0(t_k(k + 1), x_disc(:, k + 1), u_disc(:, k)) + prob.filter.g_0(xhat_disc(:, k + 1), u_disc(:, k)) * v_k(:, k + 1);
-                ytilde_minus_k = innovation_process(y_k, prob.disc.C_k(:, :, k + 1), xhat_disc(:, k + 1));
-                xhat_disc(:, k + 1) = estimate_measurement_update(xhat_disc(:, k + 1), prob.disc.L_k(:, :, k + 1), ytilde_minus_k);
-                Phat_disc(:, :, k + 1) = covariance_measurement_update(prob.disc.L_k(:, :, k + 1), prob.disc.C_k(:, :, k + 1), Phat_disc(:, :, k + 1), prob.disc.D_k(:, :, k + 1));
+                y_k = prob.filter.f_0(t_k(k + 1), x_disc(:, k + 1), u_disc(:, k)) + prob.filter.g_0(xtilde_disc(:, k + 1), u_disc(:, k)) * v_k(:, k + 1);
+                ytilde_minus_k = innovation_process(y_k, prob.disc.C_k(:, :, k + 1), xtilde_disc(:, k + 1));
+                xtilde_disc(:, k + 1) = estimate_measurement_update(xtilde_disc(:, k + 1), prob.disc.L_k(:, :, k + 1), ytilde_minus_k);
+                Ptilde_disc(:, :, k + 1) = covariance_measurement_update(prob.disc.L_k(:, :, k + 1), prob.disc.C_k(:, :, k + 1), Ptilde_disc(:, :, k + 1), prob.disc.D_k(:, :, k + 1));
             end
         end
 
