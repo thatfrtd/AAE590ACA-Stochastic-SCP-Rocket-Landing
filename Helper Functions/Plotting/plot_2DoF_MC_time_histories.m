@@ -4,7 +4,7 @@ function [] = plot_2DoF_MC_time_histories(t_mean, x_mean, u_mean, t_fb, x_MC_fb,
 
 m = size(x_MC_fb, 3);
 
-P_k = pagemtimes(X_k, pagetranspose(X_k));
+[P_k, Pu_k] = recover_est_covariances(X_k, S_k);
 
 %% States
 titles = ["X Position", "Y Position", "X Velocity", "Y Velocity", "Mass"];
