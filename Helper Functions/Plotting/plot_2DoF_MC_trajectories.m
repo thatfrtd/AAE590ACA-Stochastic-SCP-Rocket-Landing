@@ -1,11 +1,8 @@
-function [] = plot_2DoF_MC_trajectories(t_mean, x_mean, t_fb, x_MC_fb, x_ref, t_k, X_k, t_no_fb, x_MC_no_fb, Pf, glideslope_angle)
+function [] = plot_2DoF_MC_trajectories(t_mean, x_mean, t_fb, x_MC_fb, x_ref, t_k, P_k, t_no_fb, x_MC_no_fb, Pf, glideslope_angle)
 %PLOT_3DOF_MC_TRAJECTORIES Summary of this function goes here
 %   Detailed explanation goes here
 
 m = size(x_MC_fb, 3);
-
-P_k = pagemtimes(X_k, pagetranspose(X_k));
-
 
 figure
 tiledlayout(1, 2, "TileSpacing","compact")
@@ -18,12 +15,12 @@ nexttile
 %[P_eigvecs, P_eigvals] = pageeig(proj_P_r);
 [P_eigvecs, P_eigvals] = pageeig(P_k(1:2, 1:2, :)); % Looks more correct then projecting ellipsoid...
 
-X_k = zeros(size(P_k));
+%X_k = zeros(size(P_k));
 thetas = reshape(linspace(0, 2 * pi, 100), 1, []);
 ellipse_3sigma = zeros([2, 100, numel(t_k)]);
 for k = 1:numel(t_k)
     ellipse_3sigma(:, :, k) = x_ref(1:2, k) + P_eigvecs(:, :, k) * [3 * sqrt(P_eigvals(1, 1, k)) * cos(thetas); 3 * sqrt(P_eigvals(2, 2, k)) * sin(thetas)];
-    X_k(:, :, k) = chol(P_k(:, :, k), "lower");
+    %X_k(:, :, k) = chol(P_k(:, :, k), "lower");
 end
 
 plot(squeeze(x_MC_fb(1, :, :)), squeeze(x_MC_fb(2, :, :)), Color = [192, 192, 192] / 256, HandleVisibility='off'); hold on

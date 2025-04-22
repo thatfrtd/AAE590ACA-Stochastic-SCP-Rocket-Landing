@@ -5,7 +5,7 @@ P_yk_sqrt = sqrtm_array(prob.disc.Ptilde_minus_k);
 
 tri = @(k) k * (k + 1) / 2 * prob.n.x;
 
-cvx_begin quiet
+cvx_begin
     variable X(prob.n.x, prob.N)
     variable U(prob.n.u, prob.Nu)
     variable eta(1, prob.Nu)
@@ -14,7 +14,7 @@ cvx_begin quiet
     variable v_0(prob.n.x, 1)
     variable v_N(prob.n.x, 1)
     variable X_C(prob.n.x, tri(prob.N)) % This is for the covariance propoagation. This mf changes dimensions every iteration
-    variable S_k(prob.n.u, prob.n.x * prob.N)
+    variable S_k(prob.n.u, tri(prob.N))
     minimize( prob.objective(prob.unscale_x(X), prob.unscale_u(U), 0, X_C, S_k) ...
         + virtual_control_cost(V, v_prime, v_0, v_N, ptr_ops.w_vc) ...
         + trust_region_cost(eta, 0, ptr_ops.w_tr, 0) )
@@ -26,17 +26,17 @@ cvx_begin quiet
                          + prob.disc.c_k(:, :, k) ...
                          + V(:, k);
 
-            X_C(:, (tri(k) + 1):tri(k + 1)) == [prob.disc.A_k(:, :, k) * X_C(:, (tri(k - 1) + 1):tri(k)) + prob.disc.B_k(:, :, k) * S_k(:, (k - 1) * prob.n.x + (1:prob.n.x)), prob.disc.L_k(:, :, k + 1) * P_yk_sqrt(:, :, k)];
+            X_C(:, (tri(k) + 1):tri(k + 1)) == [prob.disc.A_k(:, :, k) * X_C(:, (tri(k - 1) + 1):tri(k)) + prob.disc.B_k(:, :, k) * S_k(:, (tri(k - 1) + 1):tri(k)), prob.disc.L_k(:, :, k + 1) * P_yk_sqrt(:, :, k)];
         end
         % Constraints
         for k = 1:prob.Nu
             % Convex Constraints
             for cc = 1:prob.n.cvx
-                prob.convex_constraints{cc}(prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, X_k, S_k) <= 0;
+                prob.convex_constraints{cc}(prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, X_k(:, (tri(prob.N - 1) + 1):tri(prob.N)), S_k(:, (tri(prob.N - 1) + 1):tri(prob.N))) <= 0;
             end
             % Nonconvex Constraints
             for nc = 1:prob.n.ncvx
-                prob.nonconvex_constraints{nc}(prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, x_ref, u_ref(:, k), 0, S_k_ref(:, (k - 1) * prob.n.x + (1:prob.n.x)), k) ...
+                prob.nonconvex_constraints{nc}(prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, S_k(:, (tri(prob.N - 1) + 1):tri(prob.N)), x_ref, u_ref, 0, S_k_ref, k) ...
                     - v_prime(nc) <= 0;
             end
         end
@@ -44,9 +44,9 @@ cvx_begin quiet
 
         % Boundary Conditions
         prob.initial_bc(prob.unscale_x(X(:, 1)), 0) + v_0 == 0; % Initial mean state
-        sqrtm(prob.P0 - prob.disc.Ptilde_k(:, :, 1)) == X_C(:, 1:prob.n.x); % Initial covariance
+        sqrtm(prob.Phat0) == X_C(:, 1:prob.n.x); % Initial estimated state covariance
         prob.terminal_bc(prob.unscale_x(X(:, prob.N)), 0) + v_N == 0; % Final mean state
-        norm(sqrtm(prob.Pf - prob.disc.Ptilde_k(:, :, end)) \ X_C(:, (tri(prob.N - 1) + 1):tri(prob.N))) - 1 <= 0; % Final covariance
+        norm(sqrtm(prob.Pf - prob.disc.Ptilde_k(:, :, end)) \ X_C(:, (tri(prob.N - 1) + 1):tri(prob.N))) - 1 <= 0; % Final estimated state covariance
 
         % Trust Region Constraints
         ptr_ops.alpha_x * norms(X(:, 1:prob.Nu) - x_ref(:, 1:prob.Nu), ptr_ops.q, 1) + ptr_ops.alpha_u * norms(U - u_ref, ptr_ops.q, 1) <= eta;
@@ -62,10 +62,10 @@ sol_info.vd = V;
 sol_info.vs = v_prime;
 sol_info.vbc_0 = v_0;
 sol_info.vbc_N = v_N;
-sol_info.J = prob.objective(prob.unscale_x(X), prob.unscale_u(U), 0);
+sol_info.J = prob.objective(prob.unscale_x(X), prob.unscale_u(U), 0, X_C, S_k);
 sol_info.J_tr = trust_region_cost(eta, 0, ptr_ops.w_tr, 0);
 sol_info.J_vc = virtual_control_cost(V, v_prime, v_0, v_N, ptr_ops.w_vc);
-sol_info.dJ = 100 * (prob.objective(prob.unscale_x(X), prob.unscale_u(U), 0) - prob.objective(prob.unscale_x(x_ref), prob.unscale_u(u_ref), 0)) / prob.objective(prob.unscale_x(x_ref), prob.unscale_u(u_ref), 0);
+sol_info.dJ = 100 * (prob.objective(prob.unscale_x(X), prob.unscale_u(U), 0, X_C, S_k) - prob.objective(prob.unscale_x(x_ref), prob.unscale_u(u_ref), 0, 0, S_k_ref)) / prob.objective(prob.unscale_x(x_ref), prob.unscale_u(u_ref), 0, 0, S_k_ref);
 sol_info.dx = vecnorm(X(:, 1:prob.Nu) - x_ref(:, 1:prob.Nu), ptr_ops.q, 1);
 sol_info.du = vecnorm(U - u_ref, ptr_ops.q, 1);
 sol_info.dp = 0;

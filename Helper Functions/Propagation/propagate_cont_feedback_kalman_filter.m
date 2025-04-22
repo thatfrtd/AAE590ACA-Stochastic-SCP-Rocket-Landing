@@ -1,4 +1,4 @@
-function [t_sub, x_array, xhat_array, Phat_array, u_array] = propagate_cont_feedback_kalman_filter(x_0, P_0, p, f, G, A_ref, B_ref, c_ref, x_ref, u_ref, K, L_k, C_k, D_k, f_0, g_0, t_k, tspan, N_sub, w_k_func, v_k, tolerances)
+function [t_sub, x_array, xhat_array, Phat_array, u_array] = propagate_cont_feedback_kalman_filter(x_0, Ptilde_0, p, f, G, A_ref, B_ref, c_ref, x_ref, u_ref, K, L_k, C_k, D_k, f_0, g_0, t_k, tspan, N_sub, w_k_func, v_k, tolerances)
 %CONT_KALMAN_FILTER Continuous propagation of continuous-discrete Kalman
 %filter
 %   Note - control is constant between measurements
@@ -15,7 +15,7 @@ x_array(:, 1) = x_0(:, 1);
 xhat_array = zeros([nx, numel(t_sub)]);
 xhat_array(:, 1) = x_0(:, 2);
 Phat_array = zeros([nx, nx, numel(t_sub)]);
-Phat_array(:, :, 1) = P_0;
+Phat_array(:, :, 1) = Ptilde_0;
 u_array = zeros(numel(u_ref(:, 1)), numel(t_sub));
 
 u_ref_func = @(t) interp1(t_k(1:size(u_ref, 2)), u_ref', t, "previous", "extrap")';

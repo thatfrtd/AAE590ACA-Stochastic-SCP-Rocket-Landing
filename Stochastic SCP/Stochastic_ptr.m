@@ -8,7 +8,7 @@ x_ref = zeros([prob.n.x, prob.N, ptr_ops.iter_max + 1]);
 u_ref = zeros([prob.n.u, prob.Nu, ptr_ops.iter_max + 1]);
 p_ref = zeros([prob.n.p, ptr_ops.iter_max + 1]);
 X_ref = zeros([prob.n.x, prob.n.x * prob.N * (prob.N + 1) / 2, ptr_ops.iter_max + 1]);
-S_ref = zeros([prob.n.u, prob.n.u * prob.N, ptr_ops.iter_max + 1]);
+S_ref = zeros([prob.n.u, prob.n.x * prob.N * (prob.N + 1) / 2, ptr_ops.iter_max + 1]);
 
 x_ref(:, :, 1) = prob.scale_x(prob.guess.x);
 u_ref(:, :, 1) = prob.scale_u(prob.guess.u);
@@ -56,11 +56,13 @@ for i = 1:(ptr_ops.iter_max)
         fprintf("%2.f | %17s | %5.1g | %5.1g | %5.1g | %5.1g | %5.3g | %5.3g | %5.3g | %6.3f | %6.1g | %6.1g | %5.1g | %5.1g | %5s | %5.1g | %5.1g | %5.1g | %5.1g\n", i, ptr_sol.info(i).status, norm(ptr_sol.info(i).vd), norm(ptr_sol.info(i).vs), norm(ptr_sol.info(i).vbc_0), norm(ptr_sol.info(i).vbc_N), ptr_sol.info(i).J, ptr_sol.info(i).J_tr, ptr_sol.info(i).J_vc, ptr_sol.info(i).dJ, sum(ptr_sol.info(i).dx), sum(ptr_sol.info(i).du), sum(ptr_sol.info(i).dp), ptr_sol.info(i).delta, string(ptr_sol.info(i).dyn), norm(ptr_sol.info(i).eta), norm(ptr_sol.info(i).eta_x), norm(ptr_sol.info(i).eta_u), norm(ptr_sol.info(i).eta_p))
     end
 
-    if ptr_sol.delta_xp(i) < ptr_ops.delta_tol && ~ptr_sol.converged && sol_info.dyn
-        ptr_sol.converged = true;
-        ptr_sol.converged_i = i;
-
-        break
+    if i >= ptr_ops.iter_min
+        if ptr_sol.delta_xp(i) < ptr_ops.delta_tol && ~ptr_sol.converged && sol_info.dyn
+            ptr_sol.converged = true;
+            ptr_sol.converged_i = i;
+    
+            break
+        end
     end
 end
 
@@ -71,6 +73,8 @@ end
 ptr_sol.x = prob.unscale_x(x_ref);
 ptr_sol.u = prob.unscale_u(u_ref);
 ptr_sol.p = prob.unscale_p(p_ref);
+ptr_sol.X = X_ref;
+ptr_sol.S = S_ref;
 end
 
 function [w_tr] = update_trust_region_weights(Delta, update, w_tr, Delta_min)
