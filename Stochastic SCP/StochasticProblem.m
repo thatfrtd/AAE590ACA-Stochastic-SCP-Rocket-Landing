@@ -244,7 +244,7 @@ classdef StochasticProblem
                 u_ref
                 p
                 K
-                options.x_0 = [prob.sample_initial_condition(), prob.sample_initial_condition()]
+                options.x_0 = [prob.sample_initial_condition(prob.Phat0), prob.sample_initial_condition(prob.Ptilde0)]
                 options.w_k_func = prob.create_w_func()
                 options.v_k = prob.stoch.v(prob.N)
                 options.N_sub = 15
@@ -263,7 +263,7 @@ classdef StochasticProblem
                 u_ref
                 p
                 K
-                options.x_0 = [prob.sample_initial_condition(), prob.sample_initial_condition()]
+                options.x_0 = [prob.sample_initial_condition(prob.Phat0), prob.sample_initial_condition(prob.Ptilde0)]
                 options.w_k_func = prob.create_w_func()
                 options.v_k = prob.stoch.v(prob.N)
             end
@@ -311,8 +311,8 @@ classdef StochasticProblem
             end
         end
 
-        function [x_0] = sample_initial_condition(prob)
-            x_0 = prob.x0 + chol(prob.Phat0, "lower") * randn([prob.n.x, 1]);
+        function [x_0] = sample_initial_condition(prob, P0)
+            x_0 = prob.x0 + chol(P0, "lower") * randn([prob.n.x, 1]);
         end
 
         function [w_func] = create_w_func(prob)

@@ -17,10 +17,10 @@ nu = 2;
 n_sigma_99 = sigma_mag_confidence(1e-2, nu);
 n_sigma_99p9 = sigma_mag_confidence(1e-3, nu);
 
-tri = @(k) k * (k + 1) / 2 * 5;
+tri = @(k) (k + 1) * k / 2 * 5;
 
 %% Get deterministic solution for an initial guess 
-Deterministic_2DoF_linear
+%Deterministic_2DoF_linear
 
 t_k = linspace(0, prob_2DoF.tf, prob_2DoF.N);
 if prob_2DoF.u_hold == "ZOH"
@@ -58,12 +58,13 @@ Pf = diag(sigma_xf .^ 2);
 sigma_accelx = 0.5e-5;
 sigma_accely = 0.1e-5;
 sigma_m = 1e-7;
-G = @(t, x, u, p) [zeros([2, 3]); ... % velocity
+
+delta_t = 1e-1;
+G = @(t, x, u, p) sqrt(delta_t) * [zeros([2, 3]); ... % velocity
                    [sigma_accelx; sigma_accely] .* eye([2, 3]); ... % acceleration
                    [zeros([1, 2]), sigma_m]]; ... % mass flow 
 % Brownian noise approximation
 w = @(n) randn([3, n]);
-delta_t = 1e-0;
 
 % Noise timespan
 tspan = 0:delta_t:prob_2DoF.tf;
@@ -124,14 +125,16 @@ K_k_opt = recover_gain_matrix(stoch_ptr_sol.X(:, :, stoch_ptr_sol.converged_i), 
 
 %% Check Convergence for Gamma_k
 Gamma_k = zeros([stoch_prob_2DoF.N, stoch_ptr_sol.converged_i]);
+thrust_mag_error_k = zeros([stoch_prob_2DoF.N, stoch_ptr_sol.converged_i]);
 for ms = 1:stoch_ptr_sol.converged_i
-    for k = 1:stoch_prob_2DoF.N
-        Gamma_k(k, ms) = thrust_magnitude_bound(stoch_ptr_sol.S(:, :, ms), squeeze(stoch_ptr_sol.u(:, :, ms)), k, t_k, T_max, m_0, alpha, nu);
+    for km = 1:(stoch_prob_2DoF.N - 1)
+        Gamma_k(km, ms) = thrust_magnitude_bound(stoch_ptr_sol.S(:, :, ms), squeeze(stoch_ptr_sol.u(:, :, ms)), km, t_k, T_max, m_0, alpha, nu);
+        thrust_mag_error_k(km, ms) = norm(stoch_ptr_sol.u(1:2, km, ms)) + n_sigma_99p9 * norm(stoch_ptr_sol.S(:, (tri(km - 1) + 1):tri(km), ms));
     end
 end
 
 figure
-tiledlayout(1, 2)
+tiledlayout(1, 3)
 nexttile
 plot(t_k, Gamma_k)
 title("\Gamma_k vs Time for All Iterations")
@@ -152,6 +155,16 @@ ylabel("[km / s2]")
 legend("Iter " + string(2:stoch_ptr_sol.converged_i) + " minus " + string(1:(stoch_ptr_sol.converged_i - 1)), Location="southeast")
 grid on
 
+nexttile
+plot(t_k, abs((Gamma_k - thrust_mag_error_k) / Gamma_k) * 100);
+title("%(Gamma_k - ||u_k||) vs Time for All Iterations")
+yscale("log")
+xlabel("Time [s]")
+ylabel("[km / s2]")
+legend("Iter " + string(1:stoch_ptr_sol.converged_i), Location="southeast")
+grid on
+
+
 sgtitle("\Gamma_k Convergence Plots")
 %%
 m = 100;
@@ -163,7 +176,7 @@ Phat_ofb = zeros([stoch_prob_2DoF.n.x, stoch_prob_2DoF.n.x, stoch_prob_2DoF.N, m
 u_ofb = zeros([stoch_prob_2DoF.n.u, stoch_prob_2DoF.Nu, m]);
 
 parfor i = 1:m
-    [t_ofb(:, i), x_ofb(:, :, i), xhat_ofb(:, :, i), Phat_ofb(:, :, :, i), u_ofb(:, :, i)] = stoch_prob_2DoF.disc_prop(stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.u(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.p(:, stoch_ptr_sol.converged_i), K_k_opt);
+    [t_ofb(:, i), x_ofb(:, :, i), xhat_ofb(:, :, i), Phat_ofb(:, :, :, i), u_ofb(:, :, i)] = stoch_prob_2DoF.disc_prop(stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.u(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.p(:, stoch_ptr_sol.converged_i), K_k_opt * 3);
     i
 end
 
@@ -214,8 +227,10 @@ end
 
 P_k_opt = Phat_k_opt + stoch_prob_2DoF.disc.Ptilde_k;
 %%
+%figure
 plot_2DoF_MC_trajectories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, x_ofb, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, P_k_opt, t_k, xhat_no_fb, Pf, pi / 2 - gamma_min)
-plot_2DoF_MC_time_histories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.u(:, :, stoch_ptr_sol.converged_i), t_k, x_ofb, u_ofb, t_k, stoch_ptr_sol.X(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.S(:, :, stoch_ptr_sol.converged_i), t_k, xhat_no_fb, T_max, T_min, true)
+
+%plot_2DoF_MC_time_histories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.u(:, :, stoch_ptr_sol.converged_i), t_k, x_ofb, u_ofb, t_k, stoch_ptr_sol.X(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.S(:, :, stoch_ptr_sol.converged_i), t_k, xhat_no_fb, T_max, T_min, true)
 
 %%
 plot_2DoF_MC_trajectories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, x_fb, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, P_k_opt, t_k, xhat_no_fb, Pf, pi / 2 - gamma_min)
