@@ -59,7 +59,7 @@ for i = 1:(ptr_ops.iter_max)
     if i >= ptr_ops.iter_min
         if ptr_sol.delta_xp(i) < ptr_ops.delta_tol && ~ptr_sol.converged && sol_info.dyn
             ptr_sol.converged = true;
-            ptr_sol.converged_i = i;
+            ptr_sol.converged_i = i + 1;
     
             break
         end

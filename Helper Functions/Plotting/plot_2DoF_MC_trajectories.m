@@ -51,7 +51,7 @@ ylabel("Y [km]")
 grid on
 axis equal
 
-sgtitle("Monte Carlo Simulation of 3DoF Rocket Landing with and without Optimized Feedback Policy")
+sgtitle("Monte Carlo Simulation of 2DoF Rocket Landing with and without Optimized Feedback Policy")
 
 
 % Plot zoomed in terminal section

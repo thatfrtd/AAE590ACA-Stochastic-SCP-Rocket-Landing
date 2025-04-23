@@ -1,11 +1,11 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % AAE 590ACA
 % Stochastic SCP Rocket Landing Project
-% Author: Travis Hastreiter 
+% Author: Travis Hastreiter, Atharva Awasthi
 % Created On: 19 April, 2025
 % Description: Stochastic 2DoF (all translational) landing of rocket using 
 % PTR SCP algorithm
-% Most Recent Change: 20 April, 2025
+% Most Recent Change: 23 April, 2025
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % HOW DOES FEEDBACK WITH THE THRUST MAGNITUDE PART OF THE CONTROL VECTOR
@@ -33,13 +33,13 @@ end
 % Initial estimated state
 sigma_xhat0 = [10e-3; ... % r_x
             20e-3; ... % r_y
-            10e-3; ... % v_x
-            10e-3; ... % v_y
-            10e-4]; % mass
+            1e-3; ... % v_x
+            1e-3; ... % v_y
+            1e-4]; % mass
 Phat0 = diag(sigma_xhat0 .^ 2);
 
 % Initial state estimation error
-sigma_xtilde0 = 5 * [1e-4; ... % r_x
+sigma_xtilde0 = 2 * [1e-4; ... % r_x
             5e-4; ... % r_y
             1e-4; ... % v_x
             1e-4; ... % v_y
@@ -49,9 +49,9 @@ Ptilde0 = diag(sigma_xtilde0 .^ 2);
 % Final state
 sigma_xf = [1e-2; ... % r_x
             1e-2; ... % r_y
-            1e-2; ... % v_x
-            1e-2; ... % v_y
-            1e-3]; % mass
+            1e-3; ... % v_x
+            1e-3; ... % v_y
+            1e-4]; % mass
 Pf = diag(sigma_xf .^ 2);
 
 % Disturbance
@@ -116,17 +116,35 @@ stoch_prob_2DoF = StochasticProblem.stochastify_discrete_problem(prob_2DoF, G, f
 [stoch_prob_2DoF, Delta] = stoch_prob_2DoF.discretize(stoch_prob_2DoF.guess.x, stoch_prob_2DoF.guess.u, stoch_prob_2DoF.guess.p);
 
 %% Solve Stochastic Optimization Problem with PTR
+ptr_ops.iter_max = 20;
 ptr_ops.iter_min = 5;
+ptr_ops.Delta_min = 5e-5;
+ptr_ops.w_vc = 1e1;
+ptr_ops.w_tr = ones(1, Nu) * 1e-2;
+ptr_ops.w_tr_p = 1e-1;
+ptr_ops.update_w_tr = false;
+ptr_ops.delta_tol = 1e-3;
+ptr_ops.q = 2;
+ptr_ops.alpha_x = 1;
+ptr_ops.alpha_u = 0;
+ptr_ops.alpha_p = 0;
 stoch_ptr_sol = Stochastic_ptr(stoch_prob_2DoF, ptr_ops);
 
 stoch_ptr_sol.converged_i
 %% MC Simulations with Optimized Feedback Gain
 K_k_opt = recover_gain_matrix(stoch_ptr_sol.X(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.S(:, :, stoch_ptr_sol.converged_i));
 
+K_k_ck = zeros([stoch_prob_2DoF.N, 1]);
+for km = 1:(stoch_prob_2DoF.N - 1)
+    K_k_ck(km) = norm(K_k_opt(:, :, km) * stoch_ptr_sol.X(:, (tri(km - 1) + 1):tri(km), stoch_ptr_sol.converged_i) - stoch_ptr_sol.S(:, (tri(km - 1) + 1):tri(km), stoch_ptr_sol.converged_i));
+end
+
+
 %% Check Convergence for Gamma_k
 Gamma_k = zeros([stoch_prob_2DoF.N, stoch_ptr_sol.converged_i]);
 thrust_mag_k = zeros([stoch_prob_2DoF.N, stoch_ptr_sol.converged_i]);
 thrust_mag_nom_k = zeros([stoch_prob_2DoF.N, stoch_ptr_sol.converged_i]);
+lcvx_thrust_constraint_evals = zeros([stoch_prob_2DoF.N, stoch_ptr_sol.converged_i]);
 for ms = 1:stoch_ptr_sol.converged_i
     for km = 1:(stoch_prob_2DoF.N - 1)
         Gamma_k(km, ms) = thrust_magnitude_bound(stoch_ptr_sol.S(:, :, ms), squeeze(stoch_ptr_sol.u(:, :, ms)), km, t_k, T_max, m_0, alpha, nu);
@@ -135,11 +153,17 @@ for ms = 1:stoch_ptr_sol.converged_i
     end
     ms
 end
+
+for ms = 2:stoch_ptr_sol.converged_i
+    for km = 1:(stoch_prob_2DoF.N - 1)
+        lcvx_thrust_constraint_evals(km, ms) = lcvx_thrust_constraint(stoch_ptr_sol.x(1:2, km, ms), stoch_ptr_sol.u(1:2, km, ms), 0, stoch_ptr_sol.S(:, (tri(km - 1) + 1):tri(km), ms), stoch_ptr_sol.x(1:2, :, ms - 1), stoch_ptr_sol.u(1:2, :, ms), 0, stoch_ptr_sol.S(:, :, ms), km);
+    end
+end
 %%
 figure
 tiledlayout(2, 2)
 nexttile
-plot(t_k(1:(end - 1)), Gamma_k(1:(end - 1), :) .* squeeze(exp(stoch_ptr_sol.x(5, 1:(end - 1), 1:stoch_ptr_sol.converged_i))))
+stairs(t_k(1:(end - 1)), Gamma_k(1:(end - 1), :) .* squeeze(exp(stoch_ptr_sol.x(5, 1:(end - 1), 1:stoch_ptr_sol.converged_i))))
 title("\Gamma_k vs Time for All Iterations")
 xlabel("Time [s]")
 ylabel("[km / s2]")
@@ -148,7 +172,7 @@ grid on
 
 nexttile
 for ms = 1:(stoch_ptr_sol.converged_i - 1)
-    plot(t_k, abs(Gamma_k(:, ms + 1) - Gamma_k(:, ms))); hold on
+    stairs(t_k, abs(Gamma_k(:, ms + 1) - Gamma_k(:, ms))); hold on
 end
 hold off
 title("\Delta\Gamma_k vs Time for All Iterations")
@@ -159,15 +183,15 @@ legend("Iter " + string(2:stoch_ptr_sol.converged_i) + " minus " + string(1:(sto
 grid on
 
 nexttile
-plot(t_k(1:(end - 1)), thrust_mag_k(1:(end - 1),:) .* squeeze(exp(stoch_ptr_sol.x(5, 1:(end - 1), 1:stoch_ptr_sol.converged_i))));
-title("||u_k|| vs Time for All Iterations")
+stairs(t_k(1:(end - 1)), thrust_mag_k(1:(end - 1),:) .* squeeze(exp(stoch_ptr_sol.x(5, 1:(end - 1), 1:stoch_ptr_sol.converged_i))));
+title("||u_k|| + 99.9% Uncertainty Bound vs Time for All Iterations")
 xlabel("Time [s]")
 ylabel("[km / s2]")
 legend("Iter " + string(1:stoch_ptr_sol.converged_i), Location="southeast")
 grid on
 
 nexttile
-plot(t_k(1:(end - 1)), thrust_mag_nom_k(1:(end - 1),:) .* squeeze(exp(stoch_ptr_sol.x(5, 1:(end - 1), 1:stoch_ptr_sol.converged_i))));
+stairs(t_k(1:(end - 1)), thrust_mag_nom_k(1:(end - 1),:) .* squeeze(exp(stoch_ptr_sol.x(5, 1:(end - 1), 1:stoch_ptr_sol.converged_i))));
 title("||u_k|| vs Time for All Iterations")
 xlabel("Time [s]")
 ylabel("[km / s2]")
@@ -247,8 +271,7 @@ plot_2DoF_MC_trajectories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i),
 
 %%
 figure
-covariance_plot(squeeze(x_ofb(:, end, :)), squeeze(P_k_opt(:, :, end)), Pf, ["x [km]", "y [km]", "v_x [km / s]", "v_y [km / s]", "m [kg]"], "State Dispersion at Final Node")
-
+covariance_plot(squeeze(x_ofb(:, end, :)), squeeze(P_k_opt(:, :, end)), Phat0 + Ptilde0, ["x [km]", "y [km]", "v_x [km / s]", "v_y [km / s]", "m [kg]"], "State Dispersion at Final Node")
 
 %%
 norm(sqrtm(stoch_prob_2DoF.Pf - stoch_prob_2DoF.disc.Ptilde_k(:, :, end)) \ stoch_ptr_sol.X(:, (tri(stoch_prob_2DoF.N - 1) + 1):tri(stoch_prob_2DoF.N), 3), 2) - 1 % Final covariance
