@@ -16,8 +16,8 @@ T_min = 4.97; % [kg km / s2]
 T_max = 13.26; % [kg km / s2]
 
 % Problem Parameters
-delta_t = 1.5; % [s]
-N = 40; % []
+delta_t = 3; % [s]
+N = 20; % []
 r_0 = [1; 1.5]; % [km]
 v_0 = [0; 0]; % [km / s]
 m_0 = 2000; % [kg]

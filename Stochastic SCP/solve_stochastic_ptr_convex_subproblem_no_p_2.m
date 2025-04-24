@@ -1,4 +1,4 @@
-function [x_sol, u_sol, X_sol, S_sol, sol_info] = solve_stochastic_ptr_convex_subproblem_no_p_2(prob, ptr_ops, x_ref, u_ref, S_k_ref)
+function [x_sol, u_sol, X_sol, S_sol, sol_info] = solve_stochastic_ptr_convex_subproblem_no_p_2(prob, ptr_ops, x_ref, u_ref, X_k_ref, S_k_ref)
 %SOLVE_PTR_CONVEX_SUBPROBLEM Summary of this function goes here
 %   Detailed explanation goes here
 P_yk_sqrt = sqrtm_array(prob.disc.Ptilde_minus_k);
@@ -34,11 +34,11 @@ cvx_begin
         for k = 1:prob.Nu
             % Convex Constraints
             for cc = 1:prob.n.cvx
-                prob.convex_constraints{cc}(prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, X_k(:, (tri(k - 1) + 1):tri(k)), S_k(:, (tri(k - 1) + 1):tri(k))) <= 0;
+                prob.convex_constraints{cc}(prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, X_C(:, (tri(k - 1) + 1):tri(k)), S_k(:, (tri(k - 1) + 1):tri(k))) <= 0;
             end
             % Nonconvex Constraints
             for nc = 1:prob.n.ncvx
-                prob.nonconvex_constraints{nc}(prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, S_k(:, (tri(k - 1) + 1):tri(k)), x_ref, u_ref, 0, S_k_ref, k) ...
+                prob.nonconvex_constraints{nc}(prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, X_C(:, (tri(k - 1) + 1):tri(k)), S_k(:, (tri(k - 1) + 1):tri(k)), x_ref, u_ref, 0, X_k_ref, S_k_ref, k) ...
                     - v_prime(nc) <= 0;
             end
         end
@@ -59,7 +59,7 @@ cvx_end
 for k = 1:prob.Nu
     % Nonconvex Constraints
     for nc = 1:prob.n.ncvx
-        nc_ck(k) = prob.nonconvex_constraints{nc}(prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, S_k(:, (tri(k - 1) + 1):tri(k)), x_ref, u_ref, 0, S_k_ref, k) ...
+        nc_ck(k) = prob.nonconvex_constraints{nc}(prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, X_C(:, (tri(k - 1) + 1):tri(k)), S_k(:, (tri(k - 1) + 1):tri(k)), x_ref, u_ref, 0, X_k_ref, S_k_ref, k) ...
             - v_prime(nc);
     end
 end

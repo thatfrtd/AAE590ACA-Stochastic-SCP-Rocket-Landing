@@ -217,24 +217,43 @@ classdef StochasticProblem
             phat = prob.scaling.S_p \ (p - prob.scaling.c_p); % shape????
         end
 
-        function [t_cont, x_cont, u_cont] = cont_prop_without_feedback_control(prob, u_ref, p, tspan)
+        function [t_cont, x_cont, u_cont] = cont_prop_without_feedback_control(prob, u_ref, p, options)
+            arguments
+                prob
+                u_ref
+                p
+                options.x_0 = prob.sample_initial_condition()
+                options.w_k_func = prob.create_w_func()
+                options.N_sub = 15
+            end
             %CONT_PROP_WITHOUT_FEEDBACK_CONTROL Summary of this function goes here
             %   Detailed explanation goes here
             t_k = linspace(0, prob.tf, prob.N);
-
             u_func = @(t, x) interp1(t_k(1:prob.Nu), u_ref', t, "previous", "extrap")';
 
-            [t_cont, x_cont] = sode45(prob.cont.f, prob.cont.G, u_func, p, w, tspan, prob.stoch.delta_t, prob.x0, prob.tolerances);
+            t_sub = linspace(t_k(1), t_k(end), options.N_sub * (numel(t_k) - 1) + 1);
+
+            [t_cont, x_cont] = sode45(prob.cont.f, prob.cont.G, u_func, p, prob.stoch.w, t_sub, prob.stoch.delta_t, options.x_0(:, 2), prob.tolerances, w_k_func = options.w_k_func);
 
             u_cont = u_func(t_cont(1:(numel(t_cont) - 1)));
         end
 
-        function [t_cont, x_cont, u_cont] = cont_prop_feedback_no_kalman_filter(prob, x_ref, u_ref, p, K_k, N_sub)
+        function [t_cont, x_cont, u_cont] = cont_prop_feedback_no_kalman_filter(prob, x_ref, u_ref, p, K_k, options)
+            arguments
+                prob
+                x_ref
+                u_ref
+                p
+                K_k
+                options.x_0 = prob.sample_initial_condition()
+                options.w_k_func = prob.create_w_func()
+                options.N_sub = 15
+            end
             %CONT_PROP Summary of this function goes here
             %   Detailed explanation goes here
             t_k = linspace(0, prob.tf, prob.N);
 
-            [t_cont, x_cont, u_cont] = propagate_cont_feedback_no_kalman_filter(prob.x0, x_ref, u_ref, K_k, prob.cont.f, prob.cont.G, t_k, N_sub, prob.stoch.w, prob.stoch.delta_t, prob.tolerances);
+            [t_cont, x_cont, u_cont] = propagate_cont_feedback_no_kalman_filter(options.x_0(:, 2), x_ref, u_ref, K_k, prob.cont.f, prob.cont.G, t_k, options.N_sub, options.w_k_func, prob.stoch.delta_t, prob.tolerances);
         end
 
         function [t_cont, x_cont, xhat_cont, Phat_cont, u_cont] = cont_prop(prob, x_ref, u_ref, p, K, options)
@@ -244,7 +263,7 @@ classdef StochasticProblem
                 u_ref
                 p
                 K
-                options.x_0 = [prob.sample_initial_condition(prob.Phat0), prob.sample_initial_condition(prob.Ptilde0)]
+                options.x_0 = prob.sample_initial_condition()
                 options.w_k_func = prob.create_w_func()
                 options.v_k = prob.stoch.v(prob.N)
                 options.N_sub = 15
@@ -263,7 +282,7 @@ classdef StochasticProblem
                 u_ref
                 p
                 K
-                options.x_0 = [prob.sample_initial_condition(prob.Phat0), prob.sample_initial_condition(prob.Ptilde0)]
+                options.x_0 = prob.sample_initial_condition()
                 options.w_k_func = prob.create_w_func()
                 options.v_k = prob.stoch.v(prob.N)
             end
@@ -311,15 +330,22 @@ classdef StochasticProblem
             end
         end
 
-        function [x_0] = sample_initial_condition(prob, P0)
-            x_0 = prob.x0 + chol(P0, "lower") * randn([prob.n.x, 1]);
+        function [x_0] = sample_initial_condition(prob)
+            xhat_0 = prob.x0 + chol(prob.Phat0, "lower") * randn([prob.n.x, 1]);
+            if norm(prob.Ptilde0) > 0
+                xtilde_0 = xhat_0 + chol(prob.Ptilde0, "lower") * randn([prob.n.x, 1]);
+            else
+                xtilde_0 = xhat_0;
+            end
+
+            x_0 = [xhat_0, xtilde_0];
         end
 
         function [w_func] = create_w_func(prob)
             t_k = 0:prob.stoch.delta_t:prob.tf;
             w_k = prob.stoch.w(numel(t_k));
 
-            w_func = @(t) interp1(t_k, w_k', t, "previous", "extrap")';
+            w_func = @(t) w_k(:, floor(t / prob.stoch.delta_t) + 1);
         end
     end
     methods(Static)

@@ -1,4 +1,4 @@
-function [t_sub, x_array, u_array] = propagate_cont_feedback_no_kalman_filter(x_0, x_ref, u_ref, K_k, f, G, t_k, N_sub, w, delta_t, tolerances)
+function [t_sub, x_array, u_array] = propagate_cont_feedback_no_kalman_filter(x_0, x_ref, u_ref, K_k, f, G, t_k, N_sub, w_k_func, delta_t, tolerances)
 %CONT_KALMAN_FILTER Continuous propagation of continuous-discrete Kalman
 %filter
 %   Note - control is constant between measurements
@@ -17,7 +17,7 @@ for k = 1:(numel(t_k) - 1)
     u_k = u_ref(:, k) + K_k(:, :, k) * (x_array(:, k_0 + 1) - x_ref(:, k));
     % Continuously propogate over the interval between measurements (with constant control)
 
-    [t_m, x_m, u_m] = sode45(f, G, @(t, x) u_k, 0, w, t_sub(k_0 + (1:(N_sub + 1))), delta_t, x_array(:, k_0 + 1), tolerances);
+    [t_m, x_m, u_m] = sode45(f, G, @(t, x) u_k, 0, w_k_func, t_sub(k_0 + (1:(N_sub + 1))), delta_t, x_array(:, k_0 + 1), tolerances, w_k_func);
 
     x_array(:, k_0 + (1:(N_sub + 1))) = x_m;
     u_array(:, k_0 + (1:(N_sub + 1))) = u_m;

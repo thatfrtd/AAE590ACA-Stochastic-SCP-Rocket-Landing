@@ -67,7 +67,7 @@ end
 u_mean_full = interp1(t_k(1:size(u_mean, 2)), u_mean', t_k, "previous", "extrap")';
 thrust_3sigbound_full = interp1(t_k(1:size(u_mean, 2)), thrust_3sigbound, t_k, "previous", "extrap");
 
-stairs(t_k, vecnorm(u_mean_full(1:2, :),2, 1) .* exp(x_mean(5, 1:size(u_mean_full, 2))), Color = "k",LineWidth=1, DisplayName="Nominal"); hold on
+stairs(t_k, vecnorm(u_mean_full(1:2, :),2,1) .* exp(x_mean(5, 1:size(u_mean_full, 2))), Color = "k",LineWidth=1, DisplayName="Nominal"); hold on
 stairs(t_k, (vecnorm(u_mean_full(1:2, :),2,1) + thrust_3sigbound_full) .* exp(x_mean(5, 1:size(u_mean_full, 2))), Color = [100, 100, 100] / 256, LineStyle=":", LineWidth=1, DisplayName="99.9% Bound"); hold on
 stairs(t_k, (vecnorm(u_mean_full(1:2, :),2,1) - thrust_3sigbound_full) .* exp(x_mean(5, 1:size(u_mean_full, 2))), Color = [100, 100, 100] / 256, LineStyle=":", LineWidth=1,HandleVisibility='off'); hold on
 yline(T_max, LineWidth = 1, LineStyle="--", Color="k", DisplayName = "Constraint"); hold on
