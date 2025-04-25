@@ -8,10 +8,12 @@ classdef StochasticProblem
         Phat0
         Ptilde0
         Pf
+        P_max
         N
         Nu
         n % Has .x, .u, .p, .cvx, .ncvx, .y, .w
         tf
+        tk
         u_hold string {mustBeMember(u_hold, ["ZOH"])} = "ZOH"
         guess % Has to have values .x, .u, .p
         cont % Originally .f and .G then after prob.linearize() it has .A, .B, .E, .c
@@ -30,7 +32,7 @@ classdef StochasticProblem
     end
     
     methods
-        function obj = StochasticProblem(x0, xf, Phat0, Ptilde0, Pf, N, u_hold, tf, f, G, f_0, g_0, guess, convex_constraints, objective, options)
+        function obj = StochasticProblem(x0, xf, Phat0, Ptilde0, Pf, N, u_hold, tf, tk, f, G, f_0, g_0, guess, convex_constraints, objective, options)
             arguments
                 x0
                 xf
@@ -40,6 +42,7 @@ classdef StochasticProblem
                 N
                 u_hold
                 tf
+                tk
                 f
                 G
                 f_0
@@ -64,6 +67,7 @@ classdef StochasticProblem
             obj.Phat0 = Phat0;
             obj.Ptilde0 = Ptilde0;
             obj.Pf = Pf;
+            obj.P_max 
             obj.N = N;
             obj.Nu = (u_hold == "ZOH") * (N - 1) + (u_hold == "FOH") * N;
             obj.n.x = numel(x0);
@@ -73,6 +77,7 @@ classdef StochasticProblem
             obj.n.ncvx = numel(options.nonconvex_constraints);
             obj.n.y = numel(f_0(0, x0, guess.u(:, 1), guess.p));
             obj.tf = tf;
+            obj.tk = tk;
             obj.u_hold = u_hold;
             obj.guess = guess;
             obj.cont.f = f;
@@ -122,10 +127,11 @@ classdef StochasticProblem
             %   Detailed explanation goes here
             
             % Discretize Dynamics
-            [prob.disc.A_k, prob.disc.B_k, prob.disc.E_k, prob.disc.c_k, prob.disc.G_k, Delta] = discretize_stochastic_dynamics_ZOH(prob.cont.f, prob.cont.A, prob.cont.B, prob.cont.E, prob.cont.c, prob.cont.G, prob.N, [0, prob.tf], x_ref, u_ref, p_ref, prob.tolerances);
+            [prob.disc.A_k, prob.disc.B_k, prob.disc.E_k, prob.disc.c_k, prob.disc.G_k, Delta] = discretize_stochastic_dynamics_ZOH_tk(prob.cont.f, prob.cont.A, prob.cont.B, prob.cont.E, prob.cont.c, prob.cont.G, prob.N, [0, prob.tf], x_ref, u_ref, p_ref, prob.tk, prob.tolerances);
 
             % Discretize Measurement
-            t_k = linspace(0, prob.tf, prob.N);
+            %t_k = linspace(0, prob.tf, prob.N);
+            t_k = prob.tk;
 
             prob.disc.C_k = zeros(prob.n.y, prob.n.x);
             prob.disc.D_k = zeros(prob.n.y, prob.n.y);
@@ -220,7 +226,8 @@ classdef StochasticProblem
         function [t_cont, x_cont, u_cont] = cont_prop_without_feedback_control(prob, u_ref, p, tspan)
             %CONT_PROP_WITHOUT_FEEDBACK_CONTROL Summary of this function goes here
             %   Detailed explanation goes here
-            t_k = linspace(0, prob.tf, prob.N);
+            %t_k = linspace(0, prob.tf, prob.N);
+            t_k = prob.tk;
 
             u_func = @(t, x) interp1(t_k(1:prob.Nu), u_ref', t, "previous", "extrap")';
 
@@ -232,9 +239,11 @@ classdef StochasticProblem
         function [t_cont, x_cont, u_cont] = cont_prop_feedback_no_kalman_filter(prob, x_ref, u_ref, p, K_k, N_sub)
             %CONT_PROP Summary of this function goes here
             %   Detailed explanation goes here
-            t_k = linspace(0, prob.tf, prob.N);
+            %t_k = linspace(0, prob.tf, prob.N);
+            t_k = prob.tk;
 
-            [t_cont, x_cont, u_cont] = propagate_cont_feedback_no_kalman_filter(prob.x0, x_ref, u_ref, K_k, prob.cont.f, prob.cont.G, t_k, N_sub, prob.stoch.w, prob.stoch.delta_t, prob.tolerances);
+
+            [t_cont, x_cont, u_cont] = propagate_cont_feedback_no_kalman_filter_tk(prob.x0, x_ref, u_ref, K_k, prob.cont.f, prob.cont.G, t_k, N_sub, prob.stoch.w, prob.stoch.delta_t, prob.tolerances);
         end
 
         function [t_cont, x_cont, xhat_cont, Phat_cont, u_cont] = cont_prop(prob, x_ref, u_ref, p, K, options)
@@ -251,7 +260,8 @@ classdef StochasticProblem
             end
             %CONT_PROP Summary of this function goes here
             %   Detailed explanation goes here
-            t_k = linspace(0, prob.tf, prob.N);
+            %t_k = linspace(0, prob.tf, prob.N);
+            t_k = prob.tk;
 
             [t_cont, x_cont, xhat_cont, Phat_cont, u_cont] = propagate_cont_feedback_kalman_filter(options.x_0, prob.Ptilde0, p, prob.cont.f, prob.cont.G, prob.cont.A, prob.cont.B, prob.cont.c, x_ref, u_ref, K, prob.disc.L_k, prob.disc.C_k, prob.disc.D_k, prob.filter.f_0, prob.filter.g_0, t_k, [0, prob.tf], options.N_sub, options.w_k_func, options.v_k, prob.tolerances);
         end
@@ -279,7 +289,8 @@ classdef StochasticProblem
             Ptilde_disc = zeros([prob.n.x, prob.n.x, prob.N]);
             Ptilde_disc(:, :, 1) = prob.Ptilde0;
 
-            t_k = linspace(0, prob.tf, prob.N);
+            %t_k = linspace(0, prob.tf, prob.N);
+            t_k = prob.tk;
             w_k_func = options.w_k_func;
             v_k = options.v_k;
 
@@ -368,7 +379,7 @@ classdef StochasticProblem
 
     
             stoch_prob = StochasticProblem(disc_prob.x0, disc_prob.xf, Phat0, Ptilde0, Pf, disc_prob.N, disc_prob.u_hold, disc_prob.tf, ...
-                options.f, G, f_0, g_0, stoch_guess, options.convex_constraints, ...
+                disc_prob.tk, options.f, G, f_0, g_0, stoch_guess, options.convex_constraints, ...
                 options.objective, initial_bc = disc_prob.initial_bc, terminal_bc = disc_prob.terminal_bc, ...
                 integration_tolerance = disc_prob.tolerances.AbsTol, scale = disc_prob.scale, ...
                 nonconvex_constraints = options.nonconvex_constraints, w = options.w, v = options.v, delta_t = options.delta_t);

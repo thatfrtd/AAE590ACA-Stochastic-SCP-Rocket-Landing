@@ -21,8 +21,11 @@ tri = @(k) (k + 1) * k / 2 * 5;
 
 %% Get deterministic solution for an initial guess 
 %Deterministic_2DoF_linear
-
+% p_time  = 2;            % try p = 2,3,5… larger p ⇒ stronger clustering
+% u_time = (0:prob_2DoF.N-1)/(prob_2DoF.N-1); % uniform parameter
+% t_k = prob_2DoF.tf * (1 - (1 - u_time).^p_time);
 t_k = linspace(0, prob_2DoF.tf, prob_2DoF.N);
+
 if prob_2DoF.u_hold == "ZOH"
     u_func = @(t, x) interp1(t_k(1:prob_2DoF.Nu), ptr_sol.u(:, :, ptr_sol.converged_i)', t, "previous", "extrap")';
 elseif prob_2DoF.u_hold == "FOH"

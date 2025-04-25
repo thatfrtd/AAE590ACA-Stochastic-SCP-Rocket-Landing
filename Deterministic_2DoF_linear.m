@@ -16,8 +16,8 @@ T_min = 4.97; % [kg km / s2]
 T_max = 13.26; % [kg km / s2]
 
 % Problem Parameters
-delta_t = 1.5; % [s]
-N = 40; % []
+delta_t = 3; % [s]
+N = 20; % []
 r_0 = [1; 1.5]; % [km]
 v_0 = [0; 0]; % [km / s]
 m_0 = 2000; % [kg]
@@ -31,6 +31,11 @@ x_f = zeros(4, 1);
 
 tspan = [0, N * delta_t];
 t_k = linspace(tspan(1), tspan(2), N);
+
+% Experimental Timestep manipulation
+% p_time  = 2;            % try p = 2,3,5… larger p ⇒ stronger clustering
+% u_time = (0:N-1)/(N-1); % uniform parameter
+% t_k = tspan(end) * (1 - (1 - u_time).^p_time);
 
 u_hold = "ZOH";
 Nu = (u_hold == "ZOH") * (N - 1) + (u_hold == "FOH") * N;
@@ -101,7 +106,7 @@ end
 guess = sl_guess;
 
 %% Construct Problem Object
-prob_2DoF = DeterministicProblem(x_0, x_f, N, u_hold, tspan(end), f, guess, convex_constraints, min_fuel_objective, scale = false, terminal_bc = terminal_bc);
+prob_2DoF = DeterministicProblem(x_0, x_f, N, u_hold, tspan(end), t_k, f, guess, convex_constraints, min_fuel_objective, scale = false, terminal_bc = terminal_bc);
 
 %% Test Discretization
 [prob_2DoF, Delta_disc] = prob_2DoF.discretize(guess.x, guess.u, guess.p);

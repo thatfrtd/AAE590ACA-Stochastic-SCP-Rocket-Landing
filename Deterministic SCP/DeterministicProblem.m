@@ -9,6 +9,7 @@ classdef DeterministicProblem
         Nu
         n
         tf
+        tk
         u_hold string {mustBeMember(u_hold, ["ZOH", "FOH"])} = "ZOH"
         guess
         cont
@@ -25,13 +26,14 @@ classdef DeterministicProblem
     end
     
     methods
-        function obj = DeterministicProblem(x0, xf, N, u_hold, tf, f, guess, convex_constraints, objective, options)
+        function obj = DeterministicProblem(x0, xf, N, u_hold, tf, tk, f, guess, convex_constraints, objective, options)
             arguments
                 x0
                 xf
                 N
                 u_hold
                 tf
+                tk
                 f
                 guess % Has to have values .x, .u, .p
                 convex_constraints % Cell array of constraint functions @(t, x, u, p)
@@ -55,6 +57,7 @@ classdef DeterministicProblem
             obj.n.cvx = numel(convex_constraints);
             obj.n.ncvx = numel(options.nonconvex_constraints);
             obj.tf = tf;
+            obj.tk = tk;
             obj.u_hold = u_hold;
             obj.guess = guess;
             obj.cont.f = f;
@@ -96,7 +99,8 @@ classdef DeterministicProblem
             
             % Discretize Dynamics
             if prob.u_hold == "ZOH"
-                [prob.disc.A_k, prob.disc.B_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_dynamics_ZOH(prob.cont.f, prob.cont.A, prob.cont.B, prob.cont.E, prob.cont.c, prob.N, [0, prob.tf], x_ref, u_ref, p_ref, prob.tolerances);
+                %[prob.disc.A_k, prob.disc.B_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_dynamics_ZOH(prob.cont.f, prob.cont.A, prob.cont.B, prob.cont.E, prob.cont.c, prob.N, [0, prob.tf], x_ref, u_ref, p_ref, prob.tolerances);
+                [prob.disc.A_k, prob.disc.B_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_dynamics_ZOH_tk(prob.cont.f, prob.cont.A, prob.cont.B, prob.cont.E, prob.cont.c, prob.N, [0, prob.tf], x_ref, u_ref, p_ref, prob.tk, prob.tolerances);
             elseif prob.u_hold == "FOH"
                 [prob.disc.A_k, prob.disc.B_plus_k, prob.disc.B_minus_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_dynamics_FOH(prob.cont.f, prob.cont.A, prob.cont.B, prob.cont.E, prob.cont.c, prob.N, [0, prob.tf], x_ref, u_ref, p_ref, prob.tolerances);
             end
@@ -190,7 +194,8 @@ classdef DeterministicProblem
             end
             %DISC_PROP Summary of this function goes here
             %   Detailed explanation goes here
-            t_k = linspace(0, prob.tf, prob.N);
+            %t_k = linspace(0, prob.tf, prob.N);
+            t_k = prob.tk;
 
             if prob.u_hold == "ZOH"
                 u_func = @(t) interp1(t_k(1:prob.Nu), u', t, "previous", "extrap")';

@@ -5,20 +5,23 @@ classdef StochasticProblem
     properties
         x0
         xf 
-        P0
+        Phat0
+        Ptilde0
         Pf
+        P_max
         N
         Nu
         n % Has .x, .u, .p, .cvx, .ncvx, .y, .w
         tf
+        tk
         u_hold string {mustBeMember(u_hold, ["ZOH"])} = "ZOH"
         guess % Has to have values .x, .u, .p
         cont % Originally .f and .G then after prob.linearize() it has .A, .B, .E, .c
         disc % Has .A_k, .B_k, .E_k, .c_k, .G_k, .C_k, .D_k, .Ptilde_minus_k, .Ptilde_k, .L_k
         filter % Has f_0, g_0, .C
         stoch % Has .w, .v, .delta_t
-        convex_constraints % Cell array of convex constraint functions @(x, u, p)
-        nonconvex_constraints % Cell array of nonconvex constraint functions @(x, u, p, x_ref, u_ref, p_ref)
+        convex_constraints % Cell array of convex constraint functions @(x, u, p, X_k, S_k)
+        nonconvex_constraints % Cell array of nonconvex constraint functions @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref)
         initial_bc % Has to be @(x, p)
         terminal_bc % Has to be @(x, p)
         objective % Has to be @(x, u, p)
@@ -29,27 +32,29 @@ classdef StochasticProblem
     end
     
     methods
-        function obj = StochasticProblem(x0, xf, P0, Pf, N, u_hold, tf, f, G, f_0, g_0, guess, convex_constraints, objective, options)
+        function obj = StochasticProblem(x0, xf, Phat0, Ptilde0, Pf, N, u_hold, tf, tk, f, G, f_0, g_0, guess, convex_constraints, objective, options)
             arguments
                 x0
                 xf
-                P0
+                Phat0
+                Ptilde0
                 Pf
                 N
                 u_hold
                 tf
+                tk
                 f
                 G
                 f_0
                 g_0
                 guess % Has to have values .x, .u, .p, .X_k, .S_k
                 convex_constraints % Cell array of constraint functions @(x, u, p)
-                objective % Has to be @(x, p)
+                objective % Has to be @(x, u, p, X_k, S_k)
                 options.initial_bc = @(x, p) x - x0 % Has to be @(x, p)
                 options.terminal_bc = @(x, p) x - xf % Has to be @(x, p)
                 options.integration_tolerance = 1e-12
                 options.scale = true
-                options.nonconvex_constraints = [] % Cell array of constraint functions @(x, u, p, x_ref, u_ref, p_ref)
+                options.nonconvex_constraints = [] % Cell array of constraint functions @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref)
                 options.w = @(n) randn([size(G(0, x0, guess.u(:, 1), guess.p), 2), n])
                 options.v = @(n) randn([numel(f_0(0, x0, guess.u(:, 1), guess.p)), n])
                 options.delta_t = 1e0
@@ -59,8 +64,10 @@ classdef StochasticProblem
 
             obj.x0 = x0;
             obj.xf = xf;
-            obj.P0 = P0;
+            obj.Phat0 = Phat0;
+            obj.Ptilde0 = Ptilde0;
             obj.Pf = Pf;
+            obj.P_max 
             obj.N = N;
             obj.Nu = (u_hold == "ZOH") * (N - 1) + (u_hold == "FOH") * N;
             obj.n.x = numel(x0);
@@ -70,6 +77,7 @@ classdef StochasticProblem
             obj.n.ncvx = numel(options.nonconvex_constraints);
             obj.n.y = numel(f_0(0, x0, guess.u(:, 1), guess.p));
             obj.tf = tf;
+            obj.tk = tk;
             obj.u_hold = u_hold;
             obj.guess = guess;
             obj.cont.f = f;
@@ -122,7 +130,8 @@ classdef StochasticProblem
             [prob.disc.A_k, prob.disc.B_k, prob.disc.E_k, prob.disc.c_k, prob.disc.G_k, Delta] = discretize_stochastic_dynamics_ZOH(prob.cont.f, prob.cont.A, prob.cont.B, prob.cont.E, prob.cont.c, prob.cont.G, prob.N, [0, prob.tf], x_ref, u_ref, p_ref, prob.tolerances);
 
             % Discretize Measurement
-            t_k = linspace(0, prob.tf, prob.N);
+            %t_k = linspace(0, prob.tf, prob.N);
+            t_k = prob.tk;
 
             prob.disc.C_k = zeros(prob.n.y, prob.n.x);
             prob.disc.D_k = zeros(prob.n.y, prob.n.y);
@@ -132,7 +141,7 @@ classdef StochasticProblem
             end
 
             % Precompute Kalman Filter Gain and 
-            [prob.disc.Ptilde_minus_k, prob.disc.Ptilde_k, prob.disc.L_k] = compute_Kalman_matrices_apriori(prob.P0, prob.disc.A_k, prob.disc.G_k, prob.disc.C_k, prob.disc.D_k);
+            [prob.disc.Ptilde_minus_k, prob.disc.Ptilde_k, prob.disc.L_k] = compute_Kalman_matrices_apriori(prob.Ptilde0, prob.disc.A_k, prob.disc.G_k, prob.disc.C_k, prob.disc.D_k);
         end
 
         function [scaling] = compute_scaling(obj)
@@ -241,7 +250,7 @@ classdef StochasticProblem
                 u_ref
                 p
                 K
-                options.x_0 = [prob.sample_initial_condition(), prob.sample_initial_condition()]
+                options.x_0 = [prob.sample_initial_condition(prob.Phat0), prob.sample_initial_condition(prob.Ptilde0)]
                 options.w_k_func = prob.create_w_func()
                 options.v_k = prob.stoch.v(prob.N)
                 options.N_sub = 15
@@ -250,17 +259,17 @@ classdef StochasticProblem
             %   Detailed explanation goes here
             t_k = linspace(0, prob.tf, prob.N);
 
-            [t_cont, x_cont, xhat_cont, Phat_cont, u_cont] = propagate_cont_feedback_kalman_filter(options.x_0, prob.P0, p, prob.cont.f, prob.cont.G, prob.cont.A, prob.cont.B, prob.cont.c, x_ref, u_ref, K, prob.disc.L_k, prob.disc.C_k, prob.disc.D_k, prob.filter.f_0, prob.filter.g_0, t_k, [0, prob.tf], options.N_sub, options.w_k_func, options.v_k, prob.tolerances);
+            [t_cont, x_cont, xhat_cont, Phat_cont, u_cont] = propagate_cont_feedback_kalman_filter(options.x_0, prob.Ptilde0, p, prob.cont.f, prob.cont.G, prob.cont.A, prob.cont.B, prob.cont.c, x_ref, u_ref, K, prob.disc.L_k, prob.disc.C_k, prob.disc.D_k, prob.filter.f_0, prob.filter.g_0, t_k, [0, prob.tf], options.N_sub, options.w_k_func, options.v_k, prob.tolerances);
         end
 
-        function [t_k, x_disc, xhat_disc, Phat_disc, u_disc] = disc_prop(prob, x_ref, u_ref, p, K, options)
+        function [t_k, x_disc, xtilde_disc, Ptilde_disc, u_disc] = disc_prop(prob, x_ref, u_ref, p, K, options)
             arguments
                 prob
                 x_ref
                 u_ref
                 p
                 K
-                options.x_0 = [prob.sample_initial_condition(), prob.sample_initial_condition()]
+                options.x_0 = [prob.sample_initial_condition(prob.Phat0), prob.sample_initial_condition(prob.Ptilde0)]
                 options.w_k_func = prob.create_w_func()
                 options.v_k = prob.stoch.v(prob.N)
             end
@@ -268,15 +277,16 @@ classdef StochasticProblem
             %   Detailed explanation goes here
             x_disc = zeros([prob.n.x, prob.N]);
             x_disc(:, 1) = options.x_0(:, 1);
-            xhat_disc = x_disc;
-            xhat_disc(:, 1) = options.x_0(:, 2);
+            xtilde_disc = x_disc;
+            xtilde_disc(:, 1) = options.x_0(:, 2);
 
             u_disc = zeros([prob.n.u, prob.N - 1]);
 
-            Phat_disc = zeros([prob.n.x, prob.n.x, prob.N]);
-            Phat_disc(:, :, 1) = prob.P0;
+            Ptilde_disc = zeros([prob.n.x, prob.n.x, prob.N]);
+            Ptilde_disc(:, :, 1) = prob.Ptilde0;
 
-            t_k = linspace(0, prob.tf, prob.N);
+            %t_k = linspace(0, prob.tf, prob.N);
+            t_k = prob.tk;
             w_k_func = options.w_k_func;
             v_k = options.v_k;
 
@@ -285,7 +295,7 @@ classdef StochasticProblem
 
             for k = 1:(prob.N - 1)
                 % Compute control
-                u_disc(:, k) = u_ref(:, k) + K(:, :, k) * (xhat_disc(:, k) - x_ref(:, k));
+                u_disc(:, k) = u_ref(:, k) + K(:, :, k) * (xtilde_disc(:, k) - x_ref(:, k));
 
                 % Time update
                 % True state
@@ -294,22 +304,22 @@ classdef StochasticProblem
                 x_disc(:, k + 1) = x_cont_k(:, end);
                 
                 % Estimated state
-                xhat_disc(:, k + 1) = prob.disc.A_k(:, :, k) * xhat_disc(:, k) ...
+                xtilde_disc(:, k + 1) = prob.disc.A_k(:, :, k) * xtilde_disc(:, k) ...
                              + prob.disc.B_k(:, :, k) * u_disc(:, k) ...
                              + zero_if_empty(prob.disc.E_k(:, :, k) * p) ...
                              + prob.disc.c_k(:, :, k);
-                Phat_disc(:, :, k + 1) = covariance_time_update(prob.disc.A_k(:, :, k), Phat_disc(:, :, k), prob.disc.G_k(:, :, k));
+                Ptilde_disc(:, :, k + 1) = covariance_time_update(prob.disc.A_k(:, :, k), Ptilde_disc(:, :, k), prob.disc.G_k(:, :, k));
 
                 % Measurement update
-                y_k = prob.filter.f_0(t_k(k + 1), x_disc(:, k + 1), u_disc(:, k)) + prob.filter.g_0(xhat_disc(:, k + 1), u_disc(:, k)) * v_k(:, k + 1);
-                ytilde_minus_k = innovation_process(y_k, prob.disc.C_k(:, :, k + 1), xhat_disc(:, k + 1));
-                xhat_disc(:, k + 1) = estimate_measurement_update(xhat_disc(:, k + 1), prob.disc.L_k(:, :, k + 1), ytilde_minus_k);
-                Phat_disc(:, :, k + 1) = covariance_measurement_update(prob.disc.L_k(:, :, k + 1), prob.disc.C_k(:, :, k + 1), Phat_disc(:, :, k + 1), prob.disc.D_k(:, :, k + 1));
+                y_k = prob.filter.f_0(t_k(k + 1), x_disc(:, k + 1), u_disc(:, k)) + prob.filter.g_0(xtilde_disc(:, k + 1), u_disc(:, k)) * v_k(:, k + 1);
+                ytilde_minus_k = innovation_process(y_k, prob.disc.C_k(:, :, k + 1), xtilde_disc(:, k + 1));
+                xtilde_disc(:, k + 1) = estimate_measurement_update(xtilde_disc(:, k + 1), prob.disc.L_k(:, :, k + 1), ytilde_minus_k);
+                Ptilde_disc(:, :, k + 1) = covariance_measurement_update(prob.disc.L_k(:, :, k + 1), prob.disc.C_k(:, :, k + 1), Ptilde_disc(:, :, k + 1), prob.disc.D_k(:, :, k + 1));
             end
         end
 
-        function [x_0] = sample_initial_condition(prob)
-            x_0 = prob.x0 + chol(prob.P0, "lower") * randn([prob.n.x, 1]);
+        function [x_0] = sample_initial_condition(prob, P0)
+            x_0 = prob.x0 + chol(P0, "lower") * randn([prob.n.x, 1]);
         end
 
         function [w_func] = create_w_func(prob)
@@ -320,18 +330,23 @@ classdef StochasticProblem
         end
     end
     methods(Static)
-        function [stoch_prob] = stochastify_discrete_problem(disc_prob, G, f_0, g_0, P0, Pf, options)
+        function [stoch_prob] = stochastify_discrete_problem(disc_prob, G, f_0, g_0, Phat0, Ptilde0, Pf, options)
             arguments
                 disc_prob
                 G
                 f_0
                 g_0
-                P0
+                Phat0
+                Ptilde0
                 Pf
+                options.f = disc_prob.cont.f
                 options.w = @(n) randn([size(G(0, disc_prob.x0, disc_prob.guess.u(:, 1), disc_prob.guess.p), 2), n])
                 options.v = @(n) randn([numel(f_0(0, disc_prob.x0, disc_prob.guess.u(:, 1), disc_prob.guess.p)), n])
                 options.delta_t = 1e0
                 options.sol = []
+                options.objective = []
+                options.convex_constraints = []
+                options.nonconvex_constraints = []
             end
             
             if ~isempty(options.sol)
@@ -346,12 +361,24 @@ classdef StochasticProblem
                 stoch_guess = disc_prob.guess;
             end
 
+            if isnumeric(options.objective)
+                options.objecive = disc_prob.objective;
+            end
+
+            if isnumeric(options.convex_constraints)
+                options.convex_constraints = disc_prob.convex_constraints;
+            end
+
+            if isnumeric(options.nonconvex_constraints)
+                options.nonconvex_constraints = disc_prob.nonconvex_constraints;
+            end
+
     
-            stoch_prob = StochasticProblem(disc_prob.x0, disc_prob.xf, P0, Pf, disc_prob.N, disc_prob.u_hold, disc_prob.tf, ...
-                disc_prob.cont.f, G, f_0, g_0, stoch_guess, disc_prob.convex_constraints, ...
-                disc_prob.objective, initial_bc = disc_prob.initial_bc, terminal_bc = disc_prob.terminal_bc, ...
+            stoch_prob = StochasticProblem(disc_prob.x0, disc_prob.xf, Phat0, Ptilde0, Pf, disc_prob.N, disc_prob.u_hold, disc_prob.tf, ...
+                disc_prob.tk, options.f, G, f_0, g_0, stoch_guess, options.convex_constraints, ...
+                options.objective, initial_bc = disc_prob.initial_bc, terminal_bc = disc_prob.terminal_bc, ...
                 integration_tolerance = disc_prob.tolerances.AbsTol, scale = disc_prob.scale, ...
-                nonconvex_constraints = disc_prob.nonconvex_constraints, w = options.w, v = options.v, delta_t = options.delta_t);
+                nonconvex_constraints = options.nonconvex_constraints, w = options.w, v = options.v, delta_t = options.delta_t);
         end
     end
 end

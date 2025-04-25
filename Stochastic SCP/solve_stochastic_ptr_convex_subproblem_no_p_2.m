@@ -54,6 +54,8 @@ cvx_begin
 
         % Trust Region Constraints
         ptr_ops.alpha_x * norms(X(:, 1:prob.Nu) - x_ref(:, 1:prob.Nu), ptr_ops.q, 1) + ptr_ops.alpha_u * norms(U - u_ref, ptr_ops.q, 1) <= eta;
+
+
 cvx_end
 
 for k = 1:prob.Nu
@@ -63,6 +65,8 @@ for k = 1:prob.Nu
             - v_prime(nc);
     end
 end
+
+%for k = 1:prob.Nu
 
 x_sol = X;
 u_sol = U;
