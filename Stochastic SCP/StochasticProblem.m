@@ -359,6 +359,7 @@ classdef StochasticProblem
                 Ptilde0
                 Pf
                 options.f = disc_prob.cont.f
+                options.terminal_bc = disc_prob.terminal_bc
                 options.w = @(n) randn([size(G(0, disc_prob.x0, disc_prob.guess.u(:, 1), disc_prob.guess.p), 2), n])
                 options.v = @(n) randn([numel(f_0(0, disc_prob.x0, disc_prob.guess.u(:, 1), disc_prob.guess.p)), n])
                 options.delta_t = 1e0
@@ -395,7 +396,7 @@ classdef StochasticProblem
     
             stoch_prob = StochasticProblem(disc_prob.x0, disc_prob.xf, Phat0, Ptilde0, Pf, disc_prob.N, disc_prob.u_hold, disc_prob.tf, ...
                 options.f, G, f_0, g_0, stoch_guess, options.convex_constraints, ...
-                options.objective, initial_bc = disc_prob.initial_bc, terminal_bc = disc_prob.terminal_bc, ...
+                options.objective, initial_bc = disc_prob.initial_bc, terminal_bc = options.terminal_bc, ...
                 integration_tolerance = disc_prob.tolerances.AbsTol, scale = disc_prob.scale, ...
                 nonconvex_constraints = options.nonconvex_constraints, w = options.w, v = options.v, delta_t = options.delta_t);
         end

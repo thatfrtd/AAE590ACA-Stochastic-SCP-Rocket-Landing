@@ -14,10 +14,7 @@
 
 %% Stochastic Optimization Parameters
 nu = 2;
-n_sigma_99 = sigma_mag_confidence(1e-2, nu);
-n_sigma_99p9 = sigma_mag_confidence(1e-3, nu);
-
-n_probit_99p9 = norminv(1 - 1e-3);
+nr = 2;
 
 tri = @(k) (k + 1) * k / 2 * 5;
 
@@ -57,8 +54,8 @@ sigma_xf = [1e-2; ... % r_x
 Pf = diag(sigma_xf .^ 2);
 
 % Disturbance
-sigma_accelx = 0.5e-5;
-sigma_accely = 0.1e-5;
+sigma_accelx = 0.5e-3;
+sigma_accely = 0.1e-3;
 sigma_m = 1e-7;
 
 delta_t = 1e-1;
@@ -86,7 +83,7 @@ g_0 = @(t, x, u, p) diag(g_0_stds);
 
 %% Stochastify Objective and Constraints
 % Objective
-stochastic_min_fuel_objective = @(x, u, p, X_k, S_k) einsum(@(k) norm(u(1:2, k), 2) + n_sigma_99 * norm(S_k(:, (tri(k - 1) + 1):tri(k)), 2), 1:Nu) * delta_t;
+stochastic_min_fuel_objective = @(x, u, p, X_k, S_k) einsum(@(k) norm(u(1:2, k), 2) + sigma_mag_confidence(1e-2, nu) * norm(S_k(:, (tri(k - 1) + 1):tri(k)), 2), 1:Nu) * delta_t;
 
 % Define bounds
 z_lb = @(t) log(m_0 - alpha * T_max * t);
@@ -98,8 +95,9 @@ z_lb_k = z_lb(t_k);
 state_convex_constraints = {};
 
 % Nonconvex state path constraints
-lcvx_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) norm(u(1:2)) + n_sigma_99p9 * norm(S_k) - thrust_magnitude_bound(S_k_ref, u_ref, k, t_k, T_max, m_0, alpha, nu);
-glideslope_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) (norm(x(1:2)) + n_sigma_99p9 * norm(X_k_ref(1:2, (tri(k - 1) + 1):tri(k)))) * cos(pi / 2 - gamma_min) - (x(2) - n_probit_99p9 * norm(X_k_ref(2, (tri(k - 1) + 1):tri(k))));
+glideslope_angle_max = deg2rad(60);
+h_glideslope = calculate_glideslope_offset(sigma_xf(1:2) * norminv(1 - 1e-3 / 2), glideslope_angle_max);
+glideslope_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) (norm(x(1:2) + [0; h_glideslope]) + 0*sigma_mag_confidence(1e-3, nr) * norm(X_k_ref(1:2, (tri(k - 1) + 1):tri(k)))) * cos(glideslope_angle_max) - (x(2) + h_glideslope - norminv(1 - 1e-3) * norm(X_k_ref(2, (tri(k - 1) + 1):tri(k))));
 state_nonconvex_constraints = {glideslope_constraint};
 
 % Convex control constraints
@@ -109,7 +107,7 @@ control_convex_constraints = {};
 convex_constraints = [state_convex_constraints, control_convex_constraints];
 
 % Nonconvex control constraints
-lcvx_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) norm(u(1:2)) + n_sigma_99p9 * norm(S_k) - thrust_magnitude_bound(S_k_ref, u_ref, k, t_k, T_max, m_0, alpha, nu);
+lcvx_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) norm(u(1:2)) + sigma_mag_confidence(1e-3 / 2, nu) * norm(S_k) - thrust_magnitude_bound(S_k_ref, u_ref, k, t_k, T_max, m_0, alpha, nu);
 control_nonconvex_constraints = {lcvx_thrust_constraint};
 
 % Combine nonconvex constraints
@@ -119,15 +117,16 @@ nonconvex_constraints = [state_nonconvex_constraints, control_nonconvex_constrai
 f_stoch = @(t, x, u, p) SymDynamics2DoF_linear_noumag(t, x, u, vehicle.alpha);
 ptr_sol_mod = ptr_sol;
 ptr_sol_mod.u = ptr_sol_mod.u(1:2, :, :);
-prob_2DoF.xf = [0; 0.002; 0; 0];
-stoch_prob_2DoF = StochasticProblem.stochastify_discrete_problem(prob_2DoF, G, f_0, g_0, Phat0, Ptilde0, Pf, f = f_stoch, sol = ptr_sol_mod, objective = stochastic_min_fuel_objective, convex_constraints = convex_constraints, nonconvex_constraints = nonconvex_constraints);
+prob_2DoF.xf = [0; sigma_xf(2) * norminv(1 - 1e-3); 0; 0];
+stoch_terminal_bc = @(x, p) [x(1:4) - prob_2DoF.xf; 0];
+stoch_prob_2DoF = StochasticProblem.stochastify_discrete_problem(prob_2DoF, G, f_0, g_0, Phat0, Ptilde0, Pf, f = f_stoch, sol = ptr_sol_mod, objective = stochastic_min_fuel_objective, convex_constraints = convex_constraints, nonconvex_constraints = nonconvex_constraints, terminal_bc = stoch_terminal_bc);
 [stoch_prob_2DoF, Delta] = stoch_prob_2DoF.discretize(stoch_prob_2DoF.guess.x, stoch_prob_2DoF.guess.u, stoch_prob_2DoF.guess.p);
 
 %% Solve Stochastic Optimization Problem with PTR
 ptr_ops.iter_max = 20;
 ptr_ops.iter_min = 5;
 ptr_ops.Delta_min = 5e-5;
-ptr_ops.w_vc = 1e1;
+ptr_ops.w_vc = 1e2;
 ptr_ops.w_tr = ones(1, Nu) * 1e-2;
 ptr_ops.w_tr_p = 1e-1;
 ptr_ops.update_w_tr = false;
@@ -270,12 +269,12 @@ end
 P_k_opt = Phat_k_opt + stoch_prob_2DoF.disc.Ptilde_k;
 %%
 
-plot_2DoF_MC_trajectories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, x_ofb, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, P_k_opt, t_k, xhat_no_fb, Pf, pi / 2 - gamma_min)
+plot_2DoF_MC_trajectories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, x_ofb, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, P_k_opt, t_k, xhat_no_fb, Pf, glideslope_angle_max, h_glideslope)
 %%
 plot_2DoF_MC_time_histories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.u(:, :, stoch_ptr_sol.converged_i), t_k, x_ofb, u_ofb, t_k, stoch_ptr_sol.X(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.S(:, :, stoch_ptr_sol.converged_i), t_k, xhat_no_fb, T_max, T_min, true)
 
 %%
-plot_2DoF_MC_trajectories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, x_fb, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, P_k_opt, t_k, xhat_no_fb, Pf, pi / 2 - gamma_min)
+plot_2DoF_MC_trajectories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, x_fb, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, P_k_opt, t_k, xhat_no_fb, Pf, glideslope_angle_max, h_glideslope)
 
 %%
 figure
