@@ -8,6 +8,7 @@ tri = @(k) k * (k + 1) / 2 * prob.n.x;
 cvx_begin
     variable X(prob.n.x, prob.N)
     variable U(prob.n.u, prob.Nu)
+    variable u_mag(1, prob.Nu)
     variable eta(1, prob.Nu)
     variable V(prob.n.x, prob.N - 1)
     variable v_prime(prob.n.ncvx)

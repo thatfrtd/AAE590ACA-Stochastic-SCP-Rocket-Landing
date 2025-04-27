@@ -14,7 +14,7 @@ v_f = x_f(4:6);
 %tf_guess = norm(v_f-v_0 + sqrt(2 * [0; g] * x_0(2)), 2)/(g - T_guess * vehicle.max_thrust/vehicle.m);
 
 % State guess
-x_guess = zeros([12, N]);
+x_guess = zeros([13, N]);
 
 % r_guess
 x_guess(1:3, :) = straight_line_interpolate(x_0(1:3), x_f(1:3), N);
@@ -25,16 +25,16 @@ x_guess(4:6, :) = repmat(v_cst, 1, N);
 
 % CHANGE TO SPHERICALLY INTERPOLATE ANGLES AND ANGULAR VELOCITIES!!
 % θ_guess 
-q_start = quaternion(x_0(7:9)', "euler", "XYX", "frame");
-q_end = quaternion(x_f(7:9)', "euler", "XYX", "frame");
-quat2 = slerp(q_start, q_end, linspace(0 , 1, N));
-x_guess(7:9, :) = euler(quat2, "XYX", "frame")';
-%x_guess(7:9, :) = straight_line_interpolate(x_0(7:9), x_f(7:9), N);
+
+q_start = quaternion(x_0(7:10).')
+q_end = quaternion(x_f(7:10).')
+quat2 = slerp(q_start, q_end, linspace(0, 1, N))
+x_guess(7:10, :) = quat2.'
 
 % ω_guess
-w_cst = (x_0(7:9) - x_f(7:9)) / (N * t_step);
+w_cst = angvel(quat2, t_step, "frame").';
 
-x_guess(10:12, :) = repmat(w_cst(1:numel(10:12)), 1, N);
+x_guess(11:13, :) = angvel(quat2, t_step, "frame").';
 
 guess.x = x_guess;
 guess.u = u_guess;

@@ -1,4 +1,4 @@
-function [ptr_sol] = Stochastic_ptr(prob, ptr_ops)
+function [ptr_sol] = Stochastic_ptr_Job(prob, ptr_ops, prob_num)
 %PTR Sequential Convex Programming algorithm
 %   If converged, solution satisfies the nonlinear continuous-time equations of motion
 % to within a tolerance on the order of eps_feasible feasible, satisfies all algebraic constraints at each
@@ -22,14 +22,12 @@ ptr_sol.delta_xp = zeros([1, ptr_ops.iter_max]);
 % Convexify along initial guess
 [prob, ptr_sol.Delta(:, 1)] = convexify_along_reference(prob, prob.guess.x, prob.guess.u, prob.guess.p);
 
-disp(" k |       status      |   vd  |   vs  |  vbc_NP |  vbc_N |    J    |   J_tr  |   J_vc   |   dJ %  |   dx   |   du   |   dp   | delta |  dyn  |  eta  | eta_x | eta_u | eta_p")
-
 for i = 1:(ptr_ops.iter_max)
     % Solve convex subproblem and update reference
     if prob.n.p == 0
         [x_ref(:, :, i + 1), u_ref(:, :, i + 1), X_ref(:, :, i + 1), S_ref(:, :, i + 1), sol_info] = solve_stochastic_ptr_convex_subproblem_no_p_2(prob, ptr_ops, x_ref(:, :, i), u_ref(:, :, i), X_ref(:, :, i), S_ref(:, :, i));
     else
-        [x_ref(:, :, i + 1), u_ref(:, :, i + 1), p_ref(:, i + 1), sol_info] = solve_stochastic_ptr_convex_subproblem(prob, ptr_ops, x_ref(:, :, i), u_ref(:, :, i), p_ref(:, i));
+        %[x_ref(:, :, i + 1), u_ref(:, :, i + 1), p_ref(:, i + 1), sol_info] = solve_stochastic_ptr_convex_subproblem(prob, ptr_ops, x_ref(:, :, i), u_ref(:, :, i), p_ref(:, i));
     end
 
     % Convexify along reference trajectory
@@ -43,17 +41,17 @@ for i = 1:(ptr_ops.iter_max)
 
     % Display results of iteration
     if i ~= 1
-        ptr_sol.info(i).dJ = ptr_sol.info(i - 1);
+       ptr_sol.info(i).dJ = ptr_sol.info(i - 1);
     end
     sol_info.delta = ptr_sol.delta_xp(i);
     sol_info.dyn = norm(ptr_sol.Delta(:, i + 1)) <= ptr_ops.Delta_min;
 
-    ptr_sol.info(i) = sol_info;
+   ptr_sol.info(i) = sol_info;
 
     if i == 1
-        fprintf("%2.f | %17s | %5.1g | %5.1g | %5.1g | %5.1g | %5.3g | %5.3g | %5.3g |         | %6.1g | %6.1g | %5.1g | %5.1g | %5s | %5.1g | %5.1g | %5.1g | %5.1g\n", i, ptr_sol.info(i).status, norm(ptr_sol.info(i).vd), norm(ptr_sol.info(i).vs), norm(ptr_sol.info(i).vbc_NP), norm(ptr_sol.info(i).vbc_N), ptr_sol.info(i).J, ptr_sol.info(i).J_tr, ptr_sol.info(i).J_vc, sum(ptr_sol.info(i).dx), sum(ptr_sol.info(i).du), sum(ptr_sol.info(i).dp), ptr_sol.info(i).delta, string(ptr_sol.info(i).dyn), norm(ptr_sol.info(i).eta), norm(ptr_sol.info(i).eta_x), norm(ptr_sol.info(i).eta_u), norm(ptr_sol.info(i).eta_p))
+        iter_info = sprintf("%2.g|%17s|%5.1g|%5.1g|%5.1g|%5.1g|%5.2g|\n%5.1g|%5.1g|       |%6.1g|%6.1g|%5.1g|%5s|%5.1g", i, ptr_sol.info(i).status, norm(ptr_sol.info(i).vd), norm(ptr_sol.info(i).vs), norm(ptr_sol.info(i).vbc_NP), norm(ptr_sol.info(i).vbc_N), ptr_sol.info(i).J, ptr_sol.info(i).J_tr, ptr_sol.info(i).J_vc, sum(ptr_sol.info(i).dx), sum(ptr_sol.info(i).du), ptr_sol.info(i).delta, string(ptr_sol.info(i).dyn), norm(ptr_sol.info(i).eta));
     else
-        fprintf("%2.f | %17s | %5.1g | %5.1g | %5.1g | %5.1g | %5.3g | %5.3g | %5.3g | %6.3f | %6.1g | %6.1g | %5.1g | %5.1g | %5s | %5.1g | %5.1g | %5.1g | %5.1g\n", i, ptr_sol.info(i).status, norm(ptr_sol.info(i).vd), norm(ptr_sol.info(i).vs), norm(ptr_sol.info(i).vbc_NP), norm(ptr_sol.info(i).vbc_N), ptr_sol.info(i).J, ptr_sol.info(i).J_tr, ptr_sol.info(i).J_vc, ptr_sol.info(i).dJ, sum(ptr_sol.info(i).dx), sum(ptr_sol.info(i).du), sum(ptr_sol.info(i).dp), ptr_sol.info(i).delta, string(ptr_sol.info(i).dyn), norm(ptr_sol.info(i).eta), norm(ptr_sol.info(i).eta_x), norm(ptr_sol.info(i).eta_u), norm(ptr_sol.info(i).eta_p))
+        iter_info = sprintf("%2.g|%17s|%5.1g|%5.1g|%5.1g|%5.1g|%5.2g|\n %5.1g|%5.1g|%6.1g|%6.1g|%6.1g|%5.1g|%5s|%5.1g", i, ptr_sol.info(i).status, norm(ptr_sol.info(i).vd), norm(ptr_sol.info(i).vs), norm(ptr_sol.info(i).vbc_NP), norm(ptr_sol.info(i).vbc_N), ptr_sol.info(i).J, ptr_sol.info(i).J_tr, ptr_sol.info(i).J_vc, ptr_sol.info(i).dJ, sum(ptr_sol.info(i).dx), sum(ptr_sol.info(i).du), ptr_sol.info(i).delta, string(ptr_sol.info(i).dyn), norm(ptr_sol.info(i).eta));
     end
 
     if i >= ptr_ops.iter_min
@@ -61,13 +59,21 @@ for i = 1:(ptr_ops.iter_max)
             ptr_sol.converged = true;
             ptr_sol.converged_i = i + 1;
     
+            iter_info = "completed";
             break
         end
     end
+
+    % Get the ValueStore object of the current job.
+    store = getCurrentValueStore;
+    % Store the simulation results in the 
+    % job ValueStore object with a unique key.
+    key = "Iter " + i;
+    store(key) = struct(iter = i, iter_info = iter_info, progress = max(i / ptr_ops.iter_max, ptr_sol.converged), prob_num = prob_num);
 end
 
 if ptr_sol.converged == false
-    warning("PTR did not converge after %g iterations. delta_xp = %.3f. norm(Delta) = %.3f\n", i, ptr_sol.delta_xp(i), norm(ptr_sol.Delta(:, end)))
+   warning("PTR did not converge after %g iterations. delta_xp = %.3f. norm(Delta) = %.3f\n", i, ptr_sol.delta_xp(i), norm(ptr_sol.Delta(:, end)))
 end
 
 ptr_sol.x = prob.unscale_x(x_ref);

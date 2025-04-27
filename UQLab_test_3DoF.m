@@ -10,10 +10,9 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % NEED TO MAKE STOCHASTIC MODEL??
 %% Run Deterministic 3DoF
-Deterministic_3DoF
+Deterministic_3DoF_linear
 
 %% Initialize
-
 G = @(g_c_stds) (@(t, x, u, p) [zeros([2, 3]); ... % velocity
                    [g_c_stds(1); g_c_stds(2)] .* eye([2, 3]); ... % acceleration
                    zeros([1, 3]); ... % angular velocity
@@ -23,15 +22,11 @@ g_0 = @(g_0_stds) (@(t, x, u, p) diag(g_0_stds));
 
 stoch_prob_3DoF = StochasticProblem.stochastify_discrete_problem(prob_3DoF, G(zeros([3, 1])), f_0, g_0(zeros([6, 1])), zeros(6), zeros(6), sol = ptr_sol);
 
-K_k = -3*repmat([0, 1, 0, 0, 0, 0; 0, 0, 0, 0, -1, 0; 0, 1, 0, 0, 1, 0], 1, 1, stoch_prob_3DoF.Nu);
 
-m = 20;
-
-parameters.stoch_prob_3DoF = stoch_prob_3DoF;
+parameters.stoch_prob = stoch_prob_2DoF;
 parameters.G = G;
 parameters.g_0 = g_0;
-parameters.K_k = K_k;
-parameters.m = m;
+parameters.m = 20;
 parameters.N_sub = 1;
 
 %% Create Model

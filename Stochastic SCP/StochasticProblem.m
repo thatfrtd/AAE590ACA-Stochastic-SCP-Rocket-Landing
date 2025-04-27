@@ -229,13 +229,12 @@ classdef StochasticProblem
             %CONT_PROP_WITHOUT_FEEDBACK_CONTROL Summary of this function goes here
             %   Detailed explanation goes here
             t_k = linspace(0, prob.tf, prob.N);
-            u_func = @(t, x) interp1(t_k(1:prob.Nu), u_ref', t, "previous", "extrap")';
-
+            
             t_sub = linspace(t_k(1), t_k(end), options.N_sub * (numel(t_k) - 1) + 1);
 
-            [t_cont, x_cont] = sode45(prob.cont.f, prob.cont.G, u_func, p, prob.stoch.w, t_sub, prob.stoch.delta_t, options.x_0(:, 2), prob.tolerances, w_k_func = options.w_k_func);
+            [t_cont, x_cont] = sode45(prob.cont.f, prob.cont.G, u_ref, p, prob.stoch.w, t_sub, prob.stoch.delta_t, options.x_0(:, 1), prob.tolerances, w_k_func = options.w_k_func);
 
-            u_cont = u_func(t_cont(1:(numel(t_cont) - 1)));
+            u_cont = u_ref(t_cont(1:(numel(t_cont) - 1)), 0);
         end
 
         function [t_cont, x_cont, u_cont] = cont_prop_feedback_no_kalman_filter(prob, x_ref, u_ref, p, K_k, options)
@@ -248,12 +247,15 @@ classdef StochasticProblem
                 options.x_0 = prob.sample_initial_condition()
                 options.w_k_func = prob.create_w_func()
                 options.N_sub = 15
+                options.noise_multiplier = 1;
             end
             %CONT_PROP Summary of this function goes here
             %   Detailed explanation goes here
             t_k = linspace(0, prob.tf, prob.N);
 
-            [t_cont, x_cont, u_cont] = propagate_cont_feedback_no_kalman_filter(options.x_0(:, 2), x_ref, u_ref, K_k, prob.cont.f, prob.cont.G, t_k, options.N_sub, options.w_k_func, prob.stoch.delta_t, prob.tolerances);
+            w_k_func = @(n) options.noise_multiplier * options.w_k_func(n);
+
+            [t_cont, x_cont, u_cont] = propagate_cont_feedback_no_kalman_filter(options.x_0(:, 1), x_ref, u_ref, K_k, prob.cont.f, prob.cont.G, t_k, options.N_sub, w_k_func, prob.stoch.delta_t, prob.tolerances);
         end
 
         function [t_cont, x_cont, xhat_cont, Phat_cont, u_cont] = cont_prop(prob, x_ref, u_ref, p, K, options)
@@ -285,6 +287,8 @@ classdef StochasticProblem
                 options.x_0 = prob.sample_initial_condition()
                 options.w_k_func = prob.create_w_func()
                 options.v_k = prob.stoch.v(prob.N)
+                options.u_type = "ZOH"
+                options.t_cont = []
             end
             %DISC_PROP Summary of this function goes here
             %   Detailed explanation goes here
@@ -307,11 +311,15 @@ classdef StochasticProblem
 
             for k = 1:(prob.N - 1)
                 % Compute control
-                u_disc(:, k) = u_ref(:, k) + K(:, :, k) * (xtilde_disc(:, k) - x_ref(:, k));
+                if options.u_type == "ZOH"
+                    u_disc(:, k) = u_ref(:, k) + K(:, :, k) * (xtilde_disc(:, k) - x_ref(:, k));
+                    u_func = @(t, x) u_disc(:, k);%u_ref_func(t) + K_func(t) * (xhat_disc(:, k) - x_ref(t));
+                elseif options.u_type == "cont"
+                    u_func = @(t, x) interp1(options.t_cont, u_ref', t)';
+                end
 
                 % Time update
                 % True state
-                u_func = @(t, x) u_disc(:, k);%u_ref_func(t) + K_func(t) * (xhat_disc(:, k) - x_ref(t));
                 [~, x_cont_k] = sode45(prob.cont.f,prob.cont.G, u_func, p, prob.stoch.w, [t_k(k), t_k(k + 1)], prob.stoch.delta_t, x_disc(:, k), prob.tolerances, w_k_func = w_k_func);
                 x_disc(:, k + 1) = x_cont_k(:, end);
                 

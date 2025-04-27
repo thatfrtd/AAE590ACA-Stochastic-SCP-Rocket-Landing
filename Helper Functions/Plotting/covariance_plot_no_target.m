@@ -1,4 +1,4 @@
-function [] = covariance_plot(x_pred, data, P_pred, P_tar, labels, title)
+function [] = covariance_plot_no_target(x_pred, data, P_pred, labels, title)
 %COVARIANCE_PLOT Summary of this function goes here
 %   Detailed explanation goes here
 
@@ -24,23 +24,17 @@ for i = 1:n % column
                 fx_theory = pdf('Normal', x, 0, std_data); %theoretical normal probability density
                 hold on; plot(x + mean(data(i, :)),fx_theory,'b', LineStyle="--"); %plot computed theoretical PDF  
 
-                std_tar = sqrt(P_tar(i, i));
-                x = 2 * 3 * std_tar * (-1:0.01:1);
-                fx_theory = pdf('Normal', x, 0, std_tar); %theoretical normal probability density
-                hold on; plot(x + x_pred(i),fx_theory,'g'); %plot computed theoretical PDF  
-
                 set(gca,'YColor','none')
 
                 xlim(x_pred(i) + [-6 * std_data, 6 * std_data])
 
                 if i == 1 && j == 1
-                    legend("Samples", "Prediction Distribution 3\sigma Ellipse", "Sample Distribution 3\sigma Ellipse", "Target Distribution 3\sigma Ellipse")
+                    legend("Samples", "Prediction Distribution 3\sigma Ellipse", "Sample Distribution 3\sigma Ellipse")
                 end
             else
                 scatter(squeeze(data(i, :)), squeeze(data(j, :)), 2, [120, 120, 120]/256, "filled"); hold on
                 plot_cov_ellipse(P_pred([i, j], [i, j]), [x_pred(i), x_pred(j)], Color = "r"); hold on
-                plot_cov_ellipse(cov(data([i,j], :)'), [mean(data(i, :)), mean(data(j, :))], Color = "b", LineStyle = "--"); hold on
-                plot_cov_ellipse(P_tar([i, j], [i, j]), [x_pred(i), x_pred(j)], Color = "g"); hold off
+                plot_cov_ellipse(cov(data([i,j], :)'), [mean(data(i, :)), mean(data(j, :))], Color = "b", LineStyle = "--"); hold off
             end
     
             if i ~= 1

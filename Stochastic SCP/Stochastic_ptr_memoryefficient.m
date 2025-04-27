@@ -1,23 +1,19 @@
-function [ptr_sol] = Stochastic_ptr(prob, ptr_ops)
+function [ptr_sol] = Stochastic_ptr_memoryefficient(prob, ptr_ops)
 %PTR Sequential Convex Programming algorithm
 %   If converged, solution satisfies the nonlinear continuous-time equations of motion
 % to within a tolerance on the order of eps_feasible feasible, satisfies all algebraic constraints at each
 % temporal node, and approximates (local) optimality of the original optimal control problem.
 
-x_ref = zeros([prob.n.x, prob.N, ptr_ops.iter_max + 1]);
-u_ref = zeros([prob.n.u, prob.Nu, ptr_ops.iter_max + 1]);
-p_ref = zeros([prob.n.p, ptr_ops.iter_max + 1]);
-X_ref = zeros([prob.n.x, prob.n.x * prob.N * (prob.N + 1) / 2, ptr_ops.iter_max + 1]);
-S_ref = zeros([prob.n.u, prob.n.x * prob.N * (prob.N + 1) / 2, ptr_ops.iter_max + 1]);
-
-x_ref(:, :, 1) = prob.scale_x(prob.guess.x);
-u_ref(:, :, 1) = prob.scale_u(prob.guess.u);
-p_ref(:, 1) = prob.scale_p(prob.guess.p);
+x_sol = zeros([prob.n.x, prob.N]);
+u_sol = zeros([prob.n.u, prob.Nu]);
+p_sol = zeros([prob.n.p]);
+X_sol = zeros([prob.n.x, prob.n.x * prob.N * (prob.N + 1) / 2]);
+S_sol = zeros([prob.n.u, prob.n.x * prob.N * (prob.N + 1) / 2]);
 
 ptr_sol.converged = false;
 ptr_sol.objective = zeros([1, ptr_ops.iter_max + 1]);
 ptr_sol.Delta = zeros([prob.Nu, ptr_ops.iter_max + 1]);
-ptr_sol.delta_xp = zeros([1, ptr_ops.iter_max]);
+ptr_sol.delta_xp = zeros([1, ptr_ops.iter_max + 1]);
 
 % Convexify along initial guess
 [prob, ptr_sol.Delta(:, 1)] = convexify_along_reference(prob, prob.guess.x, prob.guess.u, prob.guess.p);
@@ -27,19 +23,19 @@ disp(" k |       status      |   vd  |   vs  |  vbc_NP |  vbc_N |    J    |   J_
 for i = 1:(ptr_ops.iter_max)
     % Solve convex subproblem and update reference
     if prob.n.p == 0
-        [x_ref(:, :, i + 1), u_ref(:, :, i + 1), X_ref(:, :, i + 1), S_ref(:, :, i + 1), sol_info] = solve_stochastic_ptr_convex_subproblem_no_p_2(prob, ptr_ops, x_ref(:, :, i), u_ref(:, :, i), X_ref(:, :, i), S_ref(:, :, i));
+        [x_sol, u_sol, X_sol, S_sol, sol_info] = solve_stochastic_ptr_convex_subproblem_no_p_2(prob, ptr_ops, prob.scale_x(prob.guess.x), prob.scale_u(prob.guess.u), prob.guess.X, prob.guess.S);
     else
-        [x_ref(:, :, i + 1), u_ref(:, :, i + 1), p_ref(:, i + 1), sol_info] = solve_stochastic_ptr_convex_subproblem(prob, ptr_ops, x_ref(:, :, i), u_ref(:, :, i), p_ref(:, i));
+        [x_sol, u_sol, p_sol, sol_info] = solve_stochastic_ptr_convex_subproblem(prob, ptr_ops, prob.scale_x(prob.guess.x), prob.scale_u(prob.guess.u), prob.scale_p(prob.guess.p));
     end
 
     % Convexify along reference trajectory
-    [prob, ptr_sol.Delta(:, i + 1)] = convexify_along_reference(prob, prob.unscale_x(x_ref(:, :, i + 1)), prob.unscale_u(u_ref(:, :, i + 1)), prob.unscale_p(p_ref(:, i + 1)));
+    [prob, ptr_sol.Delta(:, i + 1)] = convexify_along_reference(prob, prob.unscale_x(x_sol), prob.unscale_u(u_sol), prob.unscale_p(p_sol));
 
     % Update algorithm weights (4.24)
     ptr_ops.w_tr = update_trust_region_weights(ptr_sol.Delta(:, i + 1)', ptr_ops.update_w_tr, ptr_ops.w_tr, ptr_ops.Delta_min);
 
     % Check stopping criteria (4.30)
-    ptr_sol.delta_xp(i) = ptr_stopping(x_ref(:, :, i + 1), p_ref(:, i + 1), x_ref(:, :, i), p_ref(:, i), ptr_ops.q);
+    ptr_sol.delta_xp(i) = ptr_stopping(x_sol, p_sol, prob.scale_x(prob.guess.x), prob.scale_p(prob.guess.p), ptr_ops.q);
 
     % Display results of iteration
     if i ~= 1
@@ -64,17 +60,23 @@ for i = 1:(ptr_ops.iter_max)
             break
         end
     end
+
+    prob.guess.x = prob.unscale_x(x_sol);
+    prob.guess.u = prob.unscale_u(u_sol);
+    prob.guess.p = prob.unscale_p(p_sol);
+    prob.guess.X = X_sol;
+    prob.guess.S = S_sol;
 end
 
 if ptr_sol.converged == false
     warning("PTR did not converge after %g iterations. delta_xp = %.3f. norm(Delta) = %.3f\n", i, ptr_sol.delta_xp(i), norm(ptr_sol.Delta(:, end)))
 end
 
-ptr_sol.x = prob.unscale_x(x_ref);
-ptr_sol.u = prob.unscale_u(u_ref);
-ptr_sol.p = prob.unscale_p(p_ref);
-ptr_sol.X = X_ref;
-ptr_sol.S = S_ref;
+ptr_sol.x = prob.unscale_x(x_sol);
+ptr_sol.u = prob.unscale_u(u_sol);
+ptr_sol.p = prob.unscale_p(p_sol);
+ptr_sol.X = X_sol;
+ptr_sol.S = S_sol;
 end
 
 function [w_tr] = update_trust_region_weights(Delta, update, w_tr, Delta_min)

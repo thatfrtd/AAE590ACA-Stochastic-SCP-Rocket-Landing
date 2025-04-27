@@ -1,4 +1,4 @@
-function [Y] = stochastic_3Dof_model(X, P)
+function [Y] = stochastic_3DoF_model(X, P)
 %STOCHASTIC_MODEL Summary of this function goes here
 %   Made to be able ot interface with UQLab
 % Inputs: [N, N_in]
@@ -19,13 +19,18 @@ g_c_stds = X(:, 13:15);
 g_0_stds = X(:, 16:21);
 
 %% Adjust StochasticProblem with Inputs
+stoch_prob_3DoF = P.stoch_prob_3DoF;
+
 stoch_prob_3DoF.P0 = diag(x_0_stds .^ 2);
 stoch_prob_3DoF.Pf = diag(x_f_stds .^ 2);
-stoch_prob_3DoF.G = ;
-stoch_prob_3DoF.g_0 = ;
+stoch_prob_3DoF.cont.G = P.G(g_c_stds);
+stoch_prob_3DoF.filter.g_0 = P.g_0(g_0_stds);
+
+stoch_prob_3DoF = stoch_prob_3DoF.linearize();
+[stoch_prob_3DoF, Delta] = stoch_prob_3DoF.discretize(stoch_prob_3DoF.guess.x, stoch_prob_3DoF.guess.u, stoch_prob_3DoF.guess.p);
 
 %% Optimize
-ptr_sol = Stochastic_ptr(prob_3DoF, ptr_ops);
+stoch_ptr_sols = batch_stoch_ptr(stoch_prob_2DoF, ptr_ops, P.thread_number);
 
 %% MC Simulations
 m = size();
