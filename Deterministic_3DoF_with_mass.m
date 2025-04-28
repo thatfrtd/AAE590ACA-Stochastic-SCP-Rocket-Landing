@@ -23,7 +23,7 @@ vehicle = Vehicle(m_dry, L, L * 3, gimbal_max, T_min, T_max, I = I, alpha = alph
 
 % Problem Parameters
 tf = 60; % [s]
-N = 15; % []
+N = 20; % []
 r_0 = [1.5; 2.0]; % [km]
 v_0 = [0.0385; -0.0647]; % [km / s]
 theta_0 = deg2rad(90); % [rad]
@@ -193,3 +193,5 @@ comparison_plot_3DoF_trajectory({guess.x, x_cont_sol, ptr_sol.x(:, :, i), CasADi
 figure
 comparison_plot_3DoF_time_histories({t_k, t_cont_sol, t_k}, {guess.x, x_cont_sol, ptr_sol.x(:, :, i)}, {guess.u, u_cont_sol, ptr_sol.u(:, :, i)}, ["Guess", "Cont", "Disc"], linestyle = [":", "-", "--"], title = "Continuous vs Discrete Propagation of Solution")
 
+%% Save workspace for stochastic testing
+save("3DoF_deterministic_Workspace.mat")
