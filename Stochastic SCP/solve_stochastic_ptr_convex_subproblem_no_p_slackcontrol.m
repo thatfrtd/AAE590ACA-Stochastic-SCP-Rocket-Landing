@@ -1,4 +1,4 @@
-function [x_sol, u_sol, X_sol, S_sol, sol_info] = solve_stochastic_ptr_convex_subproblem_no_p_2(prob, ptr_ops, x_ref, u_ref, X_k_ref, S_k_ref)
+function [x_sol, u_sol, X_sol, S_sol, sol_info] = solve_stochastic_ptr_convex_subproblem_no_p_slackcontrol(prob, ptr_ops, x_ref, u_ref, X_k_ref, S_k_ref)
 %SOLVE_PTR_CONVEX_SUBPROBLEM Summary of this function goes here
 %   Detailed explanation goes here
 P_yk_sqrt = sqrtm_array(prob.disc.Ptilde_minus_k);
@@ -8,6 +8,7 @@ tri = @(k) k * (k + 1) / 2 * prob.n.x;
 cvx_begin
     variable X(prob.n.x, prob.N)
     variable U(prob.n.u, prob.Nu)
+    variable u_mag(1, prob.Nu)
     variable eta(1, prob.Nu)
     variable V(prob.n.x, prob.N - 1)
     variable v_prime(prob.n.ncvx)
@@ -34,11 +35,11 @@ cvx_begin
         for k = 1:prob.Nu
             % Convex Constraints
             for cc = 1:prob.n.cvx
-                prob.convex_constraints{cc}(prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, X_C(:, (tri(k - 1) + 1):tri(k)), S_k(:, (tri(k - 1) + 1):tri(k))) <= 0;
+                prob.convex_constraints{cc}(prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, X_C(:, (tri(k - 1) + 1):tri(k)), S_k(:, (tri(k - 1) + 1):tri(k)), u_mag(k)) <= 0;
             end
             % Nonconvex Constraints
             for nc = 1:prob.n.ncvx
-                prob.nonconvex_constraints{nc}(prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, X_C(:, (tri(k - 1) + 1):tri(k)), S_k(:, (tri(k - 1) + 1):tri(k)), x_ref, u_ref, 0, X_k_ref, S_k_ref, k) ...
+                prob.nonconvex_constraints{nc}(prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, X_C(:, (tri(k - 1) + 1):tri(k)), S_k(:, (tri(k - 1) + 1):tri(k)), x_ref, u_ref, 0, X_k_ref, S_k_ref, u_mag, k) ...
                     - v_prime(nc) <= 0;
             end
         end
@@ -56,18 +57,13 @@ cvx_begin
         ptr_ops.alpha_x * norms(X(:, 1:prob.Nu) - x_ref(:, 1:prob.Nu), ptr_ops.q, 1) + ptr_ops.alpha_u * norms(U - u_ref, ptr_ops.q, 1) <= eta;
 cvx_end
 
-nc_ck = zeros([prob.n.ncvx, prob.Nu]);
+nc_ck = zeros([nc, prob.Nu]);
 for k = 1:prob.Nu
     % Nonconvex Constraints
     for nc = 1:prob.n.ncvx
-        nc_ck(nc, k) = prob.nonconvex_constraints{nc}(prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, X_C(:, (tri(k - 1) + 1):tri(k)), S_k(:, (tri(k - 1) + 1):tri(k)), x_ref, u_ref, 0, X_k_ref, S_k_ref, k);
-            %- v_prime(nc);
+        nc_ck(nc, k) = prob.nonconvex_constraints{nc}(prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, X_C(:, (tri(k - 1) + 1):tri(k)), S_k(:, (tri(k - 1) + 1):tri(k)), x_ref, u_ref, 0, X_k_ref, S_k_ref, u_mag, k);
     end
-
-    min_test(k) = 0.002485 - (norm(U(:, k)) - 3.89894920704084 * norm(S_k(:, (tri(k - 1) + 1):tri(k))));
 end
-
-figure; plot(min_test)
 
 x_sol = X;
 u_sol = U;

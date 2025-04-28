@@ -9,37 +9,40 @@
 
 g = 3.7114e-3; % [km / s2]
 
-syms mass L I alpha;
+syms L I alpha;
 t = sym("t");
 r = sym("r", [2, 1]);
 v = sym("v", [2, 1]);
 theta = sym("theta", 1);
 w = sym("w", 1);
-m = sym("m", 1);
-x = [r;v;theta;w;m];
+z = sym("z", 1);
+x = [r;v;theta;w;z];
 
-thrust = sym("thrust", [2, 1]);
-thrust_mag = sym("thrust_mag", 1);
-u = [thrust; thrust_mag];
+thrust_accel = sym("thrust_accel", [2, 1]); % Thrust over mass
+thrust_accel_mag = sym("thrust_accel_mag", 1); % Thrust over mass
+u = [thrust_accel; thrust_accel_mag];
+
+m = exp(z);
+T = m * thrust_accel;
 
 rdot = v;
 thetadot = w;
-M = cross([-L; 0; 0], [thrust; 0]);
+M = cross([-L; 0; 0], [T; 0]);
 wdot = M(3) / I;
 
-rotationMatrix = [cos(theta) sin(theta); -sin(theta) cos(theta)];
-T_e = rotationMatrix * thrust;
-vdot = T_e / m - [0; g];
+rotationMatrix = [cos(theta) -sin(theta); sin(theta) cos(theta)];
+a_T_e = rotationMatrix * thrust_accel;
+vdot = a_T_e - [0; g];
 
-mdot = -alpha * thrust_mag;
+zdot = -alpha * thrust_accel_mag;
 
-xdot = [rdot; vdot; thetadot; wdot; mdot];
+xdot = [rdot; vdot; thetadot; wdot; zdot];
 
 %j_a = jacobian(xdot, x);
 %j_b = jacobian(xdot, u);
 
 % Create equations of motion function for optimizer
-matlabFunction(xdot,"File","Dynamics Models/3DoF/SymDynamics3DoF_mass","Vars", [{t}; {x}; {u}; {mass; L; I; alpha}]);
+matlabFunction(xdot,"File","Dynamics Models/3DoF/SymDynamics3DoF_mass_convexified","Vars", [{t}; {x}; {u}; {L; I; alpha}]);
 
 % Create equations of motion block for Simulink model
 %matlabFunctionBlock('EoM_3DoF/SymDynamics3DoF',xdot,'Vars',[x; u; mass; L; I])

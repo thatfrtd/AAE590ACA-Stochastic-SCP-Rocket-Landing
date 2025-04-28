@@ -94,15 +94,17 @@ glideslope_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_r
 state_nonconvex_constraints = {glideslope_constraint};
 
 % Convex control constraints
-control_convex_constraints = {};
+%lcvx_constraint = @(x, u, p, X_k, S_k, u_mag) norm(u(1:2)) - u_mag;
+control_convex_constraints = {};%{lcvx_constraint, min_thrust_constraint};
 
 % Combine convex constraints
 convex_constraints = [state_convex_constraints, control_convex_constraints];
 
 % Nonconvex control constraints
-lcvx_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) norm(u(1:2)) + sigma_mag_confidence(1e-3 / 2, nu) * norm(S_k) - thrust_magnitude_bound(S_k_ref, u_ref, k, t_k, T_max, m_0, alpha, nu);
-min_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) T_min / m_0 - (norm(u(1:2)) - sigma_mag_confidence(1e-3 / 2, nu) * norm(S_k));
-control_nonconvex_constraints = {lcvx_thrust_constraint};
+max_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) norm(u) + sigma_mag_confidence(1e-3 / 2, nu) * norm(S_k) - thrust_magnitude_bound(S_k_ref, u_ref, k, t_k, T_max, m_0, alpha, nu);
+min_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) T_min / m_0 - (norm(u_ref(:, k)) + (u_ref(:, k)' / norm(u_ref(:, k))) * (u - u_ref(:, k)) - sigma_mag_confidence(1e-3 / 2, nu) * norm(S_k));
+
+control_nonconvex_constraints = {max_thrust_constraint};
 
 % Combine nonconvex constraints
 nonconvex_constraints = [state_nonconvex_constraints, control_nonconvex_constraints];
@@ -120,18 +122,18 @@ stoch_prob_2DoF = StochasticProblem.stochastify_discrete_problem(prob_2DoF, G, f
 ptr_ops.iter_max = 20;
 ptr_ops.iter_min = 2;
 ptr_ops.Delta_min = 5e-5;
-ptr_ops.w_vc = 1e4;
-ptr_ops.w_tr = ones(1, Nu) * 1e-1;
+ptr_ops.w_vc = 1e3;
+ptr_ops.w_tr = ones(1, Nu) * 1e-2;
 ptr_ops.w_tr_p = 1e-1;
 ptr_ops.update_w_tr = false;
 ptr_ops.delta_tol = 1e-3;
 ptr_ops.q = 2;
 ptr_ops.alpha_x = 1;
-ptr_ops.alpha_u = 1;
+ptr_ops.alpha_u = 0;
 ptr_ops.alpha_p = 0;
 %%
 tic
-stoch_ptr_sol = Stochastic_ptr(stoch_prob_2DoF, ptr_ops);
+stoch_ptr_sol = Stochastic_ptr(stoch_prob_2DoF, ptr_ops, slack_control = false);
 toc
 stoch_ptr_sol.converged_i
 %% MC Simulations with Optimized Feedback Gain
@@ -146,12 +148,15 @@ end
 %% Check Convergence for Gamma_k
 Gamma_k = zeros([stoch_prob_2DoF.N, stoch_ptr_sol.converged_i]);
 thrust_mag_k = zeros([stoch_prob_2DoF.N, stoch_ptr_sol.converged_i]);
+thrust_min_k = zeros([stoch_prob_2DoF.N, stoch_ptr_sol.converged_i]);
 thrust_mag_nom_k = zeros([stoch_prob_2DoF.N, stoch_ptr_sol.converged_i]);
 lcvx_thrust_constraint_evals = zeros([stoch_prob_2DoF.N, stoch_ptr_sol.converged_i]);
+min_thrust_constraint_evals = zeros([stoch_prob_2DoF.N, stoch_ptr_sol.converged_i]);
 for ms = 1:stoch_ptr_sol.converged_i
     for km = 1:(stoch_prob_2DoF.N - 1)
         Gamma_k(km, ms) = thrust_magnitude_bound(stoch_ptr_sol.S(:, :, ms), squeeze(stoch_ptr_sol.u(:, :, ms)), km, t_k, T_max, m_0, alpha, nu);
         thrust_mag_k(km, ms) = norm(stoch_ptr_sol.u(1:2, km, ms)) + sigma_mag_confidence(1e-3 / 2, nu) * norm(stoch_ptr_sol.S(:, (tri(km - 1, nx) + 1):tri(km, nx), ms));
+        thrust_min_k(km, ms) = norm(stoch_ptr_sol.u(1:2, km, ms)) - sigma_mag_confidence(1e-3 / 2, nu) * norm(stoch_ptr_sol.S(:, (tri(km - 1, nx) + 1):tri(km, nx), ms));
         thrust_mag_nom_k(km, ms) = norm(stoch_ptr_sol.u(1:2, km, ms));
     end
     ms
@@ -159,7 +164,13 @@ end
 
 for ms = 2:stoch_ptr_sol.converged_i
     for km = 1:(stoch_prob_2DoF.N - 1)
-        lcvx_thrust_constraint_evals(km, ms) = lcvx_thrust_constraint(stoch_ptr_sol.x(1:2, km, ms), stoch_ptr_sol.u(1:2, km, ms), 0, 0, stoch_ptr_sol.S(:, (tri(km - 1, nx) + 1):tri(km, nx), ms), stoch_ptr_sol.x(1:2, :, ms - 1), stoch_ptr_sol.u(1:2, :, ms), 0, 0, stoch_ptr_sol.S(:, :, ms), km);
+        lcvx_thrust_constraint_evals(km, ms) = lcvx_constraint(stoch_ptr_sol.x(1:2, km, ms), stoch_ptr_sol.u(1:2, km, ms), 0, 0, stoch_ptr_sol.S(:, (tri(km - 1, nx) + 1):tri(km, nx), ms), vecnorm(stoch_ptr_sol.u(1:2, km, ms)));
+    end
+end
+
+for ms = 2:stoch_ptr_sol.converged_i
+    for km = 1:(stoch_prob_2DoF.N - 1)
+        min_thrust_constraint_evals(km, ms) = T_min - (vecnorm(stoch_ptr_sol.u(1:2, km, ms)) * exp(stoch_ptr_sol.x(5, km, ms)) - sigma_mag_confidence(1e-3 / 2, nu) * norm(stoch_ptr_sol.S(:, (tri(km - 1, nx) + 1):tri(km, nx), ms)));
     end
 end
 %%
@@ -186,8 +197,8 @@ legend("Iter " + string(2:stoch_ptr_sol.converged_i) + " minus " + string(1:(sto
 grid on
 
 nexttile
-stairs(t_k(1:(end - 1)), thrust_mag_k(1:(end - 1),:) .* squeeze(exp(stoch_ptr_sol.x(5, 1:(end - 1), 1:stoch_ptr_sol.converged_i))));
-title("||u_k|| + 99.9% Uncertainty Bound vs Time for All Iterations")
+stairs(t_k(1:(end - 1)), thrust_min_k(1:(end - 1),:) .* squeeze(exp(stoch_ptr_sol.x(5, 1:(end - 1), 1:stoch_ptr_sol.converged_i))));
+title("||u_k|| - 99.9% Uncertainty Bound vs Time for All Iterations")
 xlabel("Time [s]")
 ylabel("[km / s2]")
 legend("Iter " + string(1:stoch_ptr_sol.converged_i), Location="southeast")
@@ -265,7 +276,8 @@ end
 P_k_opt = Phat_k_opt + stoch_prob_2DoF.disc.Ptilde_k;
 %%
 
-plot_2DoF_MC_trajectories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, x_ofb, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, P_k_opt, t_k, xhat_no_fb, Pf, glideslope_angle_max, h_glideslope)
+plot_2DoF_MC_trajectories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, x_ofb, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, P_k_opt, t_k, xhat_no_fb, Pf, glideslope_angle_max, h_glideslope); hold on
+
 %%
 plot_2DoF_MC_time_histories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.u(:, :, stoch_ptr_sol.converged_i), t_k, x_ofb, u_ofb, t_k, stoch_ptr_sol.X(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.S(:, :, stoch_ptr_sol.converged_i), t_k, xhat_no_fb, T_max, T_min, true)
 
