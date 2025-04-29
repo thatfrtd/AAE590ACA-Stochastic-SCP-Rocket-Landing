@@ -34,8 +34,8 @@ Phat0 = diag(sigma_xhat0 .^ 2);
 % Disturbance
 sigma_accelx = 0.5e-3;
 sigma_accely = 0.1e-3;
-sigma_theta = 0.3e-4;
-sigma_ang_vel = 0.2e-5;
+sigma_theta = 0.3e-3;
+sigma_ang_vel = 0.2e-3;
 sigma_m = 1e-7;
 
 delta_t = 1e-1;
@@ -131,8 +131,8 @@ elseif u_hold == "FOH"
 end
 
 %CasADi_sol = CasADi_solve_mass(x_0, sl_guess.x, sl_guess.u, vehicle, N, delta_t, glideslope_angle_max);
-guess = CasADi_sol;
 
+guess = CasADi_sol;
 guess.u = guess.u(1:2, :);
 if u_hold == "ZOH"
     guess.u = interp1(t_k(1:size(guess.u, 2)), guess.u', t_k(1:Nu), "previous","extrap")';
@@ -162,11 +162,7 @@ mod_ptr_sol.p = ptr_sol.p(:, ptr_sol.converged_i);
 ptr_ops.iter_min = 2;
 stoch_terminal_bc = @(x, p) [x(1:6) - prob_3DoF.xf; 0]; 
 
-
-prob_3DoF.cont.f = f;
-prob_3DoF = StochasticProblem.stochastify_discrete_problem(prob_3DoF, G, f_0, g_0, Phat0, Ptilde0, Pf, sol = mod_ptr_sol, objective = stochastic_min_fuel_objective, f = f, convex_constraints = convex_constraints, nonconvex_constraints = nonconvex_constraints, terminal_bc = stoch_terminal_bc);
-
-%prob_3DoF = StochasticProblem(x_0, x_f, Phat0, Ptilde0, Pf, N, u_hold, tf, f, G, f_0, g_0, mod_ptr_sol, convex_constraints, stochastic_min_fuel_objective, scale = scale, nonconvex_constraints = nonconvex_constraints,  terminal_bc = stoch_terminal_bc);
+prob_3DoF = StochasticProblem(x_0, x_f, Phat0, Ptilde0, Pf*10, N, u_hold, tf, f, G, f_0, g_0, mod_ptr_sol, convex_constraints, stochastic_min_fuel_objective, scale = scale, nonconvex_constraints = nonconvex_constraints,  terminal_bc = stoch_terminal_bc);
 
 %% Test Scaling
 % guess_scaled.x = prob_3DoF.scale_x(guess.x);
@@ -189,11 +185,11 @@ norm(Delta)
 %guess.u(2, :) = T_min / 2000;
 %guess.u(3, :) = vecnorm(guess.u(1:2, :));
 
-% [prob_3DoF, Delta_disc] = prob_3DoF.discretize(prob_3DoF.guess.x, prob_3DoF.guess.u, prob_3DoF.guess.p);
-% 
-% x_disc = prob_3DoF.disc_prop(guess.x, guess.u, guess.p, K_k);
-% 
-% [t_cont, x_cont, u_cont] = prob_3DoF.cont_prop(guess.x, guess.u, guess.p, K_k);
+[prob_3DoF, Delta_disc] = prob_3DoF.discretize(prob_3DoF.guess.x, prob_3DoF.guess.u, prob_3DoF.guess.p);
+
+x_disc = prob_3DoF.disc_prop(guess.x, guess.u, guess.p, K_k);
+
+[t_cont, x_cont, u_cont] = prob_3DoF.cont_prop(guess.x, guess.u, guess.p, K_k);
 
 % figure
 % comparison_plot_3DoF_trajectory({guess.x, x_cont, x_disc}, ["Guess", "Continuous Propagation", "Discrete Propagation"], glideslope_angle_max, linestyle = [":", "-", "--"], title = "Continuous vs Discrete Propagation of Initial Guess")
@@ -237,3 +233,4 @@ comparison_plot_3DoF_trajectory({guess.x, x_cont_sol, ptr_sol.x(:, :, i), CasADi
 
 figure
 comparison_plot_3DoF_time_histories({t_k, t_cont_sol, t_k}, {guess.x, x_cont_sol, ptr_sol.x(:, :, i)}, {guess.u, u_cont_sol, ptr_sol.u(:, :, i)}, ["Guess", "Cont", "Disc"], linestyle = [":", "-", "--"], title = "Continuous vs Discrete Propagation of Solution")
+

@@ -8,16 +8,16 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear; 
 load("3DoF_deterministic_Workspace.mat");
+clear tri;
 %% Initialize
 
 %% Stochastic Optimization Parameters
 nu = 2;
+nr = 2;
 n_sigma_99 = sigma_mag_confidence(1e-2, nu);
 n_sigma_99p9 = sigma_mag_confidence(1e-3, nu);
 
 n_probit_99p9 = norminv(1 - 1e-3);
-
-tri = @(k) (k + 1) * k / 2 * 5;
 
 %Initial Covariance values
 %% Define Stochastic Elements
@@ -34,8 +34,8 @@ Phat0 = diag(sigma_xhat0 .^ 2);
 % Disturbance
 sigma_accelx = 0.5e-3;
 sigma_accely = 0.1e-3;
-sigma_theta = 0.3e-3;
-sigma_ang_vel = 0.2e-3;
+sigma_theta = 0.3e-4;
+sigma_ang_vel = 0.2e-5;
 sigma_m = 1e-7;
 
 delta_t = 1e-1;
@@ -57,13 +57,13 @@ Ptilde0 = diag(sigma_xtilde0 .^ 2);
 
 % Final state covariance
 % Final state
-sigma_xf = [1e-2; ... % r_x
-            1e-3; ... % r_y
-            1e-3; ... % v_x
-            1e-3; ... % v_y
-            1e-2; ... % theta
-            1e-3; ... % w
-            1e-4]; % mass
+sigma_xf = 10*[1e-3; ... % r_x
+            1e-4; ... % r_y
+            1e-4; ... % v_x
+            1e-4; ... % v_y
+            1e-3; ... % theta
+            1e-4; ... % w
+            1e-5]; % mass
 Pf = diag(sigma_xf .^ 2);
 
 % PTR algorithm parameters are defined in Deterministic
@@ -86,25 +86,29 @@ f_0 = @(t, x, u, p) x;
 g_0 = @(t, x, u, p) diag(g_0_stds);
 
 % Gain 
-K_k = -3*repmat([0, 1, 0, 0, 0, 0; 0, 0, 0, 0, -1, 0; 0, 1, 0, 0, 1, 0], 1, 1, prob_3DoF.Nu);
+K_k = -3*repmat([0, 1, 0, 0, 0, 0, 0; 0, 0, 0, 0, -1, 0, 0], 1, 1, prob_3DoF.Nu);
 
 %% Specify Constraints
 % Convex state path constraints
-glideslope_constraint = @(x, u, p) norm(x(1:2)) - x(2) / cos(glideslope_angle_max);
-%kalman_constraint = @() Implemented differently, implemented with the
-%dynamics
-state_convex_constraints = {glideslope_constraint};
+glideslope_angle_max = deg2rad(80);
+h_glideslope = calculate_glideslope_offset(sigma_xf(1:2) * norminv(1 - 1e-3 / 2), glideslope_angle_max);
+glideslope_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) (norm(x(1:2) + [0; h_glideslope]) + 0*sigma_mag_confidence(1e-3, nr) * norm(X_k_ref(1:2, (tri(k - 1, nx) + 1):tri(k, nx)))) * cos(glideslope_angle_max) - (x(2) + h_glideslope - norminv(1 - 1e-3) * norm(X_k_ref(2, (tri(k - 1, nx) + 1):tri(k, nx))));
+state_nonconvex_constraints = {glideslope_constraint};
+state_nonconvex_constraints = {};
 
-% Convex control constraints
-% max_thrust_constraint = @(x, u, p) u(3) - T_max;
-% min_thrust_constraint = @(x, u, p) T_min - u(3);
-% max_gimbal_constraint = @(x, u, p) u(3) - u(1) / cos(gimbal_max);
-% lcvx_thrust_constraint = @(x, u, p) norm(u(1:2))- u(3); 
-% control_convex_constraints = {min_thrust_constraint,max_gimbal_constraint,max_thrust_constraint,lcvx_thrust_constraint};
+state_convex_constraints = {};
+control_convex_constraints ={};
 
 % Combine convex constraints
 convex_constraints = [state_convex_constraints, control_convex_constraints];
 
+% Nonconvex control constraints
+lcvx_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) norm(u(1:2)) + sigma_mag_confidence(1e-3 / 2, nu) * norm(S_k) - thrust_magnitude_bound(S_k_ref, u_ref, k, t_k, T_max, m_0, alpha, nu);
+min_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) T_min / m_0 - (norm(u(1:2)) - sigma_mag_confidence(1e-3 / 2, nu) * norm(S_k));
+control_nonconvex_constraints = {lcvx_thrust_constraint};
+control_nonconvex_constraints = {};
+% Combine nonconvex constraints
+nonconvex_constraints = [state_nonconvex_constraints, control_nonconvex_constraints];
 %% Specify Objective
 
 % Size Definitions
@@ -119,7 +123,7 @@ elseif u_hold == "FOH"
     min_fuel_objective = @(x, u, p) sum((u(3, 1:(end - 1)) + u(3, 2:end)) / 2) * delta_t;
 end
 
-stochastic_min_fuel_objective = @(x, u, p, X_k, S_k) einsum(@(k) norm(u(1:2, k), 2) + sigma_mag_confidence(1e-2, nu) * norm(S_k(:, (tri(k - 1) + 1):tri(k)), 2), 1:Nu) * (t_k(2) - t_k(1));
+stochastic_min_fuel_objective = @(x, u, p, X_k, S_k) einsum(@(k) norm(u(1:2, k), 2) + sigma_mag_confidence(1e-2, nu) * norm(S_k(:, (tri(k - 1, nx) + 1):tri(k, nx)), 2), 1:Nu) * (t_k(2) - t_k(1));
 
 %% Create Guess
 sl_guess = guess_3DoF(x_0(1:6), x_f + [0; 0; 0; 0; 0; 0], N, Nu, delta_t, vehicle);
@@ -130,14 +134,16 @@ elseif u_hold == "FOH"
 end
 
 %CasADi_sol = CasADi_solve_mass(x_0, sl_guess.x, sl_guess.u, vehicle, N, delta_t, glideslope_angle_max);
+guess = CasADi_sol;
 
-guess = sl_guess;
+guess.u = guess.u(1:2, :);
 if u_hold == "ZOH"
     guess.u = interp1(t_k(1:size(guess.u, 2)), guess.u', t_k(1:Nu), "previous","extrap")';
 elseif u_hold == "FOH"
     guess.u = interp1(t_k(1:size(guess.u, 2)), guess.u', t_k(1:Nu), "linear","extrap")';
 end
 guess.p = sl_guess.p;
+
 
 % figure
 % plot_3DoF_trajectory(t_k, sl_guess.x, sl_guess.u, glideslope_angle_max, gimbal_max, T_min, T_max)
@@ -152,7 +158,18 @@ guess.p = sl_guess.p;
 % plot_3DoF_time_histories(t_k, guess.x, guess.u)
 
 %% Construct Problem Object
-prob_3DoF = StochasticProblem(x_0, x_f, Phat0, Ptilde0, Pf*10, N, u_hold, tf, f, G, f_0, g_0, guess, convex_constraints, stochastic_min_fuel_objective, scale = scale);
+mod_ptr_sol = ptr_sol;
+mod_ptr_sol.x = ptr_sol.x(:, :, ptr_sol.converged_i);
+mod_ptr_sol.u = ptr_sol.u(1:2, :, ptr_sol.converged_i);
+mod_ptr_sol.p = ptr_sol.p(:, ptr_sol.converged_i);
+ptr_ops.iter_min = 2;
+stoch_terminal_bc = @(x, p) [x(1:6) - prob_3DoF.xf; 0]; 
+
+
+prob_3DoF.cont.f = f;
+prob_3DoF = StochasticProblem.stochastify_discrete_problem(prob_3DoF, G, f_0, g_0, Phat0, Ptilde0, Pf, sol = mod_ptr_sol, objective = stochastic_min_fuel_objective, f = f, convex_constraints = convex_constraints, nonconvex_constraints = nonconvex_constraints, terminal_bc = stoch_terminal_bc);
+
+%prob_3DoF = StochasticProblem(x_0, x_f, Phat0, Ptilde0, Pf, N, u_hold, tf, f, G, f_0, g_0, mod_ptr_sol, convex_constraints, stochastic_min_fuel_objective, scale = scale, nonconvex_constraints = nonconvex_constraints,  terminal_bc = stoch_terminal_bc);
 
 %% Test Scaling
 % guess_scaled.x = prob_3DoF.scale_x(guess.x);
@@ -166,21 +183,21 @@ prob_3DoF = StochasticProblem(x_0, x_f, Phat0, Ptilde0, Pf*10, N, u_hold, tf, f,
 % plot_3DoF_time_histories(t_k, guess_scaled.x, guess_scaled.u)
 
 %%
-Delta = calculate_defect(prob_3DoF, guess.x, guess.u, guess.p);
+Delta = calculate_defect(prob_3DoF, prob_3DoF.guess.x, prob_3DoF.guess.u, prob_3DoF.guess.p);
 norm(Delta)
 
 %% Test Discretization on Initial Guess
 
 %guess.u(1, :) = T_min * 1.5;
 %guess.u(2, :) = T_min / 2000;
-guess.u(3, :) = vecnorm(guess.u(1:2, :));
+%guess.u(3, :) = vecnorm(guess.u(1:2, :));
 
-[prob_3DoF, Delta_disc] = prob_3DoF.discretize(guess.x, guess.u, guess.p);
-
-% x_disc = prob_3DoF.disc_prop(guess.x, guess.u, guess.p, K_k);
-
-% [t_cont, x_cont, u_cont] = prob_3DoF.cont_prop(guess.x, guess.u, guess.p, K_k);
+% [prob_3DoF, Delta_disc] = prob_3DoF.discretize(prob_3DoF.guess.x, prob_3DoF.guess.u, prob_3DoF.guess.p);
 % 
+% x_disc = prob_3DoF.disc_prop(guess.x, guess.u, guess.p, K_k);
+% 
+% [t_cont, x_cont, u_cont] = prob_3DoF.cont_prop(guess.x, guess.u, guess.p, K_k);
+
 % figure
 % comparison_plot_3DoF_trajectory({guess.x, x_cont, x_disc}, ["Guess", "Continuous Propagation", "Discrete Propagation"], glideslope_angle_max, linestyle = [":", "-", "--"], title = "Continuous vs Discrete Propagation of Initial Guess")
 % 
@@ -223,4 +240,3 @@ comparison_plot_3DoF_trajectory({guess.x, x_cont_sol, ptr_sol.x(:, :, i), CasADi
 
 figure
 comparison_plot_3DoF_time_histories({t_k, t_cont_sol, t_k}, {guess.x, x_cont_sol, ptr_sol.x(:, :, i)}, {guess.u, u_cont_sol, ptr_sol.u(:, :, i)}, ["Guess", "Cont", "Disc"], linestyle = [":", "-", "--"], title = "Continuous vs Discrete Propagation of Solution")
-
