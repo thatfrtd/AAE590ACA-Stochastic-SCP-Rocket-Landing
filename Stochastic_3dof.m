@@ -1,19 +1,20 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % AAE 590ACA
 % Stochastic SCP Rocket Landing Project
-% Author: Travis Hastreiter 
-% Created On: 6 April, 2025
+% Author: Travis Hastreiter, Atharva Awasthi
+% Created On: 27 April, 2025
 % Description: 3DoF landing of rocket using PTR SCP algorithm
-% Most Recent Change: 14 April, 2025
+% Most Recent Change: 29 April, 2025
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-clear; 
-load("3DoF_deterministic_Workspace.mat");
-clear tri;
+%clear; 
+%load("3DoF_deterministic_Workspace.mat");
+%clear tri;
 %% Initialize
-
+Deterministic_3DoF_with_mass_convexified
 %% Stochastic Optimization Parameters
 nu = 2;
 nr = 2;
+nx = 7;
 n_sigma_99 = sigma_mag_confidence(1e-2, nu);
 n_sigma_99p9 = sigma_mag_confidence(1e-3, nu);
 
@@ -70,7 +71,7 @@ Pf = diag(sigma_xf .^ 2);
 
 
 %% Get Dynamics
-f = @(t, x, u, p) SymDynamics3DoF_mass_noumag(t, x, u, vehicle.m, vehicle.L, vehicle.I(2), vehicle.alpha);
+f = @(t, x, u, p) SymDynamics3DoF_mass_convexified_noumag(t, x, u, vehicle.L, vehicle.I(2), vehicle.alpha);
 
 %% Measurement Model
 % Measurement model (identity with noise)
@@ -94,7 +95,6 @@ glideslope_angle_max = deg2rad(80);
 h_glideslope = calculate_glideslope_offset(sigma_xf(1:2) * norminv(1 - 1e-3 / 2), glideslope_angle_max);
 glideslope_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) (norm(x(1:2) + [0; h_glideslope]) + 0*sigma_mag_confidence(1e-3, nr) * norm(X_k_ref(1:2, (tri(k - 1, nx) + 1):tri(k, nx)))) * cos(glideslope_angle_max) - (x(2) + h_glideslope - norminv(1 - 1e-3) * norm(X_k_ref(2, (tri(k - 1, nx) + 1):tri(k, nx))));
 state_nonconvex_constraints = {glideslope_constraint};
-state_nonconvex_constraints = {};
 
 state_convex_constraints = {};
 control_convex_constraints ={};
@@ -103,26 +103,13 @@ control_convex_constraints ={};
 convex_constraints = [state_convex_constraints, control_convex_constraints];
 
 % Nonconvex control constraints
-lcvx_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) norm(u(1:2)) + sigma_mag_confidence(1e-3 / 2, nu) * norm(S_k) - thrust_magnitude_bound(S_k_ref, u_ref, k, t_k, T_max, m_0, alpha, nu);
-min_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) T_min / m_0 - (norm(u(1:2)) - sigma_mag_confidence(1e-3 / 2, nu) * norm(S_k));
-control_nonconvex_constraints = {lcvx_thrust_constraint};
-control_nonconvex_constraints = {};
+max_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) norm(u(1:2)) + sigma_mag_confidence(1e-3 / 2, nu) * norm(S_k) - thrust_magnitude_bound(S_k_ref, u_ref, k, t_k, T_max, m_0, alpha, nu);
+min_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) T_min / m_0 - (norm(u_ref(:, k)) + (u_ref(:, k)' / norm(u_ref(:, k))) * (u - u_ref(:, k)) - sigma_mag_confidence(1e-3 / 2, nu) * norm(S_k));
+control_nonconvex_constraints = {max_thrust_constraint, min_thrust_constraint};
+
 % Combine nonconvex constraints
 nonconvex_constraints = [state_nonconvex_constraints, control_nonconvex_constraints];
 %% Specify Objective
-
-% Size Definitions
-nu = prob_3DoF.n.u;
-nx = prob_3DoF.n.x;
-
-% Objective
-min_fuel_angular_velocity_objective = @(x, u, p, X_K, S_K) sum(u(3, :) / T_max + x(6, 1:Nu) .^ 2) * delta_t;
-if u_hold == "ZOH"
-    min_fuel_objective = @(x, u, p) sum(u(3, :)) * delta_t;
-elseif u_hold == "FOH"
-    min_fuel_objective = @(x, u, p) sum((u(3, 1:(end - 1)) + u(3, 2:end)) / 2) * delta_t;
-end
-
 stochastic_min_fuel_objective = @(x, u, p, X_k, S_k) einsum(@(k) norm(u(1:2, k), 2) + sigma_mag_confidence(1e-2, nu) * norm(S_k(:, (tri(k - 1, nx) + 1):tri(k, nx)), 2), 1:Nu) * (t_k(2) - t_k(1));
 
 %% Create Guess
@@ -162,28 +149,19 @@ mod_ptr_sol = ptr_sol;
 mod_ptr_sol.x = ptr_sol.x(:, :, ptr_sol.converged_i);
 mod_ptr_sol.u = ptr_sol.u(1:2, :, ptr_sol.converged_i);
 mod_ptr_sol.p = ptr_sol.p(:, ptr_sol.converged_i);
-ptr_ops.iter_min = 2;
+ptr_ops.iter_min = 4;
 stoch_terminal_bc = @(x, p) [x(1:6) - prob_3DoF.xf; 0]; 
 
 
 prob_3DoF.cont.f = f;
+prob_3DoF.xf = [0; sigma_xf(2) * norminv(1 - 1e-3); 0; 0; pi/2; 0];
+stoch_terminal_bc = @(x, p) [x(1:6) - prob_3DoF.xf; 0];
 prob_3DoF = StochasticProblem.stochastify_discrete_problem(prob_3DoF, G, f_0, g_0, Phat0, Ptilde0, Pf, sol = mod_ptr_sol, objective = stochastic_min_fuel_objective, f = f, convex_constraints = convex_constraints, nonconvex_constraints = nonconvex_constraints, terminal_bc = stoch_terminal_bc);
+[prob_3DoF, Delta] = prob_3DoF.discretize(prob_3DoF.guess.x, prob_3DoF.guess.u, prob_3DoF.guess.p);
+
 
 %prob_3DoF = StochasticProblem(x_0, x_f, Phat0, Ptilde0, Pf, N, u_hold, tf, f, G, f_0, g_0, mod_ptr_sol, convex_constraints, stochastic_min_fuel_objective, scale = scale, nonconvex_constraints = nonconvex_constraints,  terminal_bc = stoch_terminal_bc);
 
-%% Test Scaling
-% guess_scaled.x = prob_3DoF.scale_x(guess.x);
-% guess_scaled.u = prob_3DoF.scale_u(guess.u);
-% guess_scaled.p = prob_3DoF.scale_p(guess.p);
-% 
-% figure
-% plot_3DoF_trajectory(t_k, guess_scaled.x, guess_scaled.u, glideslope_angle_max, gimbal_max, 0, 0)
-% 
-% figure
-% plot_3DoF_time_histories(t_k, guess_scaled.x, guess_scaled.u)
-
-%%
-Delta = calculate_defect(prob_3DoF, prob_3DoF.guess.x, prob_3DoF.guess.u, prob_3DoF.guess.p);
 norm(Delta)
 
 %% Test Discretization on Initial Guess
@@ -205,38 +183,145 @@ norm(Delta)
 % comparison_plot_3DoF_time_histories({t_k, t_cont, t_k}, {guess.x, x_cont, x_disc}, {guess.u, u_cont, guess.u}, ["Guess", "Cont", "Disc"], linestyle = [":", "-", "--"], title = "Continuous vs Discrete Propagation of Initial Guess")
 
 %% Solve Problem with PTR
-ptr_sol = Stochastic_ptr(prob_3DoF, ptr_ops);
+stoch_ptr_sol = Stochastic_ptr(prob_3DoF, ptr_ops);
 
 %%
-tiledlayout(1, 3)
+stoch_prob_3DoF = prob_3DoF;
 
+%% MC Simulations with Optimized Feedback Gain
+K_k_opt = recover_gain_matrix(stoch_ptr_sol.X(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.S(:, :, stoch_ptr_sol.converged_i));
+
+K_k_ck = zeros([stoch_prob_3DoF.N, 1]);
+for km = 1:(stoch_prob_3DoF.N - 1)
+    K_k_ck(km) = norm(K_k_opt(:, :, km) * stoch_ptr_sol.X(:, (tri(km - 1, nx) + 1):tri(km, nx), stoch_ptr_sol.converged_i) - stoch_ptr_sol.S(:, (tri(km - 1, nx) + 1):tri(km, nx), stoch_ptr_sol.converged_i));
+end
+
+
+%% Check Convergence for Gamma_k
+Gamma_k = zeros([stoch_prob_3DoF.N, stoch_ptr_sol.converged_i]);
+thrust_mag_k = zeros([stoch_prob_3DoF.N, stoch_ptr_sol.converged_i]);
+thrust_min_k = zeros([stoch_prob_3DoF.N, stoch_ptr_sol.converged_i]);
+thrust_mag_nom_k = zeros([stoch_prob_3DoF.N, stoch_ptr_sol.converged_i]);
+max_thrust_constraint_evals = zeros([stoch_prob_3DoF.N, stoch_ptr_sol.converged_i]);
+min_thrust_constraint_evals = zeros([stoch_prob_3DoF.N, stoch_ptr_sol.converged_i]);
+for ms = 1:stoch_ptr_sol.converged_i
+    for km = 1:(stoch_prob_3DoF.N - 1)
+        Gamma_k(km, ms) = thrust_magnitude_bound(stoch_ptr_sol.S(:, :, ms), squeeze(stoch_ptr_sol.u(:, :, ms)), km, t_k, T_max, m_0, alpha, nu);
+        thrust_mag_k(km, ms) = norm(stoch_ptr_sol.u(1:2, km, ms)) + sigma_mag_confidence(1e-3 / 2, nu) * norm(stoch_ptr_sol.S(:, (tri(km - 1, nx) + 1):tri(km, nx), ms));
+        thrust_min_k(km, ms) = norm(stoch_ptr_sol.u(1:2, km, ms)) - sigma_mag_confidence(1e-3 / 2, nu) * norm(stoch_ptr_sol.S(:, (tri(km - 1, nx) + 1):tri(km, nx), ms));
+        thrust_mag_nom_k(km, ms) = norm(stoch_ptr_sol.u(1:2, km, ms));
+    end
+    ms
+end
+
+for ms = 2:stoch_ptr_sol.converged_i
+    for km = 1:(stoch_prob_3DoF.N - 1)
+        max_thrust_constraint_evals(km, ms) = max_thrust_constraint(stoch_ptr_sol.x(1:2, km, ms), stoch_ptr_sol.u(1:2, km, ms), 0, 0, stoch_ptr_sol.S(:, (tri(km - 1, nx) + 1):tri(km, nx), ms), stoch_ptr_sol.x(1:2, km, ms - 1), stoch_ptr_sol.u(1:2, :, ms - 1), 0, 0, stoch_ptr_sol.S(:, :, ms - 1), km);
+    end
+end
+
+for ms = 2:stoch_ptr_sol.converged_i
+    for km = 1:(stoch_prob_3DoF.N - 1)
+        min_thrust_constraint_evals(km, ms) = T_min - (vecnorm(stoch_ptr_sol.u(1:2, km, ms)) * exp(stoch_ptr_sol.x(7, km, ms)) - sigma_mag_confidence(1e-3 / 2, nu) * norm(stoch_ptr_sol.S(:, (tri(km - 1, nx) + 1):tri(km, nx), ms)));
+    end
+end
+%%
+figure
+tiledlayout(2, 2)
 nexttile
-plot(0:ptr_sol.converged_i, [prob_3DoF.objective(prob_3DoF.guess.x, prob_3DoF.guess.u, prob_3DoF.guess.p), [ptr_sol.info.J]]); hold on
-yline(CasADi_sol.objective); hold off
-legend("PTR Iterations", "CasADi Solution")
-title("Objective vs Iteration")
+stairs(t_k(1:(end - 1)), Gamma_k(1:(end - 1), :) .* squeeze(exp(stoch_ptr_sol.x(7, 1:(end - 1), 1:stoch_ptr_sol.converged_i))))
+title("\Gamma_k vs Time for All Iterations")
+xlabel("Time [s]")
+ylabel("[km / s2]")
+legend("Iter " + string(1:stoch_ptr_sol.converged_i), Location="southeast")
 grid on
 
 nexttile
-plot(ptr_sol.delta_xp)
-title("Stopping Criteria vs Iteration")
+for ms = 1:(stoch_ptr_sol.converged_i - 1)
+    stairs(t_k, abs(Gamma_k(:, ms + 1) - Gamma_k(:, ms))); hold on
+end
+hold off
+title("\Delta\Gamma_k vs Time for All Iterations")
+yscale("log")
+xlabel("Time [s]")
+ylabel("[km / s2]")
+legend("Iter " + string(2:stoch_ptr_sol.converged_i) + " minus " + string(1:(stoch_ptr_sol.converged_i - 1)), Location="southeast")
 grid on
 
 nexttile
-plot(0:ptr_sol.converged_i, vecnorm(ptr_sol.Delta(:, 1:(ptr_sol.converged_i + 1)), 2, 1))
-title("Defect Norm vs Iteration")
+stairs(t_k(1:(end - 1)), thrust_min_k(1:(end - 1),:) .* squeeze(exp(stoch_ptr_sol.x(7, 1:(end - 1), 1:stoch_ptr_sol.converged_i))));
+title("||u_k|| - 99.9% Uncertainty Bound vs Time for All Iterations")
+xlabel("Time [s]")
+ylabel("[km / s2]")
+legend("Iter " + string(1:stoch_ptr_sol.converged_i), Location="southeast")
 grid on
+
+nexttile
+stairs(t_k(1:(end - 1)), thrust_mag_nom_k(1:(end - 1),:) .* squeeze(exp(stoch_ptr_sol.x(7, 1:(end - 1), 1:stoch_ptr_sol.converged_i))));
+title("||u_k|| vs Time for All Iterations")
+xlabel("Time [s]")
+ylabel("[km / s2]")
+legend("Iter " + string(1:stoch_ptr_sol.converged_i), Location="southeast")
+grid on
+
+
+sgtitle("\Gamma_k Convergence Plots")
+%%
+m = 100;
+
+t_ofb = zeros([stoch_prob_3DoF.N, m]);
+x_ofb = zeros([stoch_prob_3DoF.n.x, stoch_prob_3DoF.N, m]);
+xhat_ofb = zeros([stoch_prob_3DoF.n.x, stoch_prob_3DoF.N, m]);
+Phat_ofb = zeros([stoch_prob_3DoF.n.x, stoch_prob_3DoF.n.x, stoch_prob_3DoF.N, m]);
+u_ofb = zeros([stoch_prob_3DoF.n.u, stoch_prob_3DoF.Nu, m]);
+
+parfor i = 1:m
+    [t_ofb(:, i), x_ofb(:, :, i), xhat_ofb(:, :, i), Phat_ofb(:, :, :, i), u_ofb(:, :, i)] = stoch_prob_3DoF.disc_prop(stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.u(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.p(:, stoch_ptr_sol.converged_i), K_k_opt);
+    i
+end
+
+%% MC Simulations with Non-Optimized Feedback Gain
+K_k = -1e-2*repmat([1, 0, 0, 0, 0, 0, 0; 0, 1, 0, 0, 0, 0, 0], 1, 1, stoch_prob_3DoF.Nu);
+
+m = 100;
+
+t_fb = zeros([stoch_prob_3DoF.N, m]);
+x_fb = zeros([stoch_prob_3DoF.n.x, stoch_prob_3DoF.N, m]);
+xhat_fb = zeros([stoch_prob_3DoF.n.x, stoch_prob_3DoF.N, m]);
+Phat_fb = zeros([stoch_prob_3DoF.n.x, stoch_prob_3DoF.n.x, stoch_prob_3DoF.N, m]);
+u_fb = zeros([stoch_prob_3DoF.n.u, stoch_prob_3DoF.Nu, m]);
+
+parfor i = 1:m
+    [t_fb(:, i), x_fb(:, :, i), xhat_fb(:, :, i), Phat_fb(:, :, :, i), u_fb(:, :, i)] = stoch_prob_3DoF.disc_prop(stoch_prob_3DoF.guess.x, stoch_prob_3DoF.guess.u, stoch_prob_3DoF.guess.p, K_k);
+    i
+end
+
+%% MC Simulations with No Feedback Control
+t_no_fb = zeros([stoch_prob_3DoF.N, m]);
+x_no_fb = zeros([stoch_prob_3DoF.n.x, stoch_prob_3DoF.N, m]);
+xhat_no_fb = zeros([stoch_prob_3DoF.n.x, stoch_prob_3DoF.N, m]);
+Phat_no_fb = zeros([stoch_prob_3DoF.n.x, stoch_prob_3DoF.n.x, stoch_prob_3DoF.N, m]);
+u_no_fb = zeros([stoch_prob_3DoF.n.u, stoch_prob_3DoF.Nu, m]);
+
+parfor i = 1:m
+    [t_no_fb(:, i), x_no_fb(:, :, i), xhat_no_fb(:, :, i), Phat_no_fb(:, :, :, i), u_no_fb(:, :, i)] = stoch_prob_3DoF.disc_prop(stoch_prob_3DoF.guess.x, stoch_prob_3DoF.guess.u, stoch_prob_3DoF.guess.p, K_k * 0);
+    i
+end
 
 %%
-i = ptr_sol.converged_i;
+[Phat_k_opt, Pu_k_opt] = recover_est_covariances(stoch_ptr_sol.X(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.S(:, :, stoch_ptr_sol.converged_i));
 
-[t_cont_sol, x_cont_sol, u_cont_sol] = prob_3DoF.cont_prop(ptr_sol.u(:, :, i), ptr_sol.p(:, i));
+P_k_opt = Phat_k_opt + stoch_prob_3DoF.disc.Ptilde_k;
+%%
 
+plot_3DoF_MC_trajectories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, x_ofb, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, P_k_opt, t_k, xhat_no_fb, Pf, glideslope_angle_max, h_glideslope);
+
+%%
+plot_3DoF_MC_time_histories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.u(:, :, stoch_ptr_sol.converged_i), t_k, x_ofb, u_ofb, t_k, stoch_ptr_sol.X(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.S(:, :, stoch_ptr_sol.converged_i), t_k, xhat_no_fb, T_max, T_min, gimbal_max, true)
+
+%%
+plot_3DoF_MC_trajectories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, x_fb, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, P_k_opt, t_k, xhat_no_fb, Pf, glideslope_angle_max, h_glideslope)
+
+%%
 figure
-plot_3DoF_trajectory(t_k, ptr_sol.x(:, :, i), ptr_sol.u(:, :, i), glideslope_angle_max, gimbal_max, T_min, T_max, step = 1)
-
-figure
-comparison_plot_3DoF_trajectory({guess.x, x_cont_sol, ptr_sol.x(:, :, i), CasADi_sol.x}, ["Guess", "Continuous Propagation", "Solution Output", "CasADi"], glideslope_angle_max, linestyle = [":", "-", "--", "-"], title = "Continuous vs Discrete Propagation of Solution")
-
-figure
-comparison_plot_3DoF_time_histories({t_k, t_cont_sol, t_k}, {guess.x, x_cont_sol, ptr_sol.x(:, :, i)}, {guess.u, u_cont_sol, ptr_sol.u(:, :, i)}, ["Guess", "Cont", "Disc"], linestyle = [":", "-", "--"], title = "Continuous vs Discrete Propagation of Solution")
+covariance_plot(stoch_ptr_sol.x(:, end, stoch_ptr_sol.converged_i), squeeze(x_ofb(:, end, :)), squeeze(P_k_opt(:, :, end)), Phat0 + Ptilde0, ["x [km]", "y [km]", "v_x [km / s]", "v_y [km / s]", "\theta [rad]", "\omega [rad / s]", "m [kg]"], "State Dispersion at Final Node")

@@ -5,7 +5,7 @@
 % Created On: 19 April, 2025
 % Description: Stochastic 2DoF (all translational) landing of rocket using 
 % PTR SCP algorithm
-% Most Recent Change: 23 April, 2025
+% Most Recent Change: 27 April, 2025
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % HOW DOES FEEDBACK WITH THE THRUST MAGNITUDE PART OF THE CONTROL VECTOR
@@ -21,17 +21,12 @@ nx = 5;
 Deterministic_2DoF_linear
 
 t_k = linspace(0, prob_2DoF.tf, prob_2DoF.N);
-if prob_2DoF.u_hold == "ZOH"
-    u_func = @(t, x) interp1(t_k(1:prob_2DoF.Nu), ptr_sol.u(:, :, ptr_sol.converged_i)', t, "previous", "extrap")';
-elseif prob_2DoF.u_hold == "FOH"
-    u_func = @(t, x) interp1(t_k(1:prob_2DoF.Nu), ptr_sol.u(:, :, ptr_sol.converged_i)', t)';
-end
 
 %% Define Stochastic Elements
 % Initial estimated state
 sigma_xhat0 = [10e-3; ... % r_x
             20e-3; ... % r_y
-            1e-3; ... % v_x
+            5e-3; ... % v_x
             1e-3; ... % v_y
             1e-4]; % mass
 Phat0 = diag(sigma_xhat0 .^ 2);
@@ -104,7 +99,7 @@ convex_constraints = [state_convex_constraints, control_convex_constraints];
 max_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) norm(u) + sigma_mag_confidence(1e-3 / 2, nu) * norm(S_k) - thrust_magnitude_bound(S_k_ref, u_ref, k, t_k, T_max, m_0, alpha, nu);
 min_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) T_min / m_0 - (norm(u_ref(:, k)) + (u_ref(:, k)' / norm(u_ref(:, k))) * (u - u_ref(:, k)) - sigma_mag_confidence(1e-3 / 2, nu) * norm(S_k));
 
-control_nonconvex_constraints = {max_thrust_constraint};
+control_nonconvex_constraints = {max_thrust_constraint, min_thrust_constraint};
 
 % Combine nonconvex constraints
 nonconvex_constraints = [state_nonconvex_constraints, control_nonconvex_constraints];
@@ -122,14 +117,14 @@ stoch_prob_2DoF = StochasticProblem.stochastify_discrete_problem(prob_2DoF, G, f
 ptr_ops.iter_max = 20;
 ptr_ops.iter_min = 2;
 ptr_ops.Delta_min = 5e-5;
-ptr_ops.w_vc = 1e3;
-ptr_ops.w_tr = ones(1, Nu) * 1e-2;
+ptr_ops.w_vc = 1e4;
+ptr_ops.w_tr = ones(1, Nu) * 1e0;
 ptr_ops.w_tr_p = 1e-1;
 ptr_ops.update_w_tr = false;
 ptr_ops.delta_tol = 1e-3;
 ptr_ops.q = 2;
 ptr_ops.alpha_x = 1;
-ptr_ops.alpha_u = 0;
+ptr_ops.alpha_u = 1;
 ptr_ops.alpha_p = 0;
 %%
 tic
@@ -150,7 +145,7 @@ Gamma_k = zeros([stoch_prob_2DoF.N, stoch_ptr_sol.converged_i]);
 thrust_mag_k = zeros([stoch_prob_2DoF.N, stoch_ptr_sol.converged_i]);
 thrust_min_k = zeros([stoch_prob_2DoF.N, stoch_ptr_sol.converged_i]);
 thrust_mag_nom_k = zeros([stoch_prob_2DoF.N, stoch_ptr_sol.converged_i]);
-lcvx_thrust_constraint_evals = zeros([stoch_prob_2DoF.N, stoch_ptr_sol.converged_i]);
+max_thrust_constraint_evals = zeros([stoch_prob_2DoF.N, stoch_ptr_sol.converged_i]);
 min_thrust_constraint_evals = zeros([stoch_prob_2DoF.N, stoch_ptr_sol.converged_i]);
 for ms = 1:stoch_ptr_sol.converged_i
     for km = 1:(stoch_prob_2DoF.N - 1)
@@ -164,7 +159,7 @@ end
 
 for ms = 2:stoch_ptr_sol.converged_i
     for km = 1:(stoch_prob_2DoF.N - 1)
-        lcvx_thrust_constraint_evals(km, ms) = lcvx_constraint(stoch_ptr_sol.x(1:2, km, ms), stoch_ptr_sol.u(1:2, km, ms), 0, 0, stoch_ptr_sol.S(:, (tri(km - 1, nx) + 1):tri(km, nx), ms), vecnorm(stoch_ptr_sol.u(1:2, km, ms)));
+        max_thrust_constraint_evals(km, ms) = max_thrust_constraint(stoch_ptr_sol.x(1:2, km, ms), stoch_ptr_sol.u(1:2, km, ms), 0, 0, stoch_ptr_sol.S(:, (tri(km - 1, nx) + 1):tri(km, nx), ms), stoch_ptr_sol.x(1:2, km, ms - 1), stoch_ptr_sol.u(1:2, :, ms - 1), 0, 0, stoch_ptr_sol.S(:, :, ms - 1), km);
     end
 end
 
