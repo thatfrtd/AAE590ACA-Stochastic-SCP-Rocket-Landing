@@ -26,7 +26,7 @@ vehicle_big_gimbs = Vehicle(m_dry, L, L * 3, deg2rad(20), T_min, T_max, I = I, a
 tf = 60; % [s]
 N = 20; % []
 r_0 = [1.5; 3.0]; % [km]
-v_0 = [0.0385; -0.0647]; % [km / s]
+v_0 = [0.0185; -0.0547]; % [km / s]
 theta_0 = deg2rad(90); % [rad]
 w_0 = deg2rad(0); % [rad / s]
 glideslope_angle_max = deg2rad(60); % [rad]
@@ -199,3 +199,6 @@ comparison_plot_3DoF_trajectory({guess.x, x_cont_sol, ptr_sol.x(:, :, i), CasADi
 
 figure
 comparison_plot_3DoF_time_histories({t_k, t_cont_sol, t_k}, {guess.x, x_cont_sol, ptr_sol.x(:, :, i)}, {guess.u, u_cont_sol, ptr_sol.u(:, :, i)}, ["Guess", "Cont", "Disc"], linestyle = [":", "-", "--"], title = "Continuous vs Discrete Propagation of Solution")
+
+%% Saving workspace
+save("Results\Deterministic_convexified_3DoF_workspace.mat");

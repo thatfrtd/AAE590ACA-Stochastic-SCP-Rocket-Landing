@@ -69,6 +69,10 @@ end
 
 figure; plot(min_test)
 
+theta = zeros(1, size(u_sol, 2));
+for k = 1:prob.nu
+    theta = u(1, k) / norm(u(1:2, k));
+end
 x_sol = X;
 u_sol = U;
 X_sol = X_C;

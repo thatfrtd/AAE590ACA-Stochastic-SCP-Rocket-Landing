@@ -11,6 +11,7 @@
 %clear tri;
 %% Initialize
 Deterministic_3DoF_with_mass_convexified
+%load("Deterministic_convexified_3DoF_workspace.mat");
 %% Stochastic Optimization Parameters
 nu = 2;
 nr = 2;
@@ -94,7 +95,12 @@ K_k = -3*repmat([0, 1, 0, 0, 0, 0, 0; 0, 0, 0, 0, -1, 0, 0], 1, 1, prob_3DoF.Nu)
 glideslope_angle_max = deg2rad(80);
 h_glideslope = calculate_glideslope_offset(sigma_xf(1:2) * norminv(1 - 1e-3 / 2), glideslope_angle_max);
 glideslope_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) (norm(x(1:2) + [0; h_glideslope]) + 0*sigma_mag_confidence(1e-3, nr) * norm(X_k_ref(1:2, (tri(k - 1, nx) + 1):tri(k, nx)))) * cos(glideslope_angle_max) - (x(2) + h_glideslope - norminv(1 - 1e-3) * norm(X_k_ref(2, (tri(k - 1, nx) + 1):tri(k, nx))));
-state_nonconvex_constraints = {glideslope_constraint};
+
+gimbal_angle_max = deg2rad(6.5);
+gimbal_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) norm(u(1:2)) * cos(gimbal_angle_max) - u(1) +  norminv(1-1e-3)*( norm(S_k_ref(1, (tri(k - 1, nx) + 1):tri(k, nx))));
+
+state_nonconvex_constraints = {glideslope_constraint, gimbal_constraint};%
+%state_nonconvex_constraints = {glideslope_constraint};
 
 state_convex_constraints = {};
 control_convex_constraints ={};
@@ -103,7 +109,7 @@ control_convex_constraints ={};
 convex_constraints = [state_convex_constraints, control_convex_constraints];
 
 % Nonconvex control constraints
-max_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) norm(u(1:2)) + sigma_mag_confidence(1e-3 / 2, nu) * norm(S_k) - thrust_magnitude_bound(S_k_ref, u_ref, k, t_k, T_max, m_0, alpha, nu);
+max_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) norm(u(1:2)) + sigma_mag_confidence(1e-3 / 2, nu) * norm(S_k) - thrust_magnitude_bound(S_k_ref, u_ref, k, t_k, T_max, m_0, alpha, nu, nx);
 min_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) T_min / m_0 - (norm(u_ref(:, k)) + (u_ref(:, k)' / norm(u_ref(:, k))) * (u - u_ref(:, k)) - sigma_mag_confidence(1e-3 / 2, nu) * norm(S_k));
 control_nonconvex_constraints = {max_thrust_constraint, min_thrust_constraint};
 
@@ -149,7 +155,7 @@ mod_ptr_sol = ptr_sol;
 mod_ptr_sol.x = ptr_sol.x(:, :, ptr_sol.converged_i);
 mod_ptr_sol.u = ptr_sol.u(1:2, :, ptr_sol.converged_i);
 mod_ptr_sol.p = ptr_sol.p(:, ptr_sol.converged_i);
-ptr_ops.iter_min = 4;
+ptr_ops.iter_min = 8;
 stoch_terminal_bc = @(x, p) [x(1:6) - prob_3DoF.xf; 0]; 
 
 
@@ -206,7 +212,7 @@ max_thrust_constraint_evals = zeros([stoch_prob_3DoF.N, stoch_ptr_sol.converged_
 min_thrust_constraint_evals = zeros([stoch_prob_3DoF.N, stoch_ptr_sol.converged_i]);
 for ms = 1:stoch_ptr_sol.converged_i
     for km = 1:(stoch_prob_3DoF.N - 1)
-        Gamma_k(km, ms) = thrust_magnitude_bound(stoch_ptr_sol.S(:, :, ms), squeeze(stoch_ptr_sol.u(:, :, ms)), km, t_k, T_max, m_0, alpha, nu);
+        Gamma_k(km, ms) = thrust_magnitude_bound(stoch_ptr_sol.S(:, :, ms), squeeze(stoch_ptr_sol.u(:, :, ms)), km, t_k, T_max, m_0, alpha, nu, nx);
         thrust_mag_k(km, ms) = norm(stoch_ptr_sol.u(1:2, km, ms)) + sigma_mag_confidence(1e-3 / 2, nu) * norm(stoch_ptr_sol.S(:, (tri(km - 1, nx) + 1):tri(km, nx), ms));
         thrust_min_k(km, ms) = norm(stoch_ptr_sol.u(1:2, km, ms)) - sigma_mag_confidence(1e-3 / 2, nu) * norm(stoch_ptr_sol.S(:, (tri(km - 1, nx) + 1):tri(km, nx), ms));
         thrust_mag_nom_k(km, ms) = norm(stoch_ptr_sol.u(1:2, km, ms));
@@ -317,7 +323,7 @@ P_k_opt = Phat_k_opt + stoch_prob_3DoF.disc.Ptilde_k;
 plot_3DoF_MC_trajectories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, x_ofb, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, P_k_opt, t_k, xhat_no_fb, Pf, glideslope_angle_max, h_glideslope);
 
 %%
-plot_3DoF_MC_time_histories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.u(:, :, stoch_ptr_sol.converged_i), t_k, x_ofb, u_ofb, t_k, stoch_ptr_sol.X(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.S(:, :, stoch_ptr_sol.converged_i), t_k, xhat_no_fb, T_max, T_min, gimbal_max, true)
+plot_3DoF_MC_time_histories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.u(:, :, stoch_ptr_sol.converged_i), t_k, x_ofb, u_ofb, t_k, stoch_ptr_sol.X(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.S(:, :, stoch_ptr_sol.converged_i), t_k, xhat_no_fb, T_max, T_min, gimbal_angle_max, true)
 
 %%
 plot_3DoF_MC_trajectories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, x_fb, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, P_k_opt, t_k, xhat_no_fb, Pf, glideslope_angle_max, h_glideslope)

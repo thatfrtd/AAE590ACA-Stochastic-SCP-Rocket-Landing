@@ -1,7 +1,7 @@
-function [Gamma_k] = thrust_magnitude_bound(S_k_ref, u_ref, k, t_k, T_max, m_0, alpha, nu)
+function [Gamma_k] = thrust_magnitude_bound(S_k_ref, u_ref, k, t_k, T_max, m_0, alpha, nu, nx)
 %GAMMA_K Summary of this function goes here
 %   Detailed explanation goes here
-tri = @(k) k * (k + 1) / 2 * 5;
+tri = @(k) k * (k + 1) / 2 * nx;
 
 delta_t = t_k(2) - t_k(1);
 
