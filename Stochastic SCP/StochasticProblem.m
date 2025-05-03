@@ -335,6 +335,7 @@ classdef StochasticProblem
                 ytilde_minus_k = innovation_process(y_k, prob.disc.C_k(:, :, k + 1), xtilde_disc(:, k + 1));
                 xtilde_disc(:, k + 1) = estimate_measurement_update(xtilde_disc(:, k + 1), prob.disc.L_k(:, :, k + 1), ytilde_minus_k);
                 Ptilde_disc(:, :, k + 1) = covariance_measurement_update(prob.disc.L_k(:, :, k + 1), prob.disc.C_k(:, :, k + 1), Ptilde_disc(:, :, k + 1), prob.disc.D_k(:, :, k + 1));
+                %fprintf("k = %d\n", k)
             end
         end
 

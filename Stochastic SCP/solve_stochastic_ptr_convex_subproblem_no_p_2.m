@@ -57,22 +57,24 @@ cvx_begin
 cvx_end
 
 nc_ck = zeros([prob.n.ncvx, prob.Nu]);
+nc_ck_noref = zeros([prob.n.ncvx, prob.Nu]);
 for k = 1:prob.Nu
     % Nonconvex Constraints
     for nc = 1:prob.n.ncvx
         nc_ck(nc, k) = prob.nonconvex_constraints{nc}(prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, X_C(:, (tri(k - 1) + 1):tri(k)), S_k(:, (tri(k - 1) + 1):tri(k)), x_ref, u_ref, 0, X_k_ref, S_k_ref, k);
             %- v_prime(nc);
+        nc_ck_noref(nc, k) = prob.nonconvex_constraints{nc}(prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, X_C(:, (tri(k - 1) + 1):tri(k)), S_k(:, (tri(k - 1) + 1):tri(k)), prob.unscale_x(X), prob.unscale_u(U), 0, X_C, S_k, k);
     end
 
     min_test(k) = 0.002485 - (norm(U(:, k)) - 3.89894920704084 * norm(S_k(:, (tri(k - 1) + 1):tri(k))));
 end
 
 figure; plot(min_test)
-
-theta = zeros(1, size(u_sol, 2));
-for k = 1:prob.nu
-    theta = u(1, k) / norm(u(1:2, k));
-end
+% 
+% theta = zeros(1, size(U, 2));
+% for k = 1:prob.nu
+%     theta = (1, k) / norm(U(1:2, k));
+% end
 x_sol = X;
 u_sol = U;
 X_sol = X_C;

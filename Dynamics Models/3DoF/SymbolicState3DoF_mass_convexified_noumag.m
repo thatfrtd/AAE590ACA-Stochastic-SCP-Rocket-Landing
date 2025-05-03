@@ -2,9 +2,9 @@
 % AAE 590ACA
 % Stochastic SCP Rocket Landing Project
 % Author: Travis Hastreiter 
-% Created On: 6 April, 2025
+% Created On: 28 April, 2025
 % Description: 3DoF rocket landing dynamics with changing mass
-% Most Recent Change: 6 April, 2025
+% Most Recent Change: 28 April, 2025
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 g = 3.7114e-3; % [km / s2]

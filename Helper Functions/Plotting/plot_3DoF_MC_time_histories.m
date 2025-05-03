@@ -1,8 +1,8 @@
-function [] = plot_3DoF_MC_time_histories(t_mean, x_mean, u_mean, t_fb, x_MC_fb, u_MC_fb, t_k, X_k, S_k, t_no_fb, x_MC_no_fb, T_max, T_min, max_gimbal, use_legend)
+function [] = plot_3DoF_MC_time_histories(t_mean, x_mean, u_mean, t_fb, x_MC_fb, u_MC_fb, t_k, X_k, S_k, t_no_fb, x_MC_no_fb, glideslope_max, h_glideslope, T_max, T_min, max_gimbal, use_legend)
 %PLOT_3DOF_MC_TIME_HISTORIES Summary of this function goes here
 %   Detailed explanation goes here
 
-tri = @(k) k * (k + 1) / 2 * 5;
+tri = @(k) k * (k + 1) / 2 * 7;
 
 m = size(x_MC_fb, 3);
 
@@ -48,6 +48,36 @@ for x = 1:7
     grid on
 end
 
+%% Glideslope 
+figure 
+epsilon = 1e-3; % 99.9% 
+X_k_1_norm = zeros([size(x_MC_fb, 2), 1]);
+X_k_2_norm = zeros([size(x_MC_fb, 2), 1]);
+for j = 1:size(x_MC_fb, 2)
+    X_k_1_norm(j) = norm(X_k(1, (tri(j - 1) + 1):tri(j)));
+    X_k_2_norm(j) = norm(X_k(2, (tri(j - 1) + 1):tri(j)));
+end
+x2_3sigbound = norminv(1 - epsilon) * X_k_2_norm';
+x1_3sigbound = sigma_mag_confidence(epsilon, 1) * X_k_1_norm';
+
+glideslope_99p9bound_up = atan2d(x_mean(1,:) + x1_3sigbound .* sign(x_mean(1,:)), x_mean(2, :) + h_glideslope - x2_3sigbound);
+glideslope_99p9bound_dn = atan2d(x_mean(1,:) - x1_3sigbound .* sign(x_mean(1,:)), x_mean(2, :) + h_glideslope + x2_3sigbound);
+
+for i = 1:m
+    stairs(t_fb(1:size(x_MC_fb, 2)), atan2d(x_MC_fb(1, :, i), x_MC_fb(2, :, i) + h_glideslope), Color = [192, 192, 192] / 256, HandleVisibility='off'); hold on
+end
+
+stairs(t_k, atan2d(x_mean(1, :), x_mean(2, :)), Color = "k",LineWidth=1, DisplayName="Nominal"); hold on
+stairs(t_k, glideslope_99p9bound_up, Color = [100, 100, 100] / 256, LineStyle=":", LineWidth=1, DisplayName="99.9% Bound"); hold on
+stairs(t_k, glideslope_99p9bound_dn, Color = [100, 100, 100] / 256, LineStyle=":", LineWidth=1, HandleVisibility='off'); hold on
+yline(rad2deg(glideslope_max), LineWidth = 1, LineStyle="--", Color="k", DisplayName = "Constraint"); hold on
+yline(-rad2deg(glideslope_max), LineWidth = 1, LineStyle="--", Color="k", HandleVisibility='off'); hold off
+title("Glideslope Angle vs Time with Optimized Feedback Policies")
+legend(Location="southeast")
+xlabel("Time [s]")
+ylabel("Glideslope Angle [deg]")
+grid on
+
 %% Thrust Magnitude
 figure
 %Pu_k = pagemtimes(S_k, pagetranspose(S_k));
@@ -55,8 +85,12 @@ figure
 nu = 2;
 epsilon = 1e-3; % 99.9% 
 S_k_norm = zeros([size(u_MC_fb, 2), 1]);
+S_k_1_norm = zeros([size(u_MC_fb, 2), 1]);
+S_k_2_norm = zeros([size(u_MC_fb, 2), 1]);
 for j = 1:size(u_MC_fb, 2)
     S_k_norm(j) = norm(S_k(:, (tri(j - 1) + 1):tri(j)));
+    S_k_1_norm(j) = norm(S_k(1, (tri(j - 1) + 1):tri(j)));
+    S_k_2_norm(j) = norm(S_k(2, (tri(j - 1) + 1):tri(j)));
 end
 thrust_3sigbound = squeeze(sigma_mag_confidence(epsilon / 2, nu) * S_k_norm);
 
@@ -82,10 +116,8 @@ grid on
 figure
 
 epsilon = 1e-3; % 99.9% 
-% Best guess at how to evaluate 99.9% bound... how to turn into actual
-% angle bound??
-u1_3sigbound = norminv(1 - epsilon / 2) * S_k_norm;
-u2_3sigbound = sigma_mag_confidence(epsilon / 2, 1) * S_k_norm;
+u1_3sigbound = norminv(1 - epsilon) * S_k_1_norm;
+u2_3sigbound = sigma_mag_confidence(epsilon, 1) * S_k_2_norm;
 
 for i = 1:m
     stairs(t_fb(1:size(u_MC_fb, 2)), atan2d(u_MC_fb(2, :, i), u_MC_fb(1, :, i)), Color = [192, 192, 192] / 256, HandleVisibility='off'); hold on
@@ -96,12 +128,6 @@ u1_3sigbound_full = interp1(t_k(1:size(u_mean, 2)), u1_3sigbound, t_k, "previous
 u2_3sigbound_full = interp1(t_k(1:size(u_mean, 2)), u2_3sigbound, t_k, "previous", "extrap");
 gimbal_99p9bound_up = atan2d(u_mean_full(2,:) + u2_3sigbound_full .* sign(u_mean_full(2,:)), u_mean_full(1, :) - u1_3sigbound_full);
 gimbal_99p9bound_dn = atan2d(u_mean_full(2,:) - u2_3sigbound_full .* sign(u_mean_full(2,:)), u_mean_full(1, :) + u1_3sigbound_full);
-gimbal_99p9bound2 = acosd((u_mean_full(1, :) - u1_3sigbound_full) ./ (vecnorm(u_mean_full(1:2, :), 2, 1)));
-
-gimbal_99p9bound = rad2deg((-(u_mean_full(2,:) .* u1_3sigbound_full) + (u_mean_full(1, :) .* u2_3sigbound_full)) ./ (u_mean_full(1, :) .^ 2 + u_mean_full(2, :) .^ 2));
-
-ck = vecnorm(u_mean_full, 2, 1) * cos(max_gimbal) - (u_mean_full(1, :) - u1_3sigbound_full);
-
 
 stairs(t_k, atan2d(u_mean_full(2, :), u_mean_full(1, :)), Color = "k",LineWidth=1, DisplayName="Nominal"); hold on
 stairs(t_k, gimbal_99p9bound_up, Color = [100, 100, 100] / 256, LineStyle=":", LineWidth=1, DisplayName="99.9% Bound"); hold on

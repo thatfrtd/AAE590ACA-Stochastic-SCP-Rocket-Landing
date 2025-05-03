@@ -1,4 +1,4 @@
-function [] = plot_6DoF_trajectory(t, x, u, glideslope_angle, gimbal_max, T_min, T_max, options)
+function [] = plot_6DoFc_trajectory(t, x, u, glideslope_angle, gimbal_max, T_min, T_max, options)
 arguments
     t
     x 
@@ -47,7 +47,7 @@ zlim(z_lim)
 nexttile
 
 cmap = colormap;
-u_color = interp1(linspace(T_min / T_max, 1, size(cmap, 1)), cmap, u(4, :) / T_max, "linear", "extrap");
+u_color = interp1(linspace(T_min / T_max*0, 1, size(cmap, 1)), cmap, u(4, :) .* exp(x(13, 1:Nu)) / T_max, "linear", "extrap");
 
 gimbal_angle = acos(u(1, :) ./ u(4, :));
 gimbal_clock = atan2(u(3, :), u(2, :));

@@ -25,11 +25,11 @@ n_probit_99p9 = norminv(1 - 1e-3);
 %% Define Stochastic Elements
 % Initial estimated state
 sigma_xhat0 = [10e-3; ... % r_x
-            20e-3; ... % r_y
+            10e-3; ... % r_y
             1e-3; ... % v_x
             1e-3; ... % v_y
-            10e-3; ... % theta
-            1e-3; ... % w
+            deg2rad(1); ... % theta
+            deg2rad(0.5); ... % w
             1e-4]; % mass
 Phat0 = diag(sigma_xhat0 .^ 2);
 
@@ -48,7 +48,7 @@ G = @(t, x, u, p) sqrt(delta_t) * [zeros([2, 3]); ... % velocity
                    [zeros([1, 2]), sigma_m]]; ... % mass flow 
 
 % Initial state estimation error
-sigma_xtilde0 = 2 * [1e-4; ... % r_x
+sigma_xtilde0 = [1e-4; ... % r_x
             5e-4; ... % r_y
             1e-4; ... % v_x
             1e-4; ... % v_y
@@ -59,13 +59,13 @@ Ptilde0 = diag(sigma_xtilde0 .^ 2);
 
 % Final state covariance
 % Final state
-sigma_xf = 10*[1e-3; ... % r_x
-            1e-4; ... % r_y
-            1e-4; ... % v_x
-            1e-4; ... % v_y
-            1e-3; ... % theta
-            1e-4; ... % w
-            1e-5]; % mass
+sigma_xf = [10e-3; ... % r_x
+            1e-3; ... % r_y
+            1e-3; ... % v_x
+            1e-3; ... % v_y
+            deg2rad(1); ... % theta
+            deg2rad(0.5); ... % w
+            1e-4]; % mass
 Pf = diag(sigma_xf .^ 2);
 
 % PTR algorithm parameters are defined in Deterministic
@@ -80,7 +80,7 @@ g_0_stds = [10e-5; ... % r_x
             50e-5; ... % r_y
             5e-5; ... % v_x
             5e-5; ... % v_y
-            10e-3; ... % theta
+            1e-3; ... % theta
             5e-5; ... % w
             1e-5]; ... % mass
 
@@ -92,25 +92,33 @@ K_k = -3*repmat([0, 1, 0, 0, 0, 0, 0; 0, 0, 0, 0, -1, 0, 0], 1, 1, prob_3DoF.Nu)
 
 %% Specify Constraints
 % Convex state path constraints
-glideslope_angle_max = deg2rad(80);
+glideslope_angle_max = deg2rad(45);
 h_glideslope = calculate_glideslope_offset(sigma_xf(1:2) * norminv(1 - 1e-3 / 2), glideslope_angle_max);
-glideslope_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) (norm(x(1:2) + [0; h_glideslope]) + 0*sigma_mag_confidence(1e-3, nr) * norm(X_k_ref(1:2, (tri(k - 1, nx) + 1):tri(k, nx)))) * cos(glideslope_angle_max) - (x(2) + h_glideslope - norminv(1 - 1e-3) * norm(X_k_ref(2, (tri(k - 1, nx) + 1):tri(k, nx))));
+glideslope_constraint = @(x, u, p, X_k, S_k) norm(x(1)) + sigma_mag_confidence(1e-3, nr - 1) * (norm(X_k(1, :))) - tan(glideslope_angle_max) * (x(2) + h_glideslope - norminv(1 - 1e-3) * norm(X_k(2, :)));
 
-gimbal_angle_max = deg2rad(6.5);
-gimbal_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) norm(u(1:2)) * cos(gimbal_angle_max) - u(1) +  norminv(1-1e-3)*( norm(S_k_ref(1, (tri(k - 1, nx) + 1):tri(k, nx))));
+% sigma_max = [100e-3; ... % r_x
+%             100e-3; ... % r_y
+%             10e-3; ... % v_x
+%             10e-3; ... % v_y
+%             deg2rad(15); ... % theta
+%             deg2rad(5)]; ... % w
+% max_uncertainty_constraint = @(x, u, p, X_k, S_k) norminv(1 - 1e-3) * norms(X_k(1:6, :), 2, 2) - sigma_max;
+state_convex_constraints = {glideslope_constraint};
 
-state_nonconvex_constraints = {glideslope_constraint, gimbal_constraint};%
-%state_nonconvex_constraints = {glideslope_constraint};
-
-state_convex_constraints = {};
-control_convex_constraints ={};
+gimbal_angle_max = deg2rad(12);
+gimbal_constraint = @(x, u, p, X_k, S_k) norm(u(2)) + sigma_mag_confidence(1e-3, nr - 1) * (norm(S_k(2, :))) - tan(gimbal_angle_max) * (u(1) - norminv(1-1e-3) * (norm(S_k(1, :))));
+control_convex_constraints ={gimbal_constraint};
 
 % Combine convex constraints
 convex_constraints = [state_convex_constraints, control_convex_constraints];
 
+% Nonconvex state path constraints
+state_nonconvex_constraints = {};
+
 % Nonconvex control constraints
 max_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) norm(u(1:2)) + sigma_mag_confidence(1e-3 / 2, nu) * norm(S_k) - thrust_magnitude_bound(S_k_ref, u_ref, k, t_k, T_max, m_0, alpha, nu, nx);
-min_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) T_min / m_0 - (norm(u_ref(:, k)) + (u_ref(:, k)' / norm(u_ref(:, k))) * (u - u_ref(:, k)) - sigma_mag_confidence(1e-3 / 2, nu) * norm(S_k));
+%min_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) T_min / m_0 - (norm(u_ref(:, k)) + (u_ref(:, k)' / norm(u_ref(:, k))) * (u - u_ref(:, k)) - sigma_mag_confidence(1e-3 / 2, nu) * norm(S_k));
+min_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) T_min * exp(-x(7)) - (norm(u_ref(:, k)) + (u_ref(:, k)' / norm(u_ref(:, k))) * (u - u_ref(:, k)) - sigma_mag_confidence(1e-3 / 2, nu) * norm(S_k));
 control_nonconvex_constraints = {max_thrust_constraint, min_thrust_constraint};
 
 % Combine nonconvex constraints
@@ -155,9 +163,9 @@ mod_ptr_sol = ptr_sol;
 mod_ptr_sol.x = ptr_sol.x(:, :, ptr_sol.converged_i);
 mod_ptr_sol.u = ptr_sol.u(1:2, :, ptr_sol.converged_i);
 mod_ptr_sol.p = ptr_sol.p(:, ptr_sol.converged_i);
-ptr_ops.iter_min = 8;
-stoch_terminal_bc = @(x, p) [x(1:6) - prob_3DoF.xf; 0]; 
-
+ptr_ops.iter_min = 4;
+ptr_ops.w_vc = 1e5;
+ptr_ops.w_tr(:) = 1; 
 
 prob_3DoF.cont.f = f;
 prob_3DoF.xf = [0; sigma_xf(2) * norminv(1 - 1e-3); 0; 0; pi/2; 0];
@@ -323,7 +331,7 @@ P_k_opt = Phat_k_opt + stoch_prob_3DoF.disc.Ptilde_k;
 plot_3DoF_MC_trajectories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, x_ofb, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, P_k_opt, t_k, xhat_no_fb, Pf, glideslope_angle_max, h_glideslope);
 
 %%
-plot_3DoF_MC_time_histories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.u(:, :, stoch_ptr_sol.converged_i), t_k, x_ofb, u_ofb, t_k, stoch_ptr_sol.X(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.S(:, :, stoch_ptr_sol.converged_i), t_k, xhat_no_fb, T_max, T_min, gimbal_angle_max, true)
+plot_3DoF_MC_time_histories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.u(:, :, stoch_ptr_sol.converged_i), t_k, x_ofb, u_ofb, t_k, stoch_ptr_sol.X(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.S(:, :, stoch_ptr_sol.converged_i), t_k, xhat_no_fb, glideslope_angle_max, h_glideslope, T_max, T_min, gimbal_angle_max, true)
 
 %%
 plot_3DoF_MC_trajectories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, x_fb, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, P_k_opt, t_k, xhat_no_fb, Pf, glideslope_angle_max, h_glideslope)
@@ -331,3 +339,19 @@ plot_3DoF_MC_trajectories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i),
 %%
 figure
 covariance_plot(stoch_ptr_sol.x(:, end, stoch_ptr_sol.converged_i), squeeze(x_ofb(:, end, :)), squeeze(P_k_opt(:, :, end)), Phat0 + Ptilde0, ["x [km]", "y [km]", "v_x [km / s]", "v_y [km / s]", "\theta [rad]", "\omega [rad / s]", "m [kg]"], "State Dispersion at Final Node")
+%%
+figure
+mc_dv = squeeze(sum(vecnorm(u_ofb, 2, 1) * (t_k(2) - t_k(1)), 2));
+mc_max = max(mc_dv);
+
+ptr_dv = sum(vecnorm(stoch_ptr_sol.u(:,:,stoch_ptr_sol.converged_i), 2, 1) * (t_k(2) - t_k(1)));
+
+ptr_bound = stoch_ptr_sol.info.J;
+
+histogram(mc_dv); hold on
+xline(ptr_dv, "--", "\Delta V nominal", LabelHorizontalAlignment="right",LineWidth=1); hold on
+xline(ptr_bound, "--", "\Delta V_{99} (bound)", LabelHorizontalAlignment="right",LineWidth=1); hold on
+xline(mc_max, "--", "\Delta V_{99} (MC)", LabelHorizontalAlignment="right",LineWidth=1);
+title("Delta V Distribution")
+xlabel("Delta V [km / s]")
+grid on

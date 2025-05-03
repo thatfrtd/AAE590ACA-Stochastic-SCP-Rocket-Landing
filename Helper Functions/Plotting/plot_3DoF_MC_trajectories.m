@@ -1,4 +1,19 @@
-function [] = plot_3DoF_MC_trajectories(t_mean, x_mean, t_fb, x_MC_fb, x_ref, t_k, P_k, t_no_fb, x_MC_no_fb, Pf, glideslope_angle, h_glideslope)
+function [] = plot_3DoF_MC_trajectories(t_mean, x_mean, t_fb, x_MC_fb, x_ref, t_k, P_k, t_no_fb, x_MC_no_fb, Pf, glideslope_angle, h_glideslope, options)
+arguments
+    t_mean
+    x_mean
+    t_fb
+    x_MC_fb
+    x_ref
+    t_k
+    P_k
+    t_no_fb
+    x_MC_no_fb
+    Pf
+    glideslope_angle
+    h_glideslope
+    options.x_ref_solution = []
+end
 %PLOT_3DOF_MC_TRAJECTORIES Summary of this function goes here
 %   Detailed explanation goes here
 
@@ -25,6 +40,9 @@ end
 
 plot(squeeze(x_MC_fb(1, :, :)), squeeze(x_MC_fb(2, :, :)), Color = [192, 192, 192] / 256, HandleVisibility='off'); hold on
 plot(x_mean(1, :), x_mean(2, :), Color = [30, 144, 255] / 256, LineWidth=1, DisplayName="Nominal"); hold on
+if ~isempty(options.x_ref_solution)
+    plot(options.x_ref_solution(1, :), options.x_ref_solution(2, :), Color = "r", DisplayName = "Deterministic"); hold on
+end
 x_lim = xlim;
 line([x_lim(1), 0, x_lim(2)], abs([x_lim(1), 0, x_lim(2)]) / tan(glideslope_angle) - h_glideslope, 'Color', 'k', 'LineStyle', '--', "DisplayName", "Glideslope"); hold on
 plot(squeeze(ellipse_3sigma(1, :, 1)), squeeze(ellipse_3sigma(2, :, 1)), Color = "k", DisplayName="Covariance"); hold on
@@ -43,6 +61,9 @@ xl = xlim;
 nexttile
 plot(squeeze(x_MC_no_fb(1, :, :)), squeeze(x_MC_no_fb(2, :, :)), Color = [192, 192, 192] / 256); hold on
 plot(x_mean(1, :), x_mean(2, :), Color = [30, 144, 255] / 256, LineWidth=1); hold on
+if ~isempty(options.x_ref_solution)
+    plot(options.x_ref_solution(1, :), options.x_ref_solution(2, :), Color = "r"); hold on
+end
 x_lim = xlim;
 line([x_lim(1), 0, x_lim(2)], abs([x_lim(1), 0, x_lim(2)]) / tan(glideslope_angle) - h_glideslope, 'Color', 'k', 'LineStyle', '--', "DisplayName", "Glideslope"); hold off
 title("Without Trajectory Corrections")
