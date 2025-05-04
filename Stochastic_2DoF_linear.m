@@ -121,7 +121,7 @@ ptr_ops.iter_max = 20;
 ptr_ops.iter_min = 2;
 ptr_ops.Delta_min = 5e-5;
 ptr_ops.w_vc = 1e4;
-ptr_ops.w_tr = ones(1, Nu) * 1e0;
+ptr_ops.w_tr = ones(1, Nu) * 1e-1;
 ptr_ops.w_tr_p = 1e-1;
 ptr_ops.update_w_tr = false;
 ptr_ops.delta_tol = 1e-3;
@@ -274,14 +274,14 @@ end
 P_k_opt = Phat_k_opt + stoch_prob_2DoF.disc.Ptilde_k;
 %%
 
-plot_2DoF_MC_trajectories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, x_ofb, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, P_k_opt, t_k, xhat_no_fb, Pf, glideslope_angle_max, h_glideslope); hold on
+plot_2DoF_MC_trajectories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, x_ofb, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, P_k_opt, t_k, xhat_no_fb, Pf, glideslope_angle_max, h_glideslope, x_ref_solution = ptr_sol.x(:, :, ptr_sol.converged_i), title = ""); hold on
 
 %%
 plot_2DoF_MC_time_histories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.u(:, :, stoch_ptr_sol.converged_i), t_k, x_ofb, u_ofb, t_k, stoch_ptr_sol.X(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.S(:, :, stoch_ptr_sol.converged_i), t_k, xhat_no_fb, T_max, T_min, true)
 
 %%
-plot_2DoF_MC_trajectories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, x_fb, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, P_k_opt, t_k, xhat_no_fb, Pf, glideslope_angle_max, h_glideslope)
+%plot_2DoF_MC_trajectories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, x_fb, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, P_k_opt, t_k, xhat_no_fb, Pf, glideslope_angle_max, h_glideslope)
 
 %%
 figure
-covariance_plot(stoch_ptr_sol.x(:, end, stoch_ptr_sol.converged_i), squeeze(x_ofb(:, end, :)), squeeze(P_k_opt(:, :, end)), Phat0 + Ptilde0, ["x [km]", "y [km]", "v_x [km / s]", "v_y [km / s]", "m [kg]"], "State Dispersion at Final Node")
+covariance_plot(stoch_ptr_sol.x(1:4, end, stoch_ptr_sol.converged_i), squeeze(x_ofb(1:4, end, :)), squeeze(P_k_opt(1:4, 1:4, end)), Pf, ["x [km]", "y [km]", "v_x [km / s]", "v_y [km / s]"], "")

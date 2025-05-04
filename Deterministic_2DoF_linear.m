@@ -16,8 +16,8 @@ T_max = 3 * m_0 * 9.81e-3; % [kg km / s2]
 T_min = 0.55 * T_max; % [kg km / s2]
 
 % Problem Parameters
-delta_t = 35/25; % [s]
 N = 25; % []
+delta_t = 35/N; % [s]
 r_0 = [0; 4.6]; % [km]
 theta_0 = deg2rad(120); % [rad]
 v_0 = make_R2(-deg2rad(60)) * [0.306; 0]; % [km / s]
