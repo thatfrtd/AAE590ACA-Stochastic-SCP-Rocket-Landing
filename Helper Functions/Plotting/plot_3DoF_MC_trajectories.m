@@ -43,15 +43,15 @@ plot(x_mean(1, :), x_mean(2, :), Color = [30, 144, 255] / 256, LineWidth=1, Disp
 if ~isempty(options.x_ref_solution)
     plot(options.x_ref_solution(1, :), options.x_ref_solution(2, :), Color = "r", DisplayName = "Deterministic"); hold on
 end
-x_lim = xlim;
-line([x_lim(1), 0, x_lim(2)], abs([x_lim(1), 0, x_lim(2)]) / tan(glideslope_angle) - h_glideslope, 'Color', 'k', 'LineStyle', '--', "DisplayName", "Glideslope"); hold on
 plot(squeeze(ellipse_3sigma(1, :, 1)), squeeze(ellipse_3sigma(2, :, 1)), Color = "k", DisplayName="Covariance"); hold on
-plot(squeeze(ellipse_3sigma(1, :, 2:end)), squeeze(ellipse_3sigma(2, :, 2:end)), Color = "k", HandleVisibility='off'); hold off
+plot(squeeze(ellipse_3sigma(1, :, 2:end)), squeeze(ellipse_3sigma(2, :, 2:end)), Color = "k", HandleVisibility='off'); hold on
 title("With Optimized Feedback Policy")
 xlabel("X [km]")
 ylabel("Y [km]")
 legend(location = "best")
 axis equal
+x_lim = xlim;
+line([x_lim(1), 0, x_lim(2)], abs([x_lim(1), 0, x_lim(2)]) / tan(glideslope_angle) - h_glideslope, 'Color', 'k', 'LineStyle', '--', "DisplayName", "Glideslope"); hold off
 grid on
 
 xl = xlim;
@@ -80,7 +80,7 @@ proj_Pf_r = project_ellipsoid(Pf, [1,2]);
 [Pf_eigvecs, Pf_eigvals] = eigs(proj_Pf_r);
 terminal_ellipse = x_ref(1:2, end) + Pf_eigvecs * [3 * sqrt(Pf_eigvals(1, 1)) * cos(thetas); 3 * sqrt(Pf_eigvals(2, 2)) * sin(thetas)];
 
-axes('Position',[.3 .16 .09 .14])
+axes('Position',[.2 .3 .09 .14])
 box on
 plot(squeeze(x_MC_fb(1, :, :)), squeeze(x_MC_fb(2, :, :)), Color = [192, 192, 192] / 256, HandleVisibility='off'); hold on
 plot(x_mean(1, :), x_mean(2, :), Color = [30, 144, 255] / 256, LineWidth=1, DisplayName="Nominal"); hold on

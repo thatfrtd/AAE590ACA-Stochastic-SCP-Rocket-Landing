@@ -55,8 +55,12 @@ figure
 nu = 2;
 epsilon = 1e-3; % 99.9% 
 S_k_norm_T = zeros([size(u_MC_fb, 2), 1]);
+S_k_1_norm = zeros([size(u_MC_fb, 2), 1]);
+S_k_23_norm = zeros([size(u_MC_fb, 2), 1]);
 for j = 1:size(u_MC_fb, 2)
     S_k_norm_T(j) = norm(S_k(1:3, (tri(j - 1) + 1):tri(j)));
+    S_k_1_norm(j) = norm(S_k(1, (tri(j - 1) + 1):tri(j)));
+    S_k_23_norm(j) = norm(S_k(2:3, (tri(j - 1) + 1):tri(j)));
 end
 thrust_3sigbound = squeeze(sigma_mag_confidence(epsilon / 2, nu) * S_k_norm_T);
 
@@ -84,8 +88,8 @@ figure
 epsilon = 1e-3; % 99.9% 
 % Best guess at how to evaluate 99.9% bound... how to turn into actual
 % angle bound??
-u1_3sigbound = norminv(1 - epsilon / 2) * S_k_norm_T;
-u2_3sigbound = sigma_mag_confidence(epsilon / 2, 1) * S_k_norm_T;
+u1_3sigbound = norminv(1 - epsilon / 2) * S_k_1_norm;
+u23_3sigbound = sigma_mag_confidence(epsilon / 2, 2) * S_k_23_norm;
 
 for i = 1:m
     stairs(t_fb(1:size(u_MC_fb, 2)), acosd(u_MC_fb(1, :, i) ./ vecnorm(u_MC_fb(1:3, :, i), 2, 1)), Color = [192, 192, 192] / 256, HandleVisibility='off'); hold on
@@ -93,15 +97,14 @@ end
 
 u_mean_full = interp1(t_k(1:size(u_mean, 2)), u_mean', t_k, "previous", "extrap")';
 u1_3sigbound_full = interp1(t_k(1:size(u_mean, 2)), u1_3sigbound, t_k, "previous", "extrap");
-u2_3sigbound_full = interp1(t_k(1:size(u_mean, 2)), u2_3sigbound, t_k, "previous", "extrap");
-gimbal_99p9bound_up = atan2d(u_mean_full(2,:) + u2_3sigbound_full .* sign(u_mean_full(2,:)), u_mean_full(1, :) - u1_3sigbound_full);
-gimbal_99p9bound_dn = atan2d(u_mean_full(2,:) - u2_3sigbound_full .* sign(u_mean_full(2,:)), u_mean_full(1, :) + u1_3sigbound_full);
+u23_3sigbound_full = interp1(t_k(1:size(u_mean, 2)), u23_3sigbound, t_k, "previous", "extrap");
+gimbal_99p9bound_up = atan2d(vecnorm(u_mean_full(2:3,:), 2, 1) + u23_3sigbound_full, u_mean_full(1, :) - u1_3sigbound_full);
+gimbal_99p9bound_dn = atan2d(vecnorm(u_mean_full(2:3,:), 2, 1) - u23_3sigbound_full, u_mean_full(1, :) + u1_3sigbound_full);
 
-stairs(t_k, acosd(u_mean_full(1, :) ./ vecnorm(u_mean_full(1, :), 2, 1)), Color = "k",LineWidth=1, DisplayName="Nominal"); hold on
+stairs(t_k, atan2d(vecnorm(u_mean_full(2:3, :), 2, 1), u_mean_full(1, :)), Color = "k",LineWidth=1, DisplayName="Nominal"); hold on
 stairs(t_k, gimbal_99p9bound_up, Color = [100, 100, 100] / 256, LineStyle=":", LineWidth=1, DisplayName="99.9% Bound"); hold on
 stairs(t_k, gimbal_99p9bound_dn, Color = [100, 100, 100] / 256, LineStyle=":", LineWidth=1, HandleVisibility='off'); hold on
-yline(rad2deg(max_gimbal), LineWidth = 1, LineStyle="--", Color="k", DisplayName = "Constraint"); hold on
-yline(-rad2deg(max_gimbal), LineWidth = 1, LineStyle="--", Color="k", HandleVisibility='off'); hold off
+yline(rad2deg(max_gimbal), LineWidth = 1, LineStyle="--", Color="k", DisplayName = "Constraint"); hold off
 title("Gimbal Angle vs Time with Optimized Feedback Policies")
 legend(Location="southeast")
 xlabel("Time [s]")
@@ -117,6 +120,8 @@ for j = 1:size(u_MC_fb, 2)
     S_k_norm_gamma(j) = norm(S_k(4, (tri(j - 1) + 1):tri(j)));
 end
 gamma_3sigbound = squeeze(norminv(1 - epsilon / 2) * S_k_norm_gamma);
+gamma_3sigbound_full = interp1(t_k(1:size(u_mean, 2)), gamma_3sigbound, t_k, "previous", "extrap");
+
 
 % Best guess at how to evaluate 99.9% bound... how to turn into actual
 % angle bound??
@@ -125,9 +130,9 @@ for i = 1:m
     stairs(t_fb(1:size(u_MC_fb, 2)), rad2deg(u_MC_fb(4, :, i)), Color = [192, 192, 192] / 256, HandleVisibility='off'); hold on
 end
 
-stairs(t_k, u_mean_full(4, :), Color = "k",LineWidth=1, DisplayName="Nominal"); hold on
-stairs(t_k, gamma_3sigbound, Color = [100, 100, 100] / 256, LineStyle=":", LineWidth=1, DisplayName="99.9% Bound"); hold on
-stairs(t_k, -gamma_3sigbound, Color = [100, 100, 100] / 256, LineStyle=":", LineWidth=1, HandleVisibility='off'); hold off
+stairs(t_k, rad2deg(u_mean_full(4, :)), Color = "k",LineWidth=1, DisplayName="Nominal"); hold on
+stairs(t_k, rad2deg(gamma_3sigbound_full), Color = [100, 100, 100] / 256, LineStyle=":", LineWidth=1, DisplayName="99.9% Bound"); hold on
+stairs(t_k, rad2deg(-gamma_3sigbound_full), Color = [100, 100, 100] / 256, LineStyle=":", LineWidth=1, HandleVisibility='off'); hold off
 title("Roll Angle vs Time with Optimized Feedback Policies")
 legend(Location="southeast")
 xlabel("Time [s]")

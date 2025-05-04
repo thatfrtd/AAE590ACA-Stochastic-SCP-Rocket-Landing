@@ -23,7 +23,7 @@ n_probit_99p9 = norminv(1 - 1e-3);
 % Initial estimated state
 sigma_xhat0 = [10e-3; ... % r_x
             10e-3; ... % r_y
-            20e-3; ... % r_z
+            10e-3; ... % r_z
             1e-3; ... % v_x
             1e-3; ... % v_y
             1e-3; ... % v_z
@@ -108,21 +108,29 @@ g_0 = @(t, x, u, p) diag(g_0_stds);
 
 %% Specify Constraints
 % Convex state path constraints
-glideslope_angle_max = deg2rad(60);
+glideslope_angle_max = deg2rad(80);
 h_glideslope = calculate_glideslope_offset(sigma_xf(1:nr) * norminv(1 - 1e-3 / 2), glideslope_angle_max);
-glideslope_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) (norm(x(1:nr) + [zeros([nr - 1, 1]); h_glideslope]) + 0*sigma_mag_confidence(1e-3, nr) * norm(X_k_ref(1:nr, (tri(k - 1, nx) + 1):tri(k, nx)))) * cos(glideslope_angle_max) - (x(nr) + h_glideslope - norminv(1 - 1e-3) * norm(X_k_ref(nr, (tri(k - 1, nx) + 1):tri(k, nx))));
-state_nonconvex_constraints = {glideslope_constraint};
+%glideslope_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) (norm(x(1:nr) + [zeros([nr - 1, 1]); h_glideslope]) + 0*sigma_mag_confidence(1e-3, nr) * norm(X_k_ref(1:nr, (tri(k - 1, nx) + 1):tri(k, nx)))) * cos(glideslope_angle_max) - (x(nr) + h_glideslope - norminv(1 - 1e-3) * norm(X_k_ref(nr, (tri(k - 1, nx) + 1):tri(k, nx))));
+glideslope_constraint = @(x, u, p, X_k, S_k) norm(x(1:2)) + sigma_mag_confidence(1e-3, nr - 1) * (norm(X_k(1:2, :))) - tan(glideslope_angle_max) * (x(3) + h_glideslope - norminv(1 - 1e-3) * norm(X_k(3, :)));
 
-state_convex_constraints = {};
-control_convex_constraints ={};
+state_convex_constraints = {glideslope_constraint};
+
+gimbal_angle_max = deg2rad(20);
+gimbal_constraint = @(x, u, p, X_k, S_k) norm(u(2:3)) + sigma_mag_confidence(1e-3, nr - 1) * (norm(S_k(2:3, :))) - tan(gimbal_angle_max) * (u(1) - norminv(1-1e-3) * (norm(S_k(1, :))));
+control_convex_constraints ={gimbal_constraint};
 
 % Combine convex constraints
 convex_constraints = [state_convex_constraints, control_convex_constraints];
 
+% Nonconvex state constraints 
+state_nonconvex_constraints = {};
+
 % Nonconvex control constraints
 max_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) norm(u(1:nr)) + sigma_mag_confidence(1e-3 / 2, nr) * norm(S_k(1:nr, :)) - thrust_magnitude_bound(S_k_ref, u_ref, k, t_k, T_max, m_0, alpha, nr, nx);
-min_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) T_min / m_0 - (norm(u_ref(1:nr, k)) + (u_ref(1:nr, k)' / norm(u_ref(1:nr, k))) * (u(1:nr) - u_ref(1:nr, k)) - sigma_mag_confidence(1e-3 / 2, nr) * norm(S_k(1:nr, :)));
-control_nonconvex_constraints = {max_thrust_constraint};
+%min_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) T_min / m_0 - (norm(u_ref(1:nr, k)) + (u_ref(1:nr, k)' / norm(u_ref(1:nr, k))) * (u(1:nr) - u_ref(1:nr, k)) - sigma_mag_confidence(1e-3 / 2, nr) * norm(S_k(1:nr, :)));
+min_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) T_min * exp(-x(13)) - (norm(u_ref(:, k)) + (u_ref(:, k)' / norm(u_ref(:, k))) * (u - u_ref(:, k)) - sigma_mag_confidence(1e-3 / 2, nr) * norm(S_k));
+control_nonconvex_constraints = {max_thrust_constraint};%{max_thrust_constraint, min_thrust_constraint};
+
 
 % Combine nonconvex constraints
 nonconvex_constraints = [state_nonconvex_constraints, control_nonconvex_constraints];
@@ -278,7 +286,7 @@ K_k = zeros([nu, nx, stoch_prob_6DoF.Nu]);
 K_k(1, 1, :) = -1e-2;
 K_k(2, 2, :) = -1e-2;
 
-m = 1;
+m = 10;
 
 t_fb = zeros([stoch_prob_6DoF.N, m]);
 x_fb = zeros([stoch_prob_6DoF.n.x, stoch_prob_6DoF.N, m]);

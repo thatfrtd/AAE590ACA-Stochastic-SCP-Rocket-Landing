@@ -10,26 +10,26 @@
 %% Initialize
 % Vehicle Parameters
 alpha = 0.5086; % [s / km]
-T_min = 4.97; % [kg km / s2]
-T_max = 13.26; % [kg km / s2]
-I = 150000 * (1e-3) ^ 2; % [kg km2] ASSUMING CONSTANT MOMENT OF INERTIA
-L = 3e-3; % [km] Distance from CoM to nozzle
 m_dry = 1500; % [kg]
 m_wet = 600; % [kg]
 m_0 = m_dry + m_wet;
-gimbal_max = deg2rad(8); % [rad]
-
+T_max = 3 * m_0 * 9.81e-3; % [kg km / s2]
+T_min = 0.55 * T_max; % [kg km / s2]
+I = 150000 * (1e-3) ^ 2; % [kg km2] ASSUMING CONSTANT MOMENT OF INERTIA
+L = 3e-3; % [km] Distance from CoM to nozzle
+gimbal_max = deg2rad(6); % [rad]
+ 
 vehicle = Vehicle(m_dry, L, L * 3, gimbal_max, T_min, T_max, I = I, alpha = alpha);
-vehicle_big_gimbs = Vehicle(m_dry, L, L * 3, deg2rad(20), T_min, T_max, I = I, alpha = alpha);
+%vehicle_big_gimbs = Vehicle(m_dry, L, L * 3, deg2rad(20), T_min, T_max, I = I, alpha = alpha);
 
 % Problem Parameters
-tf = 90; % [s]
-N = 30; % []
-r_0 = [1.5; 3.0]; % [km]
-v_0 = [0.0385; -0.0647]; % [km / s]
-theta_0 = deg2rad(90); % [rad]
+tf = 35; % [s]
+N = 25; % []
+r_0 = [0; 4.6]; % [km]
+theta_0 = deg2rad(120); % [rad]
+v_0 = make_R2(-deg2rad(60)) * [0.306; 0]; % [km / s]
 w_0 = deg2rad(0); % [rad / s]
-glideslope_angle_max = deg2rad(45); % [rad]
+glideslope_angle_max = deg2rad(50); % [rad]
 
 x_0 = [r_0; v_0; theta_0; w_0; log(m_0)];
 x_f = [zeros(2, 1); zeros(2, 1); pi / 2; 0];
@@ -45,9 +45,10 @@ initial_guess = "straight line"; % "CasADi" or "straight line"
 
 % PTR algorithm parameters
 ptr_ops.iter_max = 20;
+ptr_ops.iter_min = 6;
 ptr_ops.Delta_min = 5e-5;
 ptr_ops.w_vc = 1e5;
-ptr_ops.w_tr = ones(1, Nu) * 5e0;
+ptr_ops.w_tr = ones(1, Nu) * 1e0;
 ptr_ops.w_tr_p = 1e-1;
 ptr_ops.update_w_tr = false;
 ptr_ops.delta_tol = 1e-3;
@@ -100,7 +101,7 @@ end
 sl_guess.x(7, :) = log(sl_guess.x(7, :));
 sl_guess.u = sl_guess.u .* exp(-sl_guess.x(7, 1:Nu));
 
-CasADi_sol = CasADi_solve_mass_convexified(x_0, sl_guess.x, sl_guess.u, vehicle_big_gimbs, N, delta_t, glideslope_angle_max);
+CasADi_sol = CasADi_solve_mass_convexified(x_0, sl_guess.x, sl_guess.u, vehicle, N, delta_t, glideslope_angle_max);%
 
 if initial_guess == "straight line"
     guess = sl_guess;
@@ -171,7 +172,7 @@ tiledlayout(1, 3)
 
 nexttile
 plot(0:ptr_sol.converged_i, [prob_3DoF.objective(prob_3DoF.guess.x, prob_3DoF.guess.u, prob_3DoF.guess.p), [ptr_sol.info.J]]); hold on
-yline(CasADi_sol.objective); hold off
+%yline(CasADi_sol.objective); hold off
 legend("PTR Iterations", "CasADi Solution")
 title("Objective vs Iteration")
 grid on
@@ -187,6 +188,28 @@ title("Defect Norm vs Iteration")
 grid on
 
 %%
+Js = [ptr_sol.info.J];
+(Js(end) - CasADi_sol.objective) / CasADi_sol.objective * 100
+
+%%
+figure
+plot(0:ptr_sol.converged_i, [prob_3DoF.objective(prob_3DoF.guess.x, prob_3DoF.guess.u, prob_3DoF.guess.p), [ptr_sol.info.J]]); hold on
+yline(CasADi_sol.objective); hold off
+xlabel("PTR Iteration")
+ylabel("\Delta V [km / s]")
+legend("PTR Iterations", "CasADi Solution", location = "southeast")
+grid on
+
+%%
+figure
+plot(0:ptr_sol.converged_i, vecnorm(ptr_sol.Delta(:, 1:(ptr_sol.converged_i + 1)), 2, 1))
+xlabel("PTR Iteration")
+ylabel("Defect")
+yscale("log")
+xlim([0, ptr_sol.converged_i])
+grid on
+
+%%
 i = ptr_sol.converged_i;
 
 [t_cont_sol, x_cont_sol, u_cont_sol] = prob_3DoF.cont_prop(ptr_sol.u(:, :, i), ptr_sol.p(:, i));
@@ -196,6 +219,10 @@ plot_3DoFc_trajectory(t_k, ptr_sol.x(:, :, i), ptr_sol.u(:, :, i), glideslope_an
 %%
 figure
 comparison_plot_3DoF_trajectory({guess.x, x_cont_sol, ptr_sol.x(:, :, i), CasADi_sol.x}, ["Guess", "Continuous Propagation", "Solution Output", "CasADi"], glideslope_angle_max, linestyle = [":", "-", "--", "-"], title = "3DoF Solution Comparison")
+%%
+figure
+comparison_plot_3DoF_trajectory({guess.x, x_cont_sol, CasADi_sol.x}, ["Guess", "PTR", "CasADi"], glideslope_angle_max, linestyle = [":", "-", "-"], title = "")
+
 %%
 figure
 comparison_plot_3DoFc_time_histories({t_k, t_cont_sol, t_k}, {guess.x, x_cont_sol, ptr_sol.x(:, :, i)}, {guess.u, u_cont_sol, ptr_sol.u(:, :, i)}, ["Guess", "Cont", "Disc"], linestyle = [":", "-", "--"], title = "Continuous vs Discrete Propagation of Solution")

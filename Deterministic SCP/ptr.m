@@ -54,7 +54,7 @@ for i = 1:(ptr_ops.iter_max)
         fprintf("%2.f | %17s | %5.1g | %5.1g | %5.1g | %5.1g | %5.3g | %5.3g | %5.3g | %6.3f | %6.1g | %6.1g | %5.1g | %5.1g | %5s | %5.1g | %5.1g | %5.1g | %5.1g\n", i, ptr_sol.info(i).status, norm(ptr_sol.info(i).vd), norm(ptr_sol.info(i).vs), norm(ptr_sol.info(i).vbc_0), norm(ptr_sol.info(i).vbc_N), ptr_sol.info(i).J, ptr_sol.info(i).J_tr, ptr_sol.info(i).J_vc, ptr_sol.info(i).dJ, sum(ptr_sol.info(i).dx), sum(ptr_sol.info(i).du), sum(ptr_sol.info(i).dp), ptr_sol.info(i).delta, string(ptr_sol.info(i).dyn), norm(ptr_sol.info(i).eta), norm(ptr_sol.info(i).eta_x), norm(ptr_sol.info(i).eta_u), norm(ptr_sol.info(i).eta_p))
     end
 
-    if ptr_sol.delta_xp(i) < ptr_ops.delta_tol && ~ptr_sol.converged && sol_info.dyn
+    if i >= ptr_ops.iter_min && ptr_sol.delta_xp(i) < ptr_ops.delta_tol && ~ptr_sol.converged && sol_info.dyn
         ptr_sol.converged = true;
         ptr_sol.converged_i = i;
 

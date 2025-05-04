@@ -10,18 +10,19 @@
 
 %% Initialize
 % Physical Parameters
-g = [0; -3.7114e-3]; % [km / s2]
+g = [0; -9.81e-3]; % [km / s2]
 alpha = 0.5086; % [s / km]
-T_min = 4.97; % [kg km / s2]
-T_max = 13.26; % [kg km / s2]
+T_max = 3 * m_0 * 9.81e-3; % [kg km / s2]
+T_min = 0.55 * T_max; % [kg km / s2]
 
 % Problem Parameters
-delta_t = 2; % [s]
-N = 30; % []
-r_0 = [1; 1.5]; % [km]
-v_0 = [0; 0]; % [km / s]
-m_0 = 2000; % [kg]
-gamma_min = deg2rad(3); % [rad]
+delta_t = 35/25; % [s]
+N = 25; % []
+r_0 = [0; 4.6]; % [km]
+theta_0 = deg2rad(120); % [rad]
+v_0 = make_R2(-deg2rad(60)) * [0.306; 0]; % [km / s]
+m_0 = 2100; % [kg]
+gamma_min = deg2rad(40); % [rad]
 
 L = 3e-3;
 vehicle = Vehicle(m_0 - 600, L, L * 3, 0, T_min, T_max, alpha = alpha);
