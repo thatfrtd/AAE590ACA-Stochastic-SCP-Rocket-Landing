@@ -1,10 +1,10 @@
-function [x_sol, u_sol, p_sol, objective] = solve_ptr_convex_subproblem(prob, ptr_ops, x_ref, u_ref, p_ref)
+function [x_sol, u_sol, p_sol, sol_info] = solve_ptr_convex_subproblem(prob, ptr_ops, x_ref, u_ref, p_ref)
 %SOLVE_PTR_CONVEX_SUBPROBLEM Summary of this function goes here
 %   Detailed explanation goes here
 
 t_k = linspace(0, prob.tf, prob.N);
 
-cvx_begin
+cvx_begin quiet
     variable X(prob.n.x, prob.N)
     variable U(prob.n.u, prob.Nu)
     variable p(prob.n.p, 1)
@@ -14,27 +14,27 @@ cvx_begin
     variable v_prime(prob.n.ncvx)
     variable v_0(prob.n.x, 1)
     variable v_N(prob.n.x, 1)
-    minimize( prob.objective(prob.unscale_x(X), prob.unscale_u(U), prob.unscale_p(p)) ...
+    minimize( prob.objective(prob.unscale_x(X), prob.unscale_u(U), prob.unscale_p(p), prob.unscale_x(x_ref), prob.unscale_u(u_ref), prob.unscale_p(p_ref)) ...
         + virtual_control_cost(V, v_prime, v_0, v_N, ptr_ops.w_vc) ...
         + trust_region_cost(eta, eta_p, ptr_ops.w_tr, ptr_ops.w_tr_p) )
     subject to
         % Dynamics
         if prob.u_hold == "ZOH"
             for k = 1:(prob.N - 1)
-                X(:, k + 1) == prob.disc.A_k(:, :, k) * prob.unscale_x(X(:, k)) ...
+                X(:, k + 1) == prob.scale_x(prob.disc.A_k(:, :, k) * prob.unscale_x(X(:, k)) ...
                              + prob.disc.B_k(:, :, k) * prob.unscale_u(U(:, k)) ...
                              + prob.disc.E_k(:, :, k) * prob.unscale_p(p) ...
                              + prob.disc.c_k(:, :, k) ...
-                             + V(:, k);
+                             + V(:, k));
             end
         elseif prob.u_hold == "FOH"
             for k = 1:(prob.N - 1)
-                X(:, k + 1) == prob.disc.A_k(:, :, k) * prob.unscale_x(X(:, k)) ...
+                X(:, k + 1) == prob.scale_x(prob.disc.A_k(:, :, k) * prob.unscale_x(X(:, k)) ...
                              + prob.disc.B_minus_k(:, :, k) * prob.unscale_u(U(:, k)) ...
                              + prob.disc.B_plus_k(:, :, k) * prob.unscale_u(U(:, k + 1)) ...
                              + prob.disc.E_k(:, :, k) * prob.unscale_p(p) ...
                              + prob.disc.c_k(:, :, k) ...
-                             + V(:, k);
+                             + V(:, k));
             end
         end
 
@@ -46,7 +46,7 @@ cvx_begin
             end
             % Nonconvex Constraints
             for nc = 1:prob.n.ncvx
-                prob.nonconvex_constraints{nc}(t_k(k), prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), prob.unscale_p(p), x_ref, u_ref, p_ref) ...
+                prob.nonconvex_constraints{nc}(t_k(k), prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), prob.unscale_p(p), prob.unscale_x(x_ref), prob.unscale_u(u_ref), prob.unscale_p(p_ref)) ...
                     - v_prime(nc) <= 0;
             end
         end
@@ -64,7 +64,25 @@ cvx_end
 x_sol = X;
 u_sol = U;
 p_sol = p;
-objective = cvx_optval;
+
+sol_info.status = cvx_status;
+sol_info.vd = V;
+sol_info.vs = v_prime;
+sol_info.vbc_0 = v_0;
+sol_info.vbc_N = v_N;
+sol_info.J = prob.objective(prob.unscale_x(X), prob.unscale_u(U), prob.unscale_p(p), prob.unscale_x(x_ref), prob.unscale_u(u_ref), prob.unscale_p(p_ref));
+sol_info.J_tr = trust_region_cost(eta, eta_p, ptr_ops.w_tr, ptr_ops.w_tr_p);
+sol_info.J_vc = virtual_control_cost(V, v_prime, v_0, v_N, ptr_ops.w_vc);
+sol_info.dJ = 100 * (prob.objective(prob.unscale_x(X), prob.unscale_u(U), prob.unscale_p(p), prob.unscale_x(x_ref), prob.unscale_u(u_ref), prob.unscale_p(p_ref)) ...
+    - prob.objective(prob.unscale_x(x_ref), prob.unscale_u(u_ref), prob.unscale_p(p_ref), prob.unscale_x(x_ref), prob.unscale_u(u_ref), prob.unscale_p(p_ref))) ...
+    / prob.objective(prob.unscale_x(x_ref), prob.unscale_u(u_ref), prob.unscale_p(p_ref), prob.unscale_x(x_ref), prob.unscale_u(u_ref), prob.unscale_p(p_ref));
+sol_info.dx = vecnorm(X(:, 1:prob.Nu) - x_ref(:, 1:prob.Nu), ptr_ops.q, 1);
+sol_info.du = vecnorm(U - u_ref, ptr_ops.q, 1);
+sol_info.dp = vecnorm(p - p_ref, ptr_ops.q, 1);
+sol_info.eta = eta;
+sol_info.eta_x = 0;
+sol_info.eta_u = 0;
+sol_info.eta_p = eta_p;
 end
 
 function [J_tr] = trust_region_cost(eta, eta_p, w_tr, w_tr_p)
@@ -72,5 +90,5 @@ function [J_tr] = trust_region_cost(eta, eta_p, w_tr, w_tr_p)
 end
 
 function [J_vc] = virtual_control_cost(V, v_prime, v_0, v_N, w_vc)
-    J_vc = w_vc * (norm(v_prime, 1) + sum(norms(V, 1, 2)) + norm(v_0, 1) + norm(v_N, 1));
+    J_vc = w_vc * (norm(v_prime, 1) + sum(norms(V, 1, 1)) + norm(v_0, 1) + norm(v_N, 1));
 end

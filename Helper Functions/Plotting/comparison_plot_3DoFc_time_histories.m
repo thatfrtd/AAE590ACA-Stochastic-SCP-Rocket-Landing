@@ -75,7 +75,7 @@ colororder(ax, options.colorpallete)
 ax = nexttile;
 
 for c = 1:Nc
-    plot(ax, t{c}(1:numel(u{c}(3, :))), u{c}(3, :) .* exp(x{c}(7, 1:size(u{c}, 2))), LineWidth = 2, LineStyle = options.linestyle(c), DisplayName=names(c)); hold on
+    stairs(ax, t{c}(1:numel(u{c}(3, :))), u{c}(3, :) .* exp(x{c}(7, 1:size(u{c}, 2))), LineWidth = 2, LineStyle = options.linestyle(c), DisplayName=names(c)); hold on
 end
 legend(ax, names)
 title("Thrust vs Time")
@@ -88,7 +88,7 @@ colororder(ax, options.colorpallete)
 ax = nexttile;
 for c = 1:Nc
     gimbal_angle = atan2d(u{c}(2, :), u{c}(1, :));
-    plot(ax, t{c}(1:numel(gimbal_angle)), gimbal_angle, LineWidth = 2, LineStyle = options.linestyle(c), DisplayName=names(c)); hold on
+    stairs(ax, t{c}(1:numel(gimbal_angle)), gimbal_angle, LineWidth = 2, LineStyle = options.linestyle(c), DisplayName=names(c)); hold on
 end
 legend(ax, names)
 title("Gimbal Angle vs Time")

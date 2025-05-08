@@ -38,7 +38,7 @@ for i = 1:(ptr_ops.iter_max)
             [x_ref(:, :, i + 1), u_ref(:, :, i + 1), X_ref(:, :, i + 1), S_ref(:, :, i + 1), sol_info] = solve_stochastic_ptr_convex_subproblem_no_p_2(prob, ptr_ops, x_ref(:, :, i), u_ref(:, :, i), X_ref(:, :, i), S_ref(:, :, i));
         end
     else
-        [x_ref(:, :, i + 1), u_ref(:, :, i + 1), p_ref(:, i + 1), sol_info] = solve_stochastic_ptr_convex_subproblem(prob, ptr_ops, x_ref(:, :, i), u_ref(:, :, i), p_ref(:, i));
+        [x_ref(:, :, i + 1), u_ref(:, :, i + 1), p_ref(:, i + 1), X_ref(:, :, i + 1), S_ref(:, :, i + 1), sol_info] = solve_stochastic_ptr_convex_subproblem(prob, ptr_ops, x_ref(:, :, i), u_ref(:, :, i), p_ref(:, i), X_ref(:, :, i), S_ref(:, :, i));
     end
 
     % Convexify along reference trajectory

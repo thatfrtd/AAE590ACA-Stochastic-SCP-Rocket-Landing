@@ -1,4 +1,26 @@
-function [] = plot_3DoF_MC_time_histories(t_mean, x_mean, u_mean, t_fb, x_MC_fb, u_MC_fb, t_k, X_k, S_k, t_no_fb, x_MC_no_fb, glideslope_max, h_glideslope, T_max, T_min, max_gimbal, use_legend)
+function [] = plot_3DoF_MC_time_histories(t_mean, x_mean, u_mean, t_fb, x_MC_fb, u_MC_fb, t_k, X_k, S_k, t_no_fb, x_MC_no_fb, glideslope_max, h_glideslope, T_max, T_min, max_gimbal, use_legend, options)
+arguments
+    t_mean 
+    x_mean 
+    u_mean 
+    t_fb 
+    x_MC_fb 
+    u_MC_fb 
+    t_k 
+    X_k 
+    S_k 
+    t_no_fb 
+    x_MC_no_fb 
+    glideslope_max 
+    h_glideslope 
+    T_max 
+    T_min 
+    max_gimbal 
+    use_legend 
+    options.t_ref_solution = []
+    options.x_ref_solution = []
+    options.u_ref_solution = []
+end
 %PLOT_3DOF_MC_TIME_HISTORIES Summary of this function goes here
 %   Detailed explanation goes here
 
@@ -26,7 +48,10 @@ for x = 1:7
     for i = 1:m
         plot(t_fb, ops{x}(x_MC_fb(x, :, i)), Color = [192, 192, 192] / 256, HandleVisibility='off'); hold on
     end
-    plot(t_mean, ops{x}(x_mean(x, :)), Color = "k",LineWidth=1, DisplayName="Nominal"); hold on
+    if ~isempty(options.x_ref_solution)
+        plot(options.t_ref_solution, ops{x}(options.x_ref_solution(x, :)), Color = "r",LineWidth=1, DisplayName="Deterministic"); hold on
+    end
+    plot(t_mean, ops{x}(x_mean(x, :)), Color = [30, 144, 255] / 256,LineWidth=1, DisplayName="Nominal"); hold on
     plot(t_mean, ops{x}(x_mean(x, :) + x_3sigbound_cont), Color = [100, 100, 100] / 256, LineStyle=":", LineWidth=1, DisplayName="99.9% Bound"); hold on
     plot(t_mean, ops{x}(x_mean(x, :) - x_3sigbound_cont), Color = [100, 100, 100] / 256, LineStyle=":", LineWidth=1, HandleVisibility='off'); hold off
     title(titles(x) + " vs Time with Optimized Feedback Policies")
@@ -36,16 +61,18 @@ for x = 1:7
         legend("Location","best")
     end
     grid on
+    xlim([t_mean(1), t_mean(end)])
     
     nexttile
     for i = 1:m
         plot(t_no_fb, ops{x}(x_MC_no_fb(x, :, i)), Color = [192, 192, 192] / 256); hold on
     end
-    plot(t_mean, ops{x}(x_mean(x, :)), Color = "k",LineWidth=1); hold off
+    plot(t_mean, ops{x}(x_mean(x, :)), Color = [30, 144, 255] / 256,LineWidth=1); hold off
     title(titles(x) + " vs Time without Trajectory Corrections")
     xlabel("Time [s]")
     ylabel(ylabels(x))
     grid on
+    xlim([t_mean(1), t_mean(end)])
 end
 
 %% Glideslope 
@@ -67,7 +94,10 @@ for i = 1:m
     stairs(t_fb(1:size(x_MC_fb, 2)), atan2d(x_MC_fb(1, :, i), x_MC_fb(2, :, i) + h_glideslope), Color = [192, 192, 192] / 256, HandleVisibility='off'); hold on
 end
 
-stairs(t_k, atan2d(x_mean(1, :), x_mean(2, :)), Color = "k",LineWidth=1, DisplayName="Nominal"); hold on
+if ~isempty(options.x_ref_solution)
+    stairs(options.t_ref_solution, atan2d(options.x_ref_solution(1, :), options.x_ref_solution(2, :)), Color = "r",LineWidth=1, DisplayName="Deterministic"); hold on
+end
+stairs(t_k, atan2d(x_mean(1, :), x_mean(2, :)), Color = [30, 144, 255] / 256,LineWidth=1, DisplayName="Nominal"); hold on
 stairs(t_k, glideslope_99p9bound_up, Color = [100, 100, 100] / 256, LineStyle=":", LineWidth=1, DisplayName="99.9% Bound"); hold on
 stairs(t_k, glideslope_99p9bound_dn, Color = [100, 100, 100] / 256, LineStyle=":", LineWidth=1, HandleVisibility='off'); hold on
 yline(rad2deg(glideslope_max), LineWidth = 1, LineStyle="--", Color="k", DisplayName = "Constraint"); hold on
@@ -101,7 +131,10 @@ end
 u_mean_full = interp1(t_k(1:size(u_mean, 2)), u_mean', t_k, "previous", "extrap")';
 thrust_3sigbound_full = interp1(t_k(1:size(u_mean, 2)), thrust_3sigbound, t_k, "previous", "extrap");
 
-stairs(t_k, vecnorm(u_mean_full(1:2, :),2,1) .* exp(x_mean(7, 1:size(u_mean_full, 2))), Color = "k",LineWidth=1, DisplayName="Nominal"); hold on
+if ~isempty(options.u_ref_solution)
+    stairs(options.t_ref_solution(1:size(options.u_ref_solution, 2)), vecnorm(options.u_ref_solution(1:2, :),2,1) .* exp(options.x_ref_solution(7, 1:size(options.u_ref_solution, 2))), Color = "r",LineWidth=1, DisplayName="Deterministic"); hold on
+end
+stairs(t_k, vecnorm(u_mean_full(1:2, :),2,1) .* exp(x_mean(7, 1:size(u_mean_full, 2))), Color = [30, 144, 255] / 256,LineWidth=1, DisplayName="Nominal"); hold on
 stairs(t_k, (vecnorm(u_mean_full(1:2, :),2,1) + thrust_3sigbound_full) .* exp(x_mean(7, 1:size(u_mean_full, 2))), Color = [100, 100, 100] / 256, LineStyle=":", LineWidth=1, DisplayName="99.9% Bound"); hold on
 stairs(t_k, (vecnorm(u_mean_full(1:2, :),2,1) - thrust_3sigbound_full) .* exp(x_mean(7, 1:size(u_mean_full, 2))), Color = [100, 100, 100] / 256, LineStyle=":", LineWidth=1,HandleVisibility='off'); hold on
 yline(T_max, LineWidth = 1, LineStyle="--", Color="k", DisplayName = "Constraint"); hold on
@@ -129,7 +162,10 @@ u2_3sigbound_full = interp1(t_k(1:size(u_mean, 2)), u2_3sigbound, t_k, "previous
 gimbal_99p9bound_up = atan2d(u_mean_full(2,:) + u2_3sigbound_full .* sign(u_mean_full(2,:)), u_mean_full(1, :) - u1_3sigbound_full);
 gimbal_99p9bound_dn = atan2d(u_mean_full(2,:) - u2_3sigbound_full .* sign(u_mean_full(2,:)), u_mean_full(1, :) + u1_3sigbound_full);
 
-stairs(t_k, atan2d(u_mean_full(2, :), u_mean_full(1, :)), Color = "k",LineWidth=1, DisplayName="Nominal"); hold on
+if ~isempty(options.u_ref_solution)
+    stairs(options.t_ref_solution(1:size(options.u_ref_solution, 2)), atan2d(options.u_ref_solution(2, :), options.u_ref_solution(1, :)), Color = "r",LineWidth=1, DisplayName="Deterministic"); hold on
+end
+stairs(t_k, atan2d(u_mean_full(2, :), u_mean_full(1, :)), Color = [30, 144, 255] / 256,LineWidth=1, DisplayName="Nominal"); hold on
 stairs(t_k, gimbal_99p9bound_up, Color = [100, 100, 100] / 256, LineStyle=":", LineWidth=1, DisplayName="99.9% Bound"); hold on
 stairs(t_k, gimbal_99p9bound_dn, Color = [100, 100, 100] / 256, LineStyle=":", LineWidth=1, HandleVisibility='off'); hold on
 yline(rad2deg(max_gimbal), LineWidth = 1, LineStyle="--", Color="k", DisplayName = "Constraint"); hold on

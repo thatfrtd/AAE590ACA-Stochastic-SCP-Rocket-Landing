@@ -16,9 +16,10 @@
 nu = 2;
 nr = 2;
 nx = 5;
+np = 1;
 
 %% Get deterministic solution for an initial guess 
-Deterministic_2DoF_linear
+Deterministic_2DoF_linear_freetf
 
 t_k = linspace(0, prob_2DoF.tf, prob_2DoF.N);
 
@@ -80,13 +81,14 @@ g_0 = @(t, x, u, p) diag(g_0_stds);
 
 %% Stochastify Objective and Constraints
 % Objective
-stochastic_min_fuel_objective = @(x, u, p, X_k, S_k) einsum(@(k) norm(u(1:2, k), 2) + sigma_mag_confidence(1e-2, nu) * norm(S_k(:, (tri(k - 1, nx) + 1):tri(k, nx)), 2), 1:Nu) * (t_k(2) - t_k(1));
+stochastic_min_fuel_objective = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref) einsum(@(k) norm(u(1:2, k), 2) + sigma_mag_confidence(1e-2, nu) * norm(S_k(:, (tri(k - 1, nx) + 1):tri(k, nx)), 2), 1:Nu) * (t_k(2) - t_k(1)) * p_ref(1)% ...
+% + einsum(@(k) norm(u_ref(1:2, k), 2) + sigma_mag_confidence(1e-2, nu) * norm(S_k_ref(:, (tri(k - 1, nx) + 1):tri(k, nx)), 2), 1:Nu) * (t_k(2) - t_k(1)) * (p(1) - p_ref(1));
 
 % Convex state path constraints
 glideslope_angle_max = deg2rad(50);
 h_glideslope = calculate_glideslope_offset(sigma_xf(1:2) * norminv(1 - 1e-3 / 2), glideslope_angle_max);
 glideslope_constraint = @(x, u, p, X_k, S_k) norm(x(1)) + sigma_mag_confidence(1e-3, nr - 1) * (norm(X_k(1, :))) - tan(glideslope_angle_max) * (x(2) + h_glideslope - norminv(1 - 1e-3) * norm(X_k(2, :)));
-state_convex_constraints = {glideslope_constraint};
+state_convex_constraints = {}%{glideslope_constraint};
 
 % Nonconvex state path constraints
 state_nonconvex_constraints = {};
@@ -99,16 +101,16 @@ control_convex_constraints = {};%{lcvx_constraint, min_thrust_constraint};
 convex_constraints = [state_convex_constraints, control_convex_constraints];
 
 % Nonconvex control constraints
-max_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) norm(u) + sigma_mag_confidence(1e-3 / 2, nu) * norm(S_k) - thrust_magnitude_bound(S_k_ref, u_ref, k, t_k, T_max, m_0, alpha, nu, nx);
+max_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) norm(u) + sigma_mag_confidence(1e-3 / 2, nu) * norm(S_k) - thrust_magnitude_bound(S_k_ref, u_ref, k, t_k * tf, T_max, m_0, alpha, nu, nx);
 min_thrust_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) T_min * exp(-x(5)) - (norm(u_ref(:, k)) + (u_ref(:, k)' / norm(u_ref(:, k))) * (u - u_ref(:, k)) - sigma_mag_confidence(1e-3 / 2, nu) * norm(S_k));
 
-control_nonconvex_constraints = {max_thrust_constraint, min_thrust_constraint};
+control_nonconvex_constraints = {}%, min_thrust_constraint};
 
 % Combine nonconvex constraints
 nonconvex_constraints = [state_nonconvex_constraints, control_nonconvex_constraints];
 
 %% Set Up StochasticProblem
-f_stoch = @(t, x, u, p) SymDynamics2DoF_linear_noumag(t, x, u, tf, vehicle.alpha);
+f_stoch = @(t, x, u, p) SymDynamics2DoF_linear_noumag(t, x, u, p, vehicle.alpha);
 ptr_sol_mod = ptr_sol;
 ptr_sol_mod.u = ptr_sol_mod.u(1:2, :, :);
 prob_2DoF.xf = [0; sigma_xf(2) * norminv(1 - 1e-3); 0; 0];

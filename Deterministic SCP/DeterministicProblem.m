@@ -170,7 +170,11 @@ classdef DeterministicProblem
         end
 
         function [xhat] = scale_x(prob, x)
-            xhat = pagemldivide(prob.scaling.S_x, x - prob.scaling.c_x);
+            if numel(size(x)) == 3
+                xhat = pagemldivide(prob.scaling.S_x, x - prob.scaling.c_x);
+            else
+                xhat = prob.scaling.S_x \ (x - prob.scaling.c_x);
+            end
         end
 
         function [uhat] = scale_u(prob, u)

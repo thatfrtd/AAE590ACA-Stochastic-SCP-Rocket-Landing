@@ -45,10 +45,10 @@ thetadot = b_inverse * w;
 % r dot
 r_dot = v;
 
-Rxtheta1 = [1 0 0; 0 cos(theta(1)) sin(theta(1)); 0 -sin(theta(1)) cos(theta(1))];
+Rxtheta1 = [1 0 0; 0 cos(theta(1)) -sin(theta(1)); 0 sin(theta(1)) cos(theta(1))];
 Rxtheta2 = [cos(theta(2)) 0 -sin(theta(2)); 0 1 0; sin(theta(2)) 0 cos(theta(2))];
-Rxtheta3 = [1 0 0; 0 cos(theta(3)) sin(theta(3)); 0 -sin(theta(3)) cos(theta(3))];
-C_be = Rxtheta3 * Rxtheta2 * Rxtheta1;
+Rxtheta3 = [1 0 0; 0 cos(theta(3)) -sin(theta(3)); 0 sin(theta(3)) cos(theta(3))];
+C_be = Rxtheta1 * Rxtheta2 * Rxtheta3;
 C_eb = C_be.';
 a_T_e = C_eb * thrust_accel;
 % v dot

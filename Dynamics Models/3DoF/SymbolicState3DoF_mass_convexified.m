@@ -25,6 +25,7 @@ u = [thrust_accel; thrust_accel_mag];
 
 m = exp(z);
 T = m * thrust_accel;
+T_mag = m * thrust_accel_mag;
 
 rdot = v;
 thetadot = w;

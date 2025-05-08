@@ -23,7 +23,7 @@ ylabel("Velocity [m / s]")
 grid on
 
 nexttile
-plot(t(1:Nu), u(1:3, :)); hold on
+plot(t(1:Nu), u(1:3, :) .* exp(x(13, 1:Nu))); hold on
 plot(t(1:Nu), u(4, :) .* exp(x(13, 1:Nu)), LineStyle = "--"); hold off
 legend(["v_" + string(1:3), "||v||"])
 title("Thrust vs Time")

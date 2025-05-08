@@ -34,14 +34,14 @@ uqlab
 
 Model1Opts.mFile = 'stochastic_3DoF_model_test';
 Model1Opts.Parameters = parameters;
-Model1Opts.isVectorized = false;
+Model1Opts.isVectorized = true;
 Model1Opts.isStochastic = false;
 %modelopts.stochasticSim.supportRep = true; % Model can optimize then
 %sample many realizations using MC (need to make isStochastic)
 
 myModel = uq_createModel(Model1Opts);
 
-%% Create Inpute Distributions
+%% Create Input Distributions
 % Inputs: [N_in]
 % - X(1:6) initial state stds
 % - X(7:12) final state stds

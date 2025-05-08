@@ -304,14 +304,14 @@ P_k_opt = Phat_k_opt + stoch_prob_3DoF.disc.Ptilde_k;
 plot_3DoF_MC_trajectories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, x_ofb, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, P_k_opt, t_k, xhat_no_fb, Pf, glideslope_angle_max, h_glideslope, x_ref_solution = ptr_sol.x(:, :, ptr_sol.converged_i));
 
 %%
-plot_3DoF_MC_time_histories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.u(:, :, stoch_ptr_sol.converged_i), t_k, x_ofb, u_ofb, t_k, stoch_ptr_sol.X(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.S(:, :, stoch_ptr_sol.converged_i), t_k, xhat_no_fb, glideslope_angle_max, h_glideslope, T_max, T_min, gimbal_angle_max, true)
+plot_3DoF_MC_time_histories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.u(:, :, stoch_ptr_sol.converged_i), t_k, x_ofb, u_ofb, t_k, stoch_ptr_sol.X(:, :, stoch_ptr_sol.converged_i), stoch_ptr_sol.S(:, :, stoch_ptr_sol.converged_i), t_k, xhat_no_fb, glideslope_angle_max, h_glideslope, T_max, T_min, gimbal_angle_max, true, t_ref_solution = t_k, x_ref_solution = ptr_sol.x(:, :, ptr_sol.converged_i), u_ref_solution = ptr_sol.u(:, :, ptr_sol.converged_i))
 
 %%
 plot_3DoF_MC_trajectories(t_k, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, x_fb, stoch_ptr_sol.x(:, :, stoch_ptr_sol.converged_i), t_k, P_k_opt, t_k, xhat_no_fb, Pf, glideslope_angle_max, h_glideslope)
 
 %%
 figure
-covariance_plot(stoch_ptr_sol.x(:, end, stoch_ptr_sol.converged_i), squeeze(x_ofb(:, end, :)), squeeze(P_k_opt(:, :, end)), Pf, ["x [km]", "y [km]", "v_x [km / s]", "v_y [km / s]", "\theta [rad]", "\omega [rad / s]", "m [kg]"], "State Dispersion at Final Node")
+covariance_plot(stoch_ptr_sol.x(1:6, end, stoch_ptr_sol.converged_i), squeeze(x_ofb(1:6, end, :)), squeeze(P_k_opt(1:6, 1:6, end)), Pf, ["x [km]", "y [km]", "v_x [km / s]", "v_y [km / s]", "\theta [rad]", "\omega [rad / s]"], "")
 %%
 figure
 mc_dv = squeeze(sum(vecnorm(u_ofb, 2, 1) * (t_k(2) - t_k(1)), 2));

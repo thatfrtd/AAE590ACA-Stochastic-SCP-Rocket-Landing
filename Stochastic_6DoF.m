@@ -21,52 +21,54 @@ n_probit_99p9 = norminv(1 - 1e-3);
 %Initial Covariance values
 %% Define Stochastic Elements
 % Initial estimated state
-sigma_xhat0 = [10e-3; ... % r_x
+sigma_xhat0 = 1 * [30e-3; ... % r_x
             10e-3; ... % r_y
             10e-3; ... % r_z
-            1e-3; ... % v_x
-            1e-3; ... % v_y
-            1e-3; ... % v_z
-            10e-3; ... % theta_1
-            10e-3; ... % theta_2
-            10e-3; ... % theta_3
-            1e-3; ... % w_x
-            1e-3; ... % w_y
-            1e-3; ... % w_z
+            6e-3; ... % v_x
+            3e-3; ... % v_y
+            3e-3; ... % v_z
+            deg2rad(1); ... % theta_1
+            deg2rad(1); ... % theta_2
+            deg2rad(1); ... % theta_3
+            deg2rad(0.5); ... % w_x
+            deg2rad(0.5); ... % w_y
+            deg2rad(0.5); ... % w_z
             1e-4]; % mass
 Phat0 = diag(sigma_xhat0 .^ 2);
+Phat0(1:3, 1:3) = angle2dcm(deg2rad(0), deg2rad(-90 - 30), 0,"ZYX")' * Phat0(1:3, 1:3) * (make_R(deg2rad(30), 3) * make_R(-deg2rad(60), 2))';
+Phat0(4:6, 4:6) = angle2dcm(deg2rad(0), deg2rad(-90 - 30), 0,"ZYX")' * Phat0(4:6, 4:6) * (make_R(deg2rad(30), 3) * make_R(-deg2rad(60), 2))';
 
 % Disturbance
-sigma_accel = [0.5e-4; 0.5e-4; 0.1e-4];
-sigma_ang_accel = [0.2e-5; 0.2e-5; 0.2e-5];
+sigma_accel = [0.5e-3; 0.5e-3; 0.2e-3];
+sigma_ang_accel = [deg2rad(0.05); deg2rad(0.05); deg2rad(0.05)];
 sigma_m = 1e-7;
 
 delta_t = 1e-1;
-G = @(t, x, u, p) sqrt(delta_t) * [zeros([3, 7]); ... % velocity
+G = @(t, x, u, p) sqrt(delta_t) * 0.001 * [zeros([3, 7]); ... % velocity
                                    sigma_accel .* eye([3, 7]); ... % acceleration
                                    zeros([3, 7]); ... % angular velocity
                                    sigma_ang_accel .* [zeros(3, 3), eye(3), zeros(3, 1)]; % angular acceleration
                                    sigma_m * [zeros([1, 6]), 1]]; ... % mass flow 
 
 % Initial state estimation error
-sigma_xtilde0 = [1e-4; ... % r_x
-            1e-4; ... % r_y
-            5e-4; ... % r_z
+sigma_xtilde0 = [3e-4; ... % r_x
+            3e-4; ... % r_y
+            3e-4; ... % r_z
             1e-4; ... % v_x
             1e-4; ... % v_y
             1e-4; ... % v_z
-            1e-4; ... % theta_1
-            1e-4; ... % theta_2
-            1e-4; ... % theta_3
-            1e-5; ... % w_x
-            1e-5; ... % w_y
-            1e-5; ... % w_z
+            deg2rad(0.05); ... % theta_1
+            deg2rad(0.05); ... % theta_2
+            deg2rad(0.05); ... % theta_3
+            deg2rad(0.05); ... % w_x
+            deg2rad(0.05); ... % w_y
+            deg2rad(0.05); ... % w_z
             1e-5]; % mass
 Ptilde0 = diag(sigma_xtilde0 .^ 2);
 
 % Final state covariance
 % Final state
-sigma_xf = [1e-2; ... % r_x
+sigma_xf = 10*[1e-2; ... % r_x
             1e-2; ... % r_y
             1e-3; ... % r_z
             1e-3; ... % v_x
@@ -89,18 +91,18 @@ f = @(t, x, u, p) SymDynamicsEuler6DoF_convex_noumag(x, u, vehicle.L, vehicle.I,
 
 %% Measurement Model
 % Measurement model (identity with noise)
-g_0_stds = [10e-5; ... % r_x
-            10e-5; ... % r_y
-            50e-5; ... % r_z
-            5e-5; ... % v_x
-            5e-5; ... % v_y
-            5e-5; ... % v_z
-            1e-4; ... % theta_1
-            1e-4; ... % theta_2
-            1e-4; ... % theta_3
-            5e-5; ... % w_x
-            5e-5; ... % w_y
-            5e-5; ... % w_z
+g_0_stds = [3e-4; ... % r_x
+            3e-4; ... % r_y
+            3e-4; ... % r_z
+            1e-4; ... % v_x
+            1e-4; ... % v_y
+            1e-4; ... % v_z
+            deg2rad(0.05); ... % theta_1
+            deg2rad(0.05); ... % theta_2
+            deg2rad(0.05); ... % theta_3
+            deg2rad(0.05); ... % w_x
+            deg2rad(0.05); ... % w_y
+            deg2rad(0.05); ... % w_z
             1e-5]; ... % mass
 
 f_0 = @(t, x, u, p) x;
@@ -113,11 +115,11 @@ h_glideslope = calculate_glideslope_offset(sigma_xf(1:nr) * norminv(1 - 1e-3 / 2
 %glideslope_constraint = @(x, u, p, X_k, S_k, x_ref, u_ref, p_ref, X_k_ref, S_k_ref, k) (norm(x(1:nr) + [zeros([nr - 1, 1]); h_glideslope]) + 0*sigma_mag_confidence(1e-3, nr) * norm(X_k_ref(1:nr, (tri(k - 1, nx) + 1):tri(k, nx)))) * cos(glideslope_angle_max) - (x(nr) + h_glideslope - norminv(1 - 1e-3) * norm(X_k_ref(nr, (tri(k - 1, nx) + 1):tri(k, nx))));
 glideslope_constraint = @(x, u, p, X_k, S_k) norm(x(1:2)) + sigma_mag_confidence(1e-3, nr - 1) * (norm(X_k(1:2, :))) - tan(glideslope_angle_max) * (x(3) + h_glideslope - norminv(1 - 1e-3) * norm(X_k(3, :)));
 
-state_convex_constraints = {glideslope_constraint};
+state_convex_constraints = {};
 
-gimbal_angle_max = deg2rad(20);
+%gimbal_angle_max = deg2rad(20);
 gimbal_constraint = @(x, u, p, X_k, S_k) norm(u(2:3)) + sigma_mag_confidence(1e-3, nr - 1) * (norm(S_k(2:3, :))) - tan(gimbal_angle_max) * (u(1) - norminv(1-1e-3) * (norm(S_k(1, :))));
-control_convex_constraints ={gimbal_constraint};
+control_convex_constraints ={};%{gimbal_constraint};
 
 % Combine convex constraints
 convex_constraints = [state_convex_constraints, control_convex_constraints];
@@ -135,14 +137,15 @@ control_nonconvex_constraints = {max_thrust_constraint};%{max_thrust_constraint,
 % Combine nonconvex constraints
 nonconvex_constraints = [state_nonconvex_constraints, control_nonconvex_constraints];
 %% Specify Objective
-stochastic_min_fuel_objective = @(x, u, p, X_k, S_k) einsum(@(k) norm(u(1:nr, k), 2) + sigma_mag_confidence(1e-2, nr) * norm(S_k(1:3, (tri(k - 1, nx) + 1):tri(k, nx)), 2), 1:Nu) * (t_k(2) - t_k(1));
+%stochastic_min_fuel_objective = @(x, u, p, X_k, S_k) einsum(@(k) norm(u(1:nr, k), 2) + sigma_mag_confidence(1e-2, nr) * norm(S_k(1:nr, (tri(k - 1, nx) + 1):tri(k, nx)), 2), 1:Nu) * (t_k(2) - t_k(1));
+stochastic_min_fuel_objective = @(x, u, p, X_k, S_k) einsum(@(k) norm(u(1:nr, k), 2), 1:Nu) * (t_k(2) - t_k(1));
 
 %% Construct Problem Object
 mod_ptr_sol = ptr_sol;
 mod_ptr_sol.u = ptr_sol.u([1:nr, 5], :, :);
 ptr_ops.iter_min = 4;
 ptr_ops.Delta_min = 1e-5;
-ptr_ops.w_vc = 1e6;
+ptr_ops.w_vc = 1e5;
 
 prob_6DoF.cont.f = f;
 prob_6DoF.xf(nr) = sigma_xf(nr) * norminv(1 - 1e-3);
@@ -307,7 +310,7 @@ Phat_no_fb = zeros([stoch_prob_6DoF.n.x, stoch_prob_6DoF.n.x, stoch_prob_6DoF.N,
 u_no_fb = zeros([stoch_prob_6DoF.n.u, stoch_prob_6DoF.Nu, m]);
 
 for i = 1:m
-    [t_no_fb(:, i), x_no_fb(:, :, i), xhat_no_fb(:, :, i), Phat_no_fb(:, :, :, i), u_no_fb(:, :, i)] = stoch_prob_6DoF.disc_prop(stoch_prob_6DoF.guess.x, stoch_prob_6DoF.guess.u, stoch_prob_6DoF.guess.p, K_k * 0);
+    [t_no_fb(:, i), x_no_fb(:, :, i), xhat_no_fb(:, :, i), Phat_no_fb(:, :, :, i), u_no_fb(:, :, i)] = stoch_prob_6DoF.disc_prop(stoch_prob_6DoF.guess.x, stoch_prob_6DoF.guess.u, stoch_prob_6DoF.guess.p, K_k_opt * 0);
     i
 end
 

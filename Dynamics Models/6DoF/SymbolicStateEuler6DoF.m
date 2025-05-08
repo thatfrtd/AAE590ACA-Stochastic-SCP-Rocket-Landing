@@ -1,5 +1,6 @@
 % constants (same as 3DoF)
-g = 3.7114e-3; % [km / s2]
+%g = 3.7114e-3; % [km / s2]
+g = 9.81e-3; % [km / s2]
 
 syms mass L;
 I = sym("I", [3; 1])

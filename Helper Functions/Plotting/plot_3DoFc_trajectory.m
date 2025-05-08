@@ -39,6 +39,7 @@ axis equal
 grid on
 xlim(x_lim)
 ylim(y_lim)
+title(sprintf("State Trajectory\n"))
 
 %% Thrust Plot
 nexttile
@@ -66,7 +67,7 @@ rlim([0 rmax]);
 thetalim(rad2deg(gimbal_max) * [-2, 2])
 title(sprintf("Control Trajectory\n"))
 
-sgtitle(sprintf("3DoF Rocket Landing Trajectory"))
+sgtitle(options.title)
 
 end
 

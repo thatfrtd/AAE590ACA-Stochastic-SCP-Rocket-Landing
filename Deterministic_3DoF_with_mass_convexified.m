@@ -45,7 +45,7 @@ initial_guess = "straight line"; % "CasADi" or "straight line"
 
 % PTR algorithm parameters
 ptr_ops.iter_max = 20;
-ptr_ops.iter_min = 6;
+ptr_ops.iter_min = 2;
 ptr_ops.Delta_min = 5e-5;
 ptr_ops.w_vc = 1e5;
 ptr_ops.w_tr = ones(1, Nu) * 1e0;
@@ -57,7 +57,7 @@ ptr_ops.alpha_x = 1;
 ptr_ops.alpha_u = 1;
 ptr_ops.alpha_p = 0;
 
-scale = false;
+scale = true;
 
 %% Get Dynamics
 f = @(t, x, u, p) SymDynamics3DoF_mass_convexified(t, x, u, vehicle.L, vehicle.I(2), vehicle.alpha);
@@ -189,7 +189,9 @@ grid on
 
 %%
 Js = [ptr_sol.info.J];
+%FOH_Js = [FOH_ptr_sol.info.J];
 (Js(end) - CasADi_sol.objective) / CasADi_sol.objective * 100
+%(FOH_Js(end) - CasADi_sol.objective) / CasADi_sol.objective * 100
 
 %%
 figure
@@ -215,17 +217,22 @@ i = ptr_sol.converged_i;
 [t_cont_sol, x_cont_sol, u_cont_sol] = prob_3DoF.cont_prop(ptr_sol.u(:, :, i), ptr_sol.p(:, i));
 
 figure
-plot_3DoFc_trajectory(t_k, ptr_sol.x(:, :, i), ptr_sol.u(:, :, i), glideslope_angle_max, gimbal_max, T_min, T_max, step = 1)
+plot_3DoFc_trajectory(t_k, ptr_sol.x(:, :, i), ptr_sol.u(:, :, i), glideslope_angle_max, gimbal_max, T_min, T_max, step = 1, title = "")
 %%
 figure
-comparison_plot_3DoF_trajectory({guess.x, x_cont_sol, ptr_sol.x(:, :, i), CasADi_sol.x}, ["Guess", "Continuous Propagation", "Solution Output", "CasADi"], glideslope_angle_max, linestyle = [":", "-", "--", "-"], title = "3DoF Solution Comparison")
+comparison_plot_3DoF_trajectory({guess.x, ptr_sol.x(:, :, i),  FOH_ptr_sol.x(:, :, FOH_ptr_sol.converged_i), CasADi_sol.x}, ["Guess", "ZOH", "FOH", "CasADi"], glideslope_angle_max, linestyle = [":", "-", "--", "-"], title = "")
 %%
 figure
 comparison_plot_3DoF_trajectory({guess.x, x_cont_sol, CasADi_sol.x}, ["Guess", "PTR", "CasADi"], glideslope_angle_max, linestyle = [":", "-", "-"], title = "")
 
 %%
 figure
-comparison_plot_3DoFc_time_histories({t_k, t_cont_sol, t_k}, {guess.x, x_cont_sol, ptr_sol.x(:, :, i)}, {guess.u, u_cont_sol, ptr_sol.u(:, :, i)}, ["Guess", "Cont", "Disc"], linestyle = [":", "-", "--"], title = "Continuous vs Discrete Propagation of Solution")
+comparison_plot_3DoFc_time_histories({t_k, t_cont_sol, t_k}, {guess.x, x_cont_sol, ptr_sol.x(:, :, i)}, {guess.u, u_cont_sol, ptr_sol.u(:, :, i)}, ["Guess", "Cont", "Disc"], linestyle = [":", "-", "--"], title = "")
+
+%%
+figure
+comparison_plot_3DoFc_time_histories({t_cont_sol_ZOH, t_cont_sol_FOH}, {x_cont_sol_ZOH, x_cont_sol_FOH}, {u_cont_sol_ZOH, u_cont_sol_FOH}, ["ZOH", "FOH"], linestyle = ["-", "--"], title = "")
+
 %%
 t_iters = {};
 x_iters = {};

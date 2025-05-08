@@ -10,26 +10,26 @@
 %% Initialize
 % Vehicle Parameters
 alpha = 0.5086; % [s / km]
-T_min = 4.97; % [kg km / s2]
-T_max = 13.26; % [kg km / s2]
+T_min = 10; % [kg km / s2]
+T_max = 60; % [kg km / s2]
 I = [50000; 150000; 150000] * (1e-3) ^ 2; % [kg km2] ASSUMING CONSTANT MOMENT OF INERTIA
 L = 3e-3; % [km] Distance from CoM to nozzle
 m_dry = 2000; % [kg]
 m_wet = 600; % [kg]
 m_0 = m_dry + m_wet;
-gimbal_max = deg2rad(8); % [rad]
+gimbal_max = deg2rad(20); % [rad]
 
 vehicle = Vehicle(m_dry, L, L * 3, gimbal_max, T_min, T_max, I = I);
 
 % Problem Parameters
-tf = 60; % [s]
+tf = 35; % [s]
 N = 25; % []
-r_0 = [0.5; -0.2; 2.0]; % [km]
-v_0 = [0.0; 0.0; -0.0647] * 0.1; % [km / s]
-[theta1_0, theta2_0, theta3_0] = dcm2angle(angle2dcm(0, deg2rad(-90), 0,"ZYX"), "XYX"); % [rad]
+r_0 = [0; 0; 4.6]; % [km]
+v_0 = angle2dcm(deg2rad(0), deg2rad(-90 - 30), 0,"ZYX")' * [-0.306; 0; 0]; % [km / s]
+[theta1_0, theta2_0, theta3_0] = dcm2angle(angle2dcm(deg2rad(0), deg2rad(-90), 0,"ZYX"), "XYX"); % [rad]
 theta_0 = [theta1_0; theta2_0; theta3_0];
-w_0 = deg2rad([0; 10; 5]); % [rad / s]
-glideslope_angle_max = deg2rad(60); % [rad]
+w_0 = deg2rad([0; 0; 0]); % [rad / s]
+glideslope_angle_max = deg2rad(80); % [rad]
 
 [theta1_f, theta2_f, theta3_f] = dcm2angle(angle2dcm(0, deg2rad(-90), 0,"ZYX"), "XYX"); % [rad]
 theta_f = [theta1_f; theta2_f; theta3_f];
@@ -41,10 +41,11 @@ tspan = [0, tf];
 t_k = linspace(tspan(1), tspan(2), N);
 delta_t = t_k(2) - t_k(1);
 
-u_hold = "FOH";
+u_hold = "ZOH";
 Nu = (u_hold == "ZOH") * (N - 1) + (u_hold == "FOH") * N;
 
 % PTR algorithm parameters
+ptr_ops.iter_min = 2;
 ptr_ops.iter_max = 20;
 ptr_ops.Delta_min = 5e-5;
 ptr_ops.w_vc = 1e5;
@@ -86,11 +87,17 @@ elseif u_hold == "FOH"
 end
 
 %% Create Guess
+Deterministic_3DoF_with_mass_convexified
+%%
+conv_3DoF_sol = convert_3DoFc_sol_to_6DoF_Guess(ptr_sol);
+%%
+%[x_0_C(7), x_0_C(8), x_0_C(9)] = dcm2angle(angle2dcm(deg2rad(0), deg2rad(-90), 0,"ZYX"), "XYX"); % [rad]
+
 sl_guess = guess_6DoF(x_0, x_f, N, Nu, delta_t, vehicle);
 
-CasADi_sol = CasADi_solve_6DoF(x_0, x_f, sl_guess.x, sl_guess.u, vehicle, N, delta_t, glideslope_angle_max);
+%CasADi_sol = CasADi_solve_6DoF(x_0_C, x_f, sl_guess.x, sl_guess.u, vehicle, N, delta_t, glideslope_angle_max);
 
-guess = CasADi_sol;
+guess = conv_3DoF_sol;
 if u_hold == "ZOH"
     guess.u = interp1(t_k(1:size(guess.u, 2)), guess.u', t_k(1:Nu), "previous","extrap")';
 elseif u_hold == "FOH"
@@ -111,7 +118,9 @@ figure
 plot_6DoF_time_histories(t_k, guess.x, guess.u)
 
 %% Construct Problem Object
-prob_6DoF = DeterministicProblem(x_0, x_f, N, u_hold, tf, f, guess, convex_constraints, min_fuel_objective, scale = scale);
+%terminal_bc = @(x, u, p) [x([1:8, 10:12], :) - x_f([1:8, 10:12]); 0];
+
+prob_6DoF = DeterministicProblem(x_0, x_f, N, u_hold, tf, f, guess, convex_constraints, min_fuel_objective, scale = scale);%, terminal_bc = terminal_bc);
 
 %% Test Scaling
 % guess_scaled.x = prob_3DoF.scale_x(guess.x);
@@ -130,9 +139,9 @@ norm(Delta)
 
 %% Test Discretization on Initial Guess
 
-guess.u(1, :) = T_min * 1;
+%guess.u(1, :) = T_min * 1;
 %guess.u(2, :) = T_min / 200;
-guess.u(4, :) = vecnorm(guess.u(1:3, :));
+%guess.u(4, :) = vecnorm(guess.u(1:3, :));
 
 [prob_6DoF, Delta_disc] = prob_6DoF.discretize(guess.x, guess.u, guess.p);
 
@@ -183,3 +192,15 @@ comparison_plot_6DoF_trajectory({guess.x, x_cont_sol, ptr_sol.x(:, :, i)}, ["Gue
 figure
 comparison_plot_6DoF_time_histories({t_k, t_cont_sol, t_k}, {guess.x, x_cont_sol, ptr_sol.x(:, :, i)}, {guess.u, u_cont_sol, ptr_sol.u(:, :, i)}, ["Guess", "Cont", "Disc"], linestyle = [":", "-", "--"], title = "Continuous vs Discrete Propagation of Solution")
 
+%%
+function [conv_3DoF_sol] = convert_3DoFc_sol_to_6DoF_Guess(ptr_sol)
+
+conv_3DoF_sol.x = ptr_sol.x(:, :, ptr_sol.converged_i);
+conv_3DoF_sol.u = ptr_sol.u(:, :, ptr_sol.converged_i);
+conv_3DoF_sol.p = ptr_sol.p(:, ptr_sol.converged_i);
+
+conv_3DoF_sol.x = [conv_3DoF_sol.x(1, :); zeros(size(conv_3DoF_sol.x(1, :))); conv_3DoF_sol.x(2, :); conv_3DoF_sol.x(3, :); zeros(size(conv_3DoF_sol.x(3, :))); conv_3DoF_sol.x(4, :); zeros(size(conv_3DoF_sol.x(5, :))); -conv_3DoF_sol.x(5, :); zeros(size(conv_3DoF_sol.x(5, :))); zeros(size(conv_3DoF_sol.x(6, :))); -conv_3DoF_sol.x(6, :); zeros(size(conv_3DoF_sol.x(6, :)))];%; exp(conv_3DoF_sol.x(7, :))];
+conv_3DoF_sol.u = [conv_3DoF_sol.u(1, :); zeros(size(conv_3DoF_sol.u(3, :))); conv_3DoF_sol.u(2, :); conv_3DoF_sol.u(3, :); zeros(size(conv_3DoF_sol.u(3, :)))];
+conv_3DoF_sol.u(1:4, :) = exp(ptr_sol.x(7, 1:size(conv_3DoF_sol.u, 2))) .* conv_3DoF_sol.u(1:4, :) * 0.9;
+
+end
