@@ -17,7 +17,7 @@ T_max = 3 * m_0 * 9.81e-3; % [kg km / s2]
 T_min = 0.55 * T_max; % [kg km / s2]
 
 % Problem Parameters
-tf = 20; % [s]
+tf = 10; % [s]
 N = 25; % []
 delta_t = tf/N; % [s]
 r_0 = [0; 4.6]; % [km]
@@ -50,10 +50,10 @@ ptr_ops.iter_min = 2;
 ptr_ops.iter_max = 20;
 ptr_ops.Delta_min = 5e-5;
 ptr_ops.w_vc = 1e5;
-ptr_ops.w_tr = ones(1, Nu) * 5e0;
+ptr_ops.w_tr = ones(1, Nu) * 5e-2;
 ptr_ops.w_tr_p = 1e-1;
 ptr_ops.update_w_tr = false;
-ptr_ops.delta_tol = 1e-3;
+ptr_ops.delta_tol = 3e-2;
 ptr_ops.q = 2;
 ptr_ops.alpha_x = 1;
 ptr_ops.alpha_u = 1;
@@ -73,8 +73,8 @@ state_convex_constraints = {glideslope_constraint};
 
 % Convex control constraints
 min_thrust_constraint = @(t, x, u, p) T_min * exp(-x(5)) - u(3);
-lcvx_thrust_constraint = @(t, x, u, p) norm(u(1:2))- u(3); 
-control_convex_constraints = {min_thrust_constraint,lcvx_thrust_constraint};
+lcvx_thrust_constraint = @(t, x, u, p) norm(u(1:2)) - u(3); 
+control_convex_constraints = {lcvx_thrust_constraint};
 
 % Combine convex constraints
 convex_constraints = [state_convex_constraints, control_convex_constraints];
@@ -85,7 +85,9 @@ state_nonconvex_constraints = {};
 % Nonconvex control constraints
 max_thrust_constraint = @(t, x, u, p) u(3) - T_max * exp(-z_lb(t, p(1))) * (1 - (x(5) - z_lb(t, p(1))));
 max_thrust_constraint_linearized = linearize_constraint(max_thrust_constraint, nx, nu, np, "p", 1);
-control_nonconvex_constraints = {max_thrust_constraint_linearized};
+min_thrust_constraint = @(t, x, u, p) T_min * exp(-z_lb(t, p(1))) * (1 - (x(5) - z_lb(t, p(1))) + 0.5 * (x(5) - z_lb(t, p(1))) ^ 2) - u(3);
+min_thrust_constraint_linearized = linearize_constraint(min_thrust_constraint, nx, nu, np, "p", 1);
+control_nonconvex_constraints = {max_thrust_constraint_linearized, min_thrust_constraint_linearized};
 
 nonconvex_constraints = [state_nonconvex_constraints, control_nonconvex_constraints];
 
@@ -127,6 +129,8 @@ A_k_ck = sum(pagenorm(prob_2DoF.disc.A_k(:, :, 1:Nu) - A_k_exp), "all") < defaul
 %% Solve Problem with PTR
 ptr_sol = ptr(prob_2DoF, ptr_ops);
 
+%%
+%ptr_sol.converged_i = 20;
 X = ptr_sol.x(:, :, ptr_sol.converged_i);
 U = ptr_sol.u(:, :, ptr_sol.converged_i);
 p = ptr_sol.p(:, ptr_sol.converged_i);

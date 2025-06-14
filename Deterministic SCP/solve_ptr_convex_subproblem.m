@@ -57,9 +57,23 @@ cvx_begin quiet
         prob.terminal_bc(prob.unscale_x(X(:, prob.N)), prob.unscale_p(p)) + v_N == 0;
 
         % Trust Region Constraints
-        ptr_ops.alpha_x * norms(X(:, 1:prob.Nu) - x_ref(:, 1:prob.Nu), ptr_ops.q, 1) + ptr_ops.alpha_u * norms(U - u_ref, ptr_ops.q, 1) <= eta;
+        ptr_ops.alpha_x * sum(sum_square(X(:, 1:prob.Nu) - x_ref(:, 1:prob.Nu))) + ptr_ops.alpha_u * sum(sum_square(U - u_ref)) <= eta;
         ptr_ops.alpha_p * norms(p - p_ref, ptr_ops.q, 1) <= eta_p;
 cvx_end
+% 
+% ck = zeros([prob.n.cvx, prob.Nu]);
+% 
+% for k = 1:prob.Nu
+%     % Convex Constraints
+%     for cc = 1:prob.n.cvx
+%         ck(cc, k) = prob.convex_constraints{cc}(t_k(k), prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), prob.unscale_p(p));
+%     end
+% end
+% 
+% figure
+% plot(ck(1, :)); hold on
+% plot(ck(2, :)); hold on
+% plot(ck(3, :)); hold off
 
 x_sol = X;
 u_sol = U;
