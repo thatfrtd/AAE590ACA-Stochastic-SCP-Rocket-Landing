@@ -2,6 +2,7 @@ function [x_sol, u_sol, sol_info] = solve_ptr_convex_subproblem_no_p(prob, ptr_o
 %SOLVE_PTR_CONVEX_SUBPROBLEM Summary of this function goes here
 %   Detailed explanation goes here
 
+%t1 = tic;
 t_k = linspace(0, prob.tf, prob.N);
 
 cvx_begin quiet
@@ -19,18 +20,18 @@ cvx_begin quiet
         % Dynamics
         if prob.u_hold == "ZOH"
             for k = 1:(prob.N - 1)
-                X(:, k + 1) == prob.disc.A_k(:, :, k) * prob.unscale_x(X(:, k)) ...
+                X(:, k + 1) == prob.scale_x(prob.disc.A_k(:, :, k) * prob.unscale_x(X(:, k)) ...
                              + prob.disc.B_k(:, :, k) * prob.unscale_u(U(:, k)) ...
                              + prob.disc.c_k(:, :, k) ...
-                             + V(:, k);
+                             + V(:, k));
             end
         elseif prob.u_hold == "FOH"
             for k = 1:(prob.N - 1)
-                X(:, k + 1) == prob.disc.A_k(:, :, k) * prob.unscale_x(X(:, k)) ...
+                X(:, k + 1) == prob.scale_x(prob.disc.A_k(:, :, k) * prob.unscale_x(X(:, k)) ...
                              + prob.disc.B_minus_k(:, :, k) * prob.unscale_u(U(:, k)) ...
                              + prob.disc.B_plus_k(:, :, k) * prob.unscale_u(U(:, k + 1)) ...
                              + prob.disc.c_k(:, :, k) ...
-                             + V(:, k);
+                             + V(:, k));
             end
         end
 
@@ -42,7 +43,7 @@ cvx_begin quiet
             end
             % Nonconvex Constraints
             for nc = 1:prob.n.ncvx
-                prob.nonconvex_constraints{nc}(t_k(k), prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, x_ref, u_ref, 0) ...
+                prob.nonconvex_constraints{nc}(t_k(k), prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, prob.unscale_x(x_ref), prob.unscale_u(u_ref), 0) ...
                     - v_prime(nc) <= 0;
             end
         end
@@ -55,6 +56,8 @@ cvx_begin quiet
         % Trust Region Constraints
         ptr_ops.alpha_x * norms(X(:, 1:prob.Nu) - x_ref(:, 1:prob.Nu), ptr_ops.q, 1) + ptr_ops.alpha_u * norms(U - u_ref, ptr_ops.q, 1) <= eta;
 cvx_end
+
+%t2 = toc(t1);
 
 if size(U,1) == 5
     figure
@@ -80,7 +83,7 @@ end
 
 x_sol = X;
 u_sol = U;
-
+%fprintf("Mosek Time: %.3f ms", t2 * 1000 )
 sol_info.status = cvx_status;
 sol_info.vd = V;
 sol_info.vs = v_prime;

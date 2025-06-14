@@ -9,7 +9,7 @@
 
 g = 3.7114e-3; % [km / s2]
 
-syms mass L I alpha;
+syms L I alpha;
 t = sym("t");
 r = sym("r", [2, 1]);
 v = sym("v", [2, 1]);
@@ -20,7 +20,7 @@ x = [r;v;theta;w;m];
 
 thrust = sym("thrust", [2, 1]);
 u = [thrust];
-thrust_mag = sqrt(abs(thrust(1))^2 + abs(thrust(2))^2);
+thrust_mag = sqrt(thrust(1)^2 + thrust(2)^2);
 rdot = v;
 thetadot = w;
 M = cross([-L; 0; 0], [thrust; 0]);
@@ -38,7 +38,7 @@ xdot = [rdot; vdot; thetadot; wdot; mdot];
 %j_b = jacobian(xdot, u);
 
 % Create equations of motion function for optimizer
-matlabFunction(xdot,"File","Dynamics Models/3DoF/SymDynamics3DoF_mass_noumag","Vars", [{t}; {x}; {u}; {mass; L; I; alpha}]);
+matlabFunction(xdot,"File","Dynamics Models/3DoF/SymDynamics3DoF_mass_noumag","Vars", [{t}; {x}; {u}; {L; I; alpha}]);
 
 % Create equations of motion block for Simulink model
 %matlabFunctionBlock('EoM_3DoF/SymDynamics3DoF',xdot,'Vars',[x; u; mass; L; I])

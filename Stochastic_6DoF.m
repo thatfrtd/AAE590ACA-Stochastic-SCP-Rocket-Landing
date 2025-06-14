@@ -85,7 +85,7 @@ Pf = diag(sigma_xf .^ 2);
 
 
 %% Get Dynamics
-f = @(t, x, u, p) SymDynamicsEuler6DoF_convex_noumag(x, u, vehicle.L, vehicle.I, vehicle.alpha);
+f = @(t, x, u, p) SymDynamicsEuler6DoF(x, u, vehicle.L, vehicle.I, vehicle.alpha);
 
 %% Measurement Model
 % Measurement model (identity with noise)

@@ -22,6 +22,11 @@ classdef DeterministicProblem
         scaling
         sol
         tolerances
+        params
+        discretization_method string {mustBeMember(discretization_method, ["state", "error", "errorRK4", "errorRKV65", "errorRKV87"])} = "state"
+        N_sub
+        virtualization_method string {mustBeMember(virtualization_method, ["control", "state"])} = "control"
+        vehicle
     end
     
     methods
@@ -41,6 +46,8 @@ classdef DeterministicProblem
                 options.integration_tolerance = 1e-12
                 options.scale = true
                 options.nonconvex_constraints = [] % Cell array of constraint functions @(t, x, u, p, x_ref, u_ref, p_ref)
+                options.discretization_method = "state"
+                options.N_sub = []
             end
             %DETERMINISTICPROBLEM Construct an instance of this class
             %   Detailed explanation goes here
@@ -67,6 +74,8 @@ classdef DeterministicProblem
             obj.scale = options.scale;
             obj.scaling = obj.compute_scaling();
             obj.tolerances = odeset(RelTol=options.integration_tolerance, AbsTol=options.integration_tolerance);
+            obj.discretization_method = options.discretization_method;
+            obj.N_sub = options.N_sub;
         end
 
         function prob = linearize(prob)
@@ -95,10 +104,38 @@ classdef DeterministicProblem
             %   Detailed explanation goes here
             
             % Discretize Dynamics
-            if prob.u_hold == "ZOH"
-                [prob.disc.A_k, prob.disc.B_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_dynamics_ZOH(prob.cont.f, prob.cont.A, prob.cont.B, prob.cont.E, prob.cont.c, prob.N, [0, prob.tf], x_ref, u_ref, p_ref, prob.tolerances);
-            elseif prob.u_hold == "FOH"
-                [prob.disc.A_k, prob.disc.B_plus_k, prob.disc.B_minus_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_dynamics_FOH(prob.cont.f, prob.cont.A, prob.cont.B, prob.cont.E, prob.cont.c, prob.N, [0, prob.tf], x_ref, u_ref, p_ref, prob.tolerances);
+            if prob.discretization_method == "state"
+                if prob.u_hold == "ZOH"
+                    [prob.disc.A_k, prob.disc.B_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_dynamics_ZOH(prob.cont.f, prob.cont.A, prob.cont.B, prob.cont.E, prob.cont.c, prob.N, [0, prob.tf], x_ref, u_ref, p_ref, prob.tolerances);
+                elseif prob.u_hold == "FOH"
+                    [prob.disc.A_k, prob.disc.B_plus_k, prob.disc.B_minus_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_dynamics_FOH(prob.cont.f, prob.cont.A, prob.cont.B, prob.cont.E, prob.cont.c, prob.N, [0, prob.tf], x_ref, u_ref, p_ref, prob.tolerances);
+                end
+            elseif prob.discretization_method == "error"
+                if prob.u_hold == "ZOH"
+                    error("error discretization for ZOH not implemented")
+                elseif prob.u_hold == "FOH"
+                    [prob.disc.A_k, prob.disc.B_plus_k, prob.disc.B_minus_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_error_dynamics_FOH(prob.cont.f, prob.cont.A, prob.cont.B, prob.cont.E, prob.N, [0, prob.tf], x_ref, u_ref, p_ref, prob.tolerances);
+                end
+            elseif prob.discretization_method == "errorRK4"
+                if prob.u_hold == "ZOH"
+                    error("RK4 error discretization for ZOH not implemented")
+                elseif prob.u_hold == "FOH"
+                    [prob.disc.A_k, prob.disc.B_plus_k, prob.disc.B_minus_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_error_dynamics_FOH_RK4(prob.cont.f, prob.cont.A, prob.cont.B, prob.cont.E, prob.N, [0, prob.tf], x_ref, u_ref, p_ref, prob.N_sub);
+                end
+            elseif prob.discretization_method == "errorRKV65"
+                if prob.u_hold == "ZOH"
+                    error("RKV65 error discretization for ZOH not implemented")
+                elseif prob.u_hold == "FOH"
+                    %[prob.disc.A_k, prob.disc.B_plus_k, prob.disc.B_minus_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_error_dynamics_FOH_RKV65(prob.cont.f, prob.cont.A, prob.cont.B, prob.cont.E, prob.N, [0, prob.tf], x_ref, u_ref, p_ref, prob.N_sub);
+                    [prob.disc.A_k, prob.disc.B_plus_k, prob.disc.B_minus_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_error_dynamics_FOH_RKV65_3DoF_mex(prob.N, [0, prob.tf], x_ref, u_ref, 25, prob.N_sub, prob.vehicle.L, prob.vehicle.I(2), prob.vehicle.alpha);
+                    prob.disc.E_k = double.empty([7, 0, 15]);
+                end
+            elseif prob.discretization_method == "errorRKV87"
+                if prob.u_hold == "ZOH"
+                    error("RKV87 error discretization for ZOH not implemented")
+                elseif prob.u_hold == "FOH"
+                    [prob.disc.A_k, prob.disc.B_plus_k, prob.disc.B_minus_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_error_dynamics_FOH_RKV87(prob.N, [0, prob.tf], x_ref, u_ref, p_ref, prob.N_sub, prob.vehicle.L, prob.vehicle.I, prob.vehicle.alpha);
+                end
             end
         end
 
@@ -170,7 +207,11 @@ classdef DeterministicProblem
         end
 
         function [xhat] = scale_x(prob, x)
-            xhat = pagemldivide(prob.scaling.S_x, x - prob.scaling.c_x);
+            if numel(size(x)) == 3
+                xhat = pagemldivide(prob.scaling.S_x, x - prob.scaling.c_x);
+            else
+                xhat = prob.scaling.S_x \ (x - prob.scaling.c_x);
+            end
         end
 
         function [uhat] = scale_u(prob, u)

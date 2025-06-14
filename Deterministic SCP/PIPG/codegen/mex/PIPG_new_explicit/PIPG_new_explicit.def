@@ -1,0 +1,18 @@
+LIBRARY PIPG_new_explicit.mexw64
+EXPORTS
+mexFunction
+mexfilerequiredapiversion
+emlrtMexFcnProperties
+PIPG_new_explicit
+PIPG_new_explicit_initialize
+PIPG_new_explicit_terminate
+PIPG_new_explicit_atexit
+emlrt_marshallIn
+b_emlrt_marshallIn
+s_emlrt_marshallIn
+emxEnsureCapacity_real_T
+emxFreeStruct_struct0_T
+emxFree_real_T
+emxInitStruct_struct0_T
+emxInitStruct_rtString
+emxInit_real_T

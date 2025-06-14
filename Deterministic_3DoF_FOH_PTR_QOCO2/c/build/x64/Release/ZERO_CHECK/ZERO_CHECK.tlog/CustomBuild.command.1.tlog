@@ -1,0 +1,10 @@
+^C:\USERS\THATF\ONEDRIVE\DOCUMENTS\PURDUE CLASSES\AAE 590ACA\AAE590ACA-STOCHASTIC-SCP-ROCKET-LANDING\DETERMINISTIC_3DOF_FOH_PTR_QOCO2\C\BUILD\CMAKEFILES\B916FBCC28626512E4AC1981DD62E856\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" "-SC:/Users/thatf/OneDrive/Documents/Purdue Classes/AAE 590ACA/AAE590ACA-Stochastic-SCP-Rocket-Landing/Deterministic_3DoF_FOH_PTR_QOCO2/c" "-BC:/Users/thatf/OneDrive/Documents/Purdue Classes/AAE 590ACA/AAE590ACA-Stochastic-SCP-Rocket-Landing/Deterministic_3DoF_FOH_PTR_QOCO2/c/build" --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file "C:/Users/thatf/OneDrive/Documents/Purdue Classes/AAE 590ACA/AAE590ACA-Stochastic-SCP-Rocket-Landing/Deterministic_3DoF_FOH_PTR_QOCO2/c/build/cvxpygen.sln"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

@@ -1,6 +1,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % AAE 590ACA
-% Stochastic SCP Rocket Landing Project
+% Stochastic SCP
+% Rocket Landing Project
 % Author: Travis Hastreiter 
 % Created On: 6 April, 2025
 % Description: 3DoF landing of rocket using PTR SCP algorithm
@@ -42,6 +43,7 @@ Nu = (u_hold == "ZOH") * (N - 1) + (u_hold == "FOH") * N;
 
 % PTR algorithm parameters
 ptr_ops.iter_max = 20;
+ptr_ops.iter_min = 2;
 ptr_ops.Delta_min = 5e-5;
 ptr_ops.w_vc = 1e5;
 ptr_ops.w_tr = ones(1, Nu) * 5e0;

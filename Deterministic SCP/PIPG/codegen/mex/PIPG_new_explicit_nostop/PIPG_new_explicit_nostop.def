@@ -1,0 +1,14 @@
+LIBRARY PIPG_new_explicit_nostop.mexw64
+EXPORTS
+mexFunction
+mexfilerequiredapiversion
+emlrtMexFcnProperties
+PIPG_new_explicit_nostop
+PIPG_new_explicit_nostop_initialize
+PIPG_new_explicit_nostop_terminate
+PIPG_new_explicit_nostop_atexit
+emxEnsureCapacity_real_T
+emxFreeStruct_struct0_T
+emxFree_real_T
+emxInitStruct_struct0_T
+emxInit_real_T

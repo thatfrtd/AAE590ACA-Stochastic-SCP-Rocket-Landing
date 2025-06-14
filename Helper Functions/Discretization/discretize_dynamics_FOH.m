@@ -7,11 +7,11 @@ function [A_k, B_k_plus, B_k_minus, E_k, c_k, Delta] = discretize_dynamics_FOH(f
     np = numel(p_ref);
 
     t_k = linspace(tspan(1), tspan(2), N);
-    A_k = zeros([nx, nx, N]);
-    B_k_plus = zeros([nx, nu, N]);
-    B_k_minus = zeros([nx, nu, N]);
-    E_k = zeros([nx, np, N]);
-    c_k = zeros([nx, 1, N]);
+    A_k = zeros([nx, nx, N - 1]);
+    B_k_plus = zeros([nx, nu, N - 1]);
+    B_k_minus = zeros([nx, nu, N - 1]);
+    E_k = zeros([nx, np, N - 1]);
+    c_k = zeros([nx, 1, N - 1]);
     Delta = zeros([1, N - 1]);
 
     u_ref = @(t) interp1(t_k(1:size(u_ref, 2)), u_ref', t, "linear", "extrap")';

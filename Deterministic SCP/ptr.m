@@ -1,8 +1,13 @@
-function [ptr_sol] = ptr(prob, ptr_ops)
+function [ptr_sol] = ptr(prob, ptr_ops, parser)
 %PTR Sequential Convex Programming algorithm
 %   If converged, solution satisfies the nonlinear continuous-time equations of motion
 % to within a tolerance on the order of eps_feasible feasible, satisfies all algebraic constraints at each
 % temporal node, and approximates (local) optimality of the original optimal control problem.
+arguments
+    prob 
+    ptr_ops 
+    parser string {mustBeMember(parser, ["CVX", "CVXPY"])} = "CVX"
+end
 
 x_ref = zeros([prob.n.x, prob.N, ptr_ops.iter_max + 1]);
 u_ref = zeros([prob.n.u, prob.Nu, ptr_ops.iter_max + 1]);
@@ -17,6 +22,8 @@ ptr_sol.objective = zeros([1, ptr_ops.iter_max + 1]);
 ptr_sol.Delta = zeros([prob.Nu, ptr_ops.iter_max + 1]);
 ptr_sol.delta_xp = zeros([1, ptr_ops.iter_max]);
 
+problem = [];
+
 % Convexify along initial guess
 [prob, ptr_sol.Delta(:, 1)] = convexify_along_reference(prob, prob.guess.x, prob.guess.u, prob.guess.p);
 
@@ -25,7 +32,16 @@ disp(" k |       status      |   vd  |   vs  |  vbc_0 |  vbc_N |    J    |   J_t
 for i = 1:(ptr_ops.iter_max)
     % Solve convex subproblem and update reference
     if prob.n.p == 0
-        [x_ref(:, :, i + 1), u_ref(:, :, i + 1), sol_info] = solve_ptr_convex_subproblem_no_p(prob, ptr_ops, x_ref(:, :, i), u_ref(:, :, i));
+        if parser == "CVX"
+            [x_ref(:, :, i + 1), u_ref(:, :, i + 1), sol_info] = solve_ptr_convex_subproblem_no_p(prob, ptr_ops, x_ref(:, :, i), u_ref(:, :, i));
+        elseif parser == "CVXPY"
+            %[x_ref_CVX, u_ref_CVX, sol_info_CVX] = solve_ptr_convex_subproblem_no_p(prob, ptr_ops, x_ref(:, :, i), u_ref(:, :, i));
+    
+            [x_ref(:, :, i + 1), u_ref(:, :, i + 1), sol_info, problem] = solve_ptr_convex_subproblem_no_p_CVXPY(prob, ptr_ops, x_ref(:, :, i), u_ref(:, :, i), problem);
+
+            %figure
+            %comparison_plot_3DoF_trajectory({x_ref(:, :, i + 1), x_ref_CVX}, ["CVXPY", "CVX"], prob.params(4))
+        end
     else
         [x_ref(:, :, i + 1), u_ref(:, :, i + 1), p_ref(:, i + 1), sol_info] = solve_ptr_convex_subproblem(prob, ptr_ops, x_ref(:, :, i), u_ref(:, :, i), p_ref(:, i));
     end

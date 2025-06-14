@@ -42,8 +42,8 @@ for i = 1:(N-1)
 end
 
 % Thrust bounds
-opti.subject_to(u(3, :) >= vehicle.min_thrust * exp(-x(7)));
-opti.subject_to(u(3, :) <= vehicle.max_thrust * exp(-x(7)));
+opti.subject_to(u(3, :) >= vehicle.min_thrust * exp(-x(7, 1:(N-1))));
+opti.subject_to(u(3, :) <= vehicle.max_thrust * exp(-x(7, 1:(N-1))));
 opti.subject_to(sqrt(u(1, :) .^ 2 + u(2, :) .^ 2) <= u(3, :));
 
 % State constraints

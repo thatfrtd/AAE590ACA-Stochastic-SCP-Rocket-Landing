@@ -22,6 +22,8 @@ classdef DeterministicProblem
         scaling
         sol
         tolerances
+        params
+        discretization_method string {mustBeMember(discretization_method, ["state", "error"])} = "state"
     end
     
     methods
@@ -34,18 +36,20 @@ classdef DeterministicProblem
                 tf
                 f
                 guess % Has to have values .x, .u, .p
-                convex_constraints % Cell array of constraint functions @(x, u, p)
+                convex_constraints % Cell array of constraint functions @(t, x, u, p)
                 objective
                 options.initial_bc = @(x, p) x - x0 % Has to be @(x, p)
                 options.terminal_bc = @(x, p) x - xf % Has to be @(x, p)
                 options.integration_tolerance = 1e-12
-                options.scale 
-                options.nonconvex_constraints = [] % Cell array of constraint functions @(x, u, p, x_ref, u_ref, p_ref)
+                options.scale = true
+                options.nonconvex_constraints = [] % Cell array of constraint functions @(t, x, u, p, x_ref, u_ref, p_ref)
+                options.discretization_method = "state"
             end
             %DETERMINISTICPROBLEM Construct an instance of this class
             %   Detailed explanation goes here
 
             obj.x0 = x0;
+            obj.xf = xf;
             obj.N = N;
             obj.Nu = (u_hold == "ZOH") * (N - 1) + (u_hold == "FOH") * N;
             obj.n.x = numel(x0);
@@ -63,8 +67,10 @@ classdef DeterministicProblem
             obj.initial_bc = options.initial_bc;
             obj.terminal_bc = options.terminal_bc;
             obj.objective = objective;
+            obj.scale = options.scale;
             obj.scaling = obj.compute_scaling();
             obj.tolerances = odeset(RelTol=options.integration_tolerance, AbsTol=options.integration_tolerance);
+            obj.discretization_method = discretization_method;
         end
 
         function prob = linearize(prob)
@@ -93,10 +99,18 @@ classdef DeterministicProblem
             %   Detailed explanation goes here
             
             % Discretize Dynamics
-            if prob.u_hold == "ZOH"
-                [prob.disc.A_k, prob.disc.B_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_dynamics_ZOH(prob.cont.f, prob.cont.A, prob.cont.B, prob.cont.E, prob.cont.c, prob.N, [0, prob.tf], x_ref, u_ref, p_ref, prob.tolerances);
-            elseif prob.u_hold == "FOH"
-                [prob.disc.A_k, prob.disc.B_plus_k, prob.disc.B_minus_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_dynamics_FOH(prob.cont.f, prob.cont.A, prob.cont.B, prob.cont.E, prob.cont.c, prob.N, [0, prob.tf], x_ref, u_ref, p_ref, prob.tolerances);
+            if prob.discretization_method == "state"
+                if prob.u_hold == "ZOH"
+                    [prob.disc.A_k, prob.disc.B_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_dynamics_ZOH(prob.cont.f, prob.cont.A, prob.cont.B, prob.cont.E, prob.cont.c, prob.N, [0, prob.tf], x_ref, u_ref, p_ref, prob.tolerances);
+                elseif prob.u_hold == "FOH"
+                    [prob.disc.A_k, prob.disc.B_plus_k, prob.disc.B_minus_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_dynamics_FOH(prob.cont.f, prob.cont.A, prob.cont.B, prob.cont.E, prob.cont.c, prob.N, [0, prob.tf], x_ref, u_ref, p_ref, prob.tolerances);
+                end
+            elseif prob.
+                if prob.u_hold == "ZOH"
+                    error("error discretization for ZOH not implemented")
+                elseif prob.u_hold == "FOH"
+                    [prob.disc.A_k, prob.disc.B_plus_k, prob.disc.B_minus_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_error_dynamics_FOH(prob.cont.f, prob.cont.A, prob.cont.B, prob.cont.E, prob.N, [0, prob.tf], x_ref, u_ref, p_ref, prob.tolerances);
+                end
             end
         end
 
@@ -179,7 +193,13 @@ classdef DeterministicProblem
             phat = prob.scaling.S_p \ (p - prob.scaling.c_p); % shape????
         end
 
-        function [t_cont, x_cont, u_cont] = cont_prop(prob, u, p)
+        function [t_cont, x_cont, u_cont] = cont_prop(prob, u, p, options)
+            arguments
+                prob
+                u
+                p
+                options.tspan = [0, prob.tf]
+            end
             %DISC_PROP Summary of this function goes here
             %   Detailed explanation goes here
             t_k = linspace(0, prob.tf, prob.N);
@@ -190,7 +210,7 @@ classdef DeterministicProblem
                 u_func = @(t) interp1(t_k, u', t)';
             end
 
-            [t_cont, x_cont] = ode45(@(t, x) prob.cont.f(t, x, u_func(t), p), [0, prob.tf], prob.x0, prob.tolerances);
+            [t_cont, x_cont] = ode45(@(t, x) prob.cont.f(t, x, u_func(t), p), options.tspan, prob.x0, prob.tolerances);
             x_cont = x_cont';
 
             if prob.u_hold == "ZOH"

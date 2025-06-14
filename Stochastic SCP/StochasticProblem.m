@@ -27,6 +27,7 @@ classdef StochasticProblem
         scaling
         sol
         tolerances
+        params
     end
     
     methods

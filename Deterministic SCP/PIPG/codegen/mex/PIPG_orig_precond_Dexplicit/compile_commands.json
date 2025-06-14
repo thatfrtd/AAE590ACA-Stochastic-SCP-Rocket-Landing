@@ -1,0 +1,110 @@
+[
+  {
+    "directory": "C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\\codegen\\mex\\PIPG_orig_precond_Dexplicit",
+    "command": "cl /c /Zc:__cplusplus /Zp8 /GR /W3 /EHs /nologo /MD /D_CRT_SECURE_NO_DEPRECATE /D_SCL_SECURE_NO_DEPRECATE /D_SECURE_SCL=0   /DMATLAB_MEX_FILE  /DMATLAB_MEX_FILE /O2 /Oy- /DNDEBUG /fp:strict /utf-8 /I \".\" /I \"C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\" /I \".\\interface\" /I \"C:\\Program Files\\MATLAB\\R2024b\\extern\\include\" /I \".\" -DMODEL=PIPG_orig_precond_Dexplicit_mex   PIPG_orig_precond_Dexplicit_data.c /Fobuild\\win64\\PIPG_orig_precond_Dexplicit_data.obj",
+    "file": "PIPG_orig_precond_Dexplicit_data.c",
+    "output": "build/win64/PIPG_orig_precond_Dexplicit_data.obj"
+  },
+  {
+    "directory": "C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\\codegen\\mex\\PIPG_orig_precond_Dexplicit",
+    "command": "cl /c /Zc:__cplusplus /Zp8 /GR /W3 /EHs /nologo /MD /D_CRT_SECURE_NO_DEPRECATE /D_SCL_SECURE_NO_DEPRECATE /D_SECURE_SCL=0   /DMATLAB_MEX_FILE  /DMATLAB_MEX_FILE /O2 /Oy- /DNDEBUG /fp:strict /utf-8 /I \".\" /I \"C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\" /I \".\\interface\" /I \"C:\\Program Files\\MATLAB\\R2024b\\extern\\include\" /I \".\" -DMODEL=PIPG_orig_precond_Dexplicit_mex   rt_nonfinite.c /Fobuild\\win64\\rt_nonfinite.obj",
+    "file": "rt_nonfinite.c",
+    "output": "build/win64/rt_nonfinite.obj"
+  },
+  {
+    "directory": "C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\\codegen\\mex\\PIPG_orig_precond_Dexplicit",
+    "command": "cl /c /Zc:__cplusplus /Zp8 /GR /W3 /EHs /nologo /MD /D_CRT_SECURE_NO_DEPRECATE /D_SCL_SECURE_NO_DEPRECATE /D_SECURE_SCL=0   /DMATLAB_MEX_FILE  /DMATLAB_MEX_FILE /O2 /Oy- /DNDEBUG /fp:strict /utf-8 /I \".\" /I \"C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\" /I \".\\interface\" /I \"C:\\Program Files\\MATLAB\\R2024b\\extern\\include\" /I \".\" -DMODEL=PIPG_orig_precond_Dexplicit_mex   PIPG_orig_precond_Dexplicit_initialize.c /Fobuild\\win64\\PIPG_orig_precond_Dexplicit_initialize.obj",
+    "file": "PIPG_orig_precond_Dexplicit_initialize.c",
+    "output": "build/win64/PIPG_orig_precond_Dexplicit_initialize.obj"
+  },
+  {
+    "directory": "C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\\codegen\\mex\\PIPG_orig_precond_Dexplicit",
+    "command": "cl /c /Zc:__cplusplus /Zp8 /GR /W3 /EHs /nologo /MD /D_CRT_SECURE_NO_DEPRECATE /D_SCL_SECURE_NO_DEPRECATE /D_SECURE_SCL=0   /DMATLAB_MEX_FILE  /DMATLAB_MEX_FILE /O2 /Oy- /DNDEBUG /fp:strict /utf-8 /I \".\" /I \"C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\" /I \".\\interface\" /I \"C:\\Program Files\\MATLAB\\R2024b\\extern\\include\" /I \".\" -DMODEL=PIPG_orig_precond_Dexplicit_mex   PIPG_orig_precond_Dexplicit_terminate.c /Fobuild\\win64\\PIPG_orig_precond_Dexplicit_terminate.obj",
+    "file": "PIPG_orig_precond_Dexplicit_terminate.c",
+    "output": "build/win64/PIPG_orig_precond_Dexplicit_terminate.obj"
+  },
+  {
+    "directory": "C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\\codegen\\mex\\PIPG_orig_precond_Dexplicit",
+    "command": "cl /c /Zc:__cplusplus /Zp8 /GR /W3 /EHs /nologo /MD /D_CRT_SECURE_NO_DEPRECATE /D_SCL_SECURE_NO_DEPRECATE /D_SECURE_SCL=0   /DMATLAB_MEX_FILE  /DMATLAB_MEX_FILE /O2 /Oy- /DNDEBUG /fp:strict /utf-8 /I \".\" /I \"C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\" /I \".\\interface\" /I \"C:\\Program Files\\MATLAB\\R2024b\\extern\\include\" /I \".\" -DMODEL=PIPG_orig_precond_Dexplicit_mex   PIPG_orig_precond_Dexplicit.c /Fobuild\\win64\\PIPG_orig_precond_Dexplicit.obj",
+    "file": "PIPG_orig_precond_Dexplicit.c",
+    "output": "build/win64/PIPG_orig_precond_Dexplicit.obj"
+  },
+  {
+    "directory": "C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\\codegen\\mex\\PIPG_orig_precond_Dexplicit",
+    "command": "cl /c /Zc:__cplusplus /Zp8 /GR /W3 /EHs /nologo /MD /D_CRT_SECURE_NO_DEPRECATE /D_SCL_SECURE_NO_DEPRECATE /D_SECURE_SCL=0   /DMATLAB_MEX_FILE  /DMATLAB_MEX_FILE /O2 /Oy- /DNDEBUG /fp:strict /utf-8 /I \".\" /I \"C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\" /I \".\\interface\" /I \"C:\\Program Files\\MATLAB\\R2024b\\extern\\include\" /I \".\" -DMODEL=PIPG_orig_precond_Dexplicit_mex   tic.c /Fobuild\\win64\\tic.obj",
+    "file": "tic.c",
+    "output": "build/win64/tic.obj"
+  },
+  {
+    "directory": "C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\\codegen\\mex\\PIPG_orig_precond_Dexplicit",
+    "command": "cl /c /Zc:__cplusplus /Zp8 /GR /W3 /EHs /nologo /MD /D_CRT_SECURE_NO_DEPRECATE /D_SCL_SECURE_NO_DEPRECATE /D_SECURE_SCL=0   /DMATLAB_MEX_FILE  /DMATLAB_MEX_FILE /O2 /Oy- /DNDEBUG /fp:strict /utf-8 /I \".\" /I \"C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\" /I \".\\interface\" /I \"C:\\Program Files\\MATLAB\\R2024b\\extern\\include\" /I \".\" -DMODEL=PIPG_orig_precond_Dexplicit_mex   mtimes.c /Fobuild\\win64\\mtimes.obj",
+    "file": "mtimes.c",
+    "output": "build/win64/mtimes.obj"
+  },
+  {
+    "directory": "C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\\codegen\\mex\\PIPG_orig_precond_Dexplicit",
+    "command": "cl /c /Zc:__cplusplus /Zp8 /GR /W3 /EHs /nologo /MD /D_CRT_SECURE_NO_DEPRECATE /D_SCL_SECURE_NO_DEPRECATE /D_SECURE_SCL=0   /DMATLAB_MEX_FILE  /DMATLAB_MEX_FILE /O2 /Oy- /DNDEBUG /fp:strict /utf-8 /I \".\" /I \"C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\" /I \".\\interface\" /I \"C:\\Program Files\\MATLAB\\R2024b\\extern\\include\" /I \".\" -DMODEL=PIPG_orig_precond_Dexplicit_mex   mtimes1.c /Fobuild\\win64\\mtimes1.obj",
+    "file": "mtimes1.c",
+    "output": "build/win64/mtimes1.obj"
+  },
+  {
+    "directory": "C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\\codegen\\mex\\PIPG_orig_precond_Dexplicit",
+    "command": "cl /c /Zc:__cplusplus /Zp8 /GR /W3 /EHs /nologo /MD /D_CRT_SECURE_NO_DEPRECATE /D_SCL_SECURE_NO_DEPRECATE /D_SECURE_SCL=0   /DMATLAB_MEX_FILE  /DMATLAB_MEX_FILE /O2 /Oy- /DNDEBUG /fp:strict /utf-8 /I \".\" /I \"C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\" /I \".\\interface\" /I \"C:\\Program Files\\MATLAB\\R2024b\\extern\\include\" /I \".\" -DMODEL=PIPG_orig_precond_Dexplicit_mex   sparse.c /Fobuild\\win64\\sparse.obj",
+    "file": "sparse.c",
+    "output": "build/win64/sparse.obj"
+  },
+  {
+    "directory": "C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\\codegen\\mex\\PIPG_orig_precond_Dexplicit",
+    "command": "cl /c /Zc:__cplusplus /Zp8 /GR /W3 /EHs /nologo /MD /D_CRT_SECURE_NO_DEPRECATE /D_SCL_SECURE_NO_DEPRECATE /D_SECURE_SCL=0   /DMATLAB_MEX_FILE  /DMATLAB_MEX_FILE /O2 /Oy- /DNDEBUG /fp:strict /utf-8 /I \".\" /I \"C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\" /I \".\\interface\" /I \"C:\\Program Files\\MATLAB\\R2024b\\extern\\include\" /I \".\" -DMODEL=PIPG_orig_precond_Dexplicit_mex   mod.c /Fobuild\\win64\\mod.obj",
+    "file": "mod.c",
+    "output": "build/win64/mod.obj"
+  },
+  {
+    "directory": "C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\\codegen\\mex\\PIPG_orig_precond_Dexplicit",
+    "command": "cl /c /Zc:__cplusplus /Zp8 /GR /W3 /EHs /nologo /MD /D_CRT_SECURE_NO_DEPRECATE /D_SCL_SECURE_NO_DEPRECATE /D_SECURE_SCL=0   /DMATLAB_MEX_FILE  /DMATLAB_MEX_FILE /O2 /Oy- /DNDEBUG /fp:strict /utf-8 /I \".\" /I \"C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\" /I \".\\interface\" /I \"C:\\Program Files\\MATLAB\\R2024b\\extern\\include\" /I \".\" -DMODEL=PIPG_orig_precond_Dexplicit_mex   toc.c /Fobuild\\win64\\toc.obj",
+    "file": "toc.c",
+    "output": "build/win64/toc.obj"
+  },
+  {
+    "directory": "C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\\codegen\\mex\\PIPG_orig_precond_Dexplicit",
+    "command": "cl /c /Zc:__cplusplus /Zp8 /GR /W3 /EHs /nologo /MD /D_CRT_SECURE_NO_DEPRECATE /D_SCL_SECURE_NO_DEPRECATE /D_SECURE_SCL=0   /DMATLAB_MEX_FILE  /DMATLAB_MEX_FILE /O2 /Oy- /DNDEBUG /fp:strict /utf-8 /I \".\" /I \"C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\" /I \".\\interface\" /I \"C:\\Program Files\\MATLAB\\R2024b\\extern\\include\" /I \".\" -DMODEL=PIPG_orig_precond_Dexplicit_mex   interface\\_coder_PIPG_orig_precond_Dexplicit_api.c /Fobuild\\win64\\_coder_PIPG_orig_precond_Dexplicit_api.obj",
+    "file": "interface/_coder_PIPG_orig_precond_Dexplicit_api.c",
+    "output": "build/win64/_coder_PIPG_orig_precond_Dexplicit_api.obj"
+  },
+  {
+    "directory": "C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\\codegen\\mex\\PIPG_orig_precond_Dexplicit",
+    "command": "cl /c /Zc:__cplusplus /Zp8 /GR /W3 /EHs /nologo /MD /D_CRT_SECURE_NO_DEPRECATE /D_SCL_SECURE_NO_DEPRECATE /D_SECURE_SCL=0   /DMATLAB_MEX_FILE  /DMATLAB_MEX_FILE /O2 /Oy- /DNDEBUG /fp:strict /utf-8 /I \".\" /I \"C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\" /I \".\\interface\" /I \"C:\\Program Files\\MATLAB\\R2024b\\extern\\include\" /I \".\" -DMODEL=PIPG_orig_precond_Dexplicit_mex   interface\\_coder_PIPG_orig_precond_Dexplicit_mex.c /Fobuild\\win64\\_coder_PIPG_orig_precond_Dexplicit_mex.obj",
+    "file": "interface/_coder_PIPG_orig_precond_Dexplicit_mex.c",
+    "output": "build/win64/_coder_PIPG_orig_precond_Dexplicit_mex.obj"
+  },
+  {
+    "directory": "C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\\codegen\\mex\\PIPG_orig_precond_Dexplicit",
+    "command": "cl /c /Zc:__cplusplus /Zp8 /GR /W3 /EHs /nologo /MD /D_CRT_SECURE_NO_DEPRECATE /D_SCL_SECURE_NO_DEPRECATE /D_SECURE_SCL=0   /DMATLAB_MEX_FILE  /DMATLAB_MEX_FILE /O2 /Oy- /DNDEBUG /fp:strict /utf-8 /I \".\" /I \"C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\" /I \".\\interface\" /I \"C:\\Program Files\\MATLAB\\R2024b\\extern\\include\" /I \".\" -DMODEL=PIPG_orig_precond_Dexplicit_mex   eml_int_forloop_overflow_check.c /Fobuild\\win64\\eml_int_forloop_overflow_check.obj",
+    "file": "eml_int_forloop_overflow_check.c",
+    "output": "build/win64/eml_int_forloop_overflow_check.obj"
+  },
+  {
+    "directory": "C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\\codegen\\mex\\PIPG_orig_precond_Dexplicit",
+    "command": "cl /c /Zc:__cplusplus /Zp8 /GR /W3 /EHs /nologo /MD /D_CRT_SECURE_NO_DEPRECATE /D_SCL_SECURE_NO_DEPRECATE /D_SECURE_SCL=0   /DMATLAB_MEX_FILE  /DMATLAB_MEX_FILE /O2 /Oy- /DNDEBUG /fp:strict /utf-8 /I \".\" /I \"C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\" /I \".\\interface\" /I \"C:\\Program Files\\MATLAB\\R2024b\\extern\\include\" /I \".\" -DMODEL=PIPG_orig_precond_Dexplicit_mex   PIPG_orig_precond_Dexplicit_emxutil.c /Fobuild\\win64\\PIPG_orig_precond_Dexplicit_emxutil.obj",
+    "file": "PIPG_orig_precond_Dexplicit_emxutil.c",
+    "output": "build/win64/PIPG_orig_precond_Dexplicit_emxutil.obj"
+  },
+  {
+    "directory": "C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\\codegen\\mex\\PIPG_orig_precond_Dexplicit",
+    "command": "cl /c /Zc:__cplusplus /Zp8 /GR /W3 /EHs /nologo /MD /D_CRT_SECURE_NO_DEPRECATE /D_SCL_SECURE_NO_DEPRECATE /D_SECURE_SCL=0   /DMATLAB_MEX_FILE  /DMATLAB_MEX_FILE /O2 /Oy- /DNDEBUG /fp:strict /utf-8 /I \".\" /I \"C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\" /I \".\\interface\" /I \"C:\\Program Files\\MATLAB\\R2024b\\extern\\include\" /I \".\" -DMODEL=PIPG_orig_precond_Dexplicit_mex   PIPG_orig_precond_Dexplicit_mexutil.c /Fobuild\\win64\\PIPG_orig_precond_Dexplicit_mexutil.obj",
+    "file": "PIPG_orig_precond_Dexplicit_mexutil.c",
+    "output": "build/win64/PIPG_orig_precond_Dexplicit_mexutil.obj"
+  },
+  {
+    "directory": "C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\\codegen\\mex\\PIPG_orig_precond_Dexplicit",
+    "command": "cl /c /Zc:__cplusplus /Zp8 /GR /W3 /EHs /nologo /MD /D_CRT_SECURE_NO_DEPRECATE /D_SCL_SECURE_NO_DEPRECATE /D_SECURE_SCL=0   /DMATLAB_MEX_FILE  /DMATLAB_MEX_FILE /O2 /Oy- /DNDEBUG /fp:strict /utf-8 /I \".\" /I \"C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\" /I \".\\interface\" /I \"C:\\Program Files\\MATLAB\\R2024b\\extern\\include\" /I \".\" -DMODEL=PIPG_orig_precond_Dexplicit_mex   interface\\_coder_PIPG_orig_precond_Dexplicit_info.c /Fobuild\\win64\\_coder_PIPG_orig_precond_Dexplicit_info.obj",
+    "file": "interface/_coder_PIPG_orig_precond_Dexplicit_info.c",
+    "output": "build/win64/_coder_PIPG_orig_precond_Dexplicit_info.obj"
+  },
+  {
+    "directory": "C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\\codegen\\mex\\PIPG_orig_precond_Dexplicit",
+    "command": "cl /c /Zc:__cplusplus /Zp8 /GR /W3 /EHs /nologo /MD /D_CRT_SECURE_NO_DEPRECATE /D_SCL_SECURE_NO_DEPRECATE /D_SECURE_SCL=0   /DMATLAB_MEX_FILE  /DMATLAB_MEX_FILE /O2 /Oy- /DNDEBUG /fp:strict /utf-8 /I \".\" /I \"C:\\Users\\thatf\\OneDrive\\Documents\\Purdue Classes\\AAE 590ACA\\AAE590ACA-Stochastic-SCP-Rocket-Landing\\Deterministic SCP\\PIPG\" /I \".\\interface\" /I \"C:\\Program Files\\MATLAB\\R2024b\\extern\\include\" /I \".\" -DMODEL=PIPG_orig_precond_Dexplicit_mex   \"C:\\Program Files\\MATLAB\\R2024b\\extern\\version\\c_mexapi_version.c\" /Fobuild\\win64\\c_mexapi_version.obj",
+    "file": "C:/Program Files/MATLAB/R2024b/extern/version/c_mexapi_version.c",
+    "output": "build/win64/c_mexapi_version.obj"
+  }
+]

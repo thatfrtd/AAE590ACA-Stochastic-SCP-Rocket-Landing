@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\thatf\OneDrive\Documents\Purdue Classes\AAE 590ACA\AAE590ACA-Stochastic-SCP-Rocket-Landing\Deterministic_3DoF_FOH_PTR_QOCO2\c\build\CMakeFiles\91563317fa6a811c17da6bab0f1e5f69\INSTALL_force.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{CBF09BB4-8893-30DA-BC4C-E4434EB0AB35}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

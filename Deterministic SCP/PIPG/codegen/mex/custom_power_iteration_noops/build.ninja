@@ -1,0 +1,56 @@
+# CompilerName=mingw64
+# Mode=optim
+ninja_required_version = 1.3
+
+# Basic folders
+root = .
+builddir = $root/build/win64
+matlabdir = C:/Program Files/MATLAB/R2024b
+startdir = C:/Users/thatf/OneDrive/Documents/Purdue Classes/AAE 590ACA/AAE590ACA-Stochastic-SCP-Rocket-Landing/Deterministic SCP/PIPG
+
+# Toolchain information
+cc = C:\ProgramData\MATLAB\SupportPackages\R2024b\3P.instrset\mingw_w64.instrset\bin\gcc
+cxx = C:\ProgramData\MATLAB\SupportPackages\R2024b\3P.instrset\mingw_w64.instrset\bin\g++
+linker = C:\ProgramData\MATLAB\SupportPackages\R2024b\3P.instrset\mingw_w64.instrset\bin\gcc
+linkerxx = C:\ProgramData\MATLAB\SupportPackages\R2024b\3P.instrset\mingw_w64.instrset\bin\g++
+
+cflags =  -c -fexceptions -fno-omit-frame-pointer -m64 -DMATLAB_MEX_FILE  -DMATLAB_MEX_FILE -O2 -fwrapv -DNDEBUG -std=c99 -I "C:\Users\thatf\OneDrive\Documents\Purdue Classes\AAE 590ACA\AAE590ACA-Stochastic-SCP-Rocket-Landing\Deterministic SCP\PIPG\codegen\mex\custom_power_iteration_noops" -I "C:\Users\thatf\OneDrive\Documents\Purdue Classes\AAE 590ACA\AAE590ACA-Stochastic-SCP-Rocket-Landing\Deterministic SCP\PIPG" -I "C:\Users\thatf\OneDrive\Documents\Purdue Classes\AAE 590ACA\AAE590ACA-Stochastic-SCP-Rocket-Landing\Deterministic SCP\PIPG\codegen\mex\custom_power_iteration_noops\interface" -I "C:\Program Files\MATLAB\R2024b\extern\include" -I "." -DMODEL=custom_power_iteration_noops_mex -D__USE_MINGW_ANSI_STDIO=1 -Wno-stringop-overflow -Wno-maybe-uninitialized 
+
+cxxflags =  -c -fexceptions -fno-omit-frame-pointer -m64 -DMATLAB_MEX_FILE  -DMATLAB_MEX_FILE -O2 -fwrapv -DNDEBUG -std=c++11 -I "C:\Users\thatf\OneDrive\Documents\Purdue Classes\AAE 590ACA\AAE590ACA-Stochastic-SCP-Rocket-Landing\Deterministic SCP\PIPG\codegen\mex\custom_power_iteration_noops" -I "C:\Users\thatf\OneDrive\Documents\Purdue Classes\AAE 590ACA\AAE590ACA-Stochastic-SCP-Rocket-Landing\Deterministic SCP\PIPG" -I "C:\Users\thatf\OneDrive\Documents\Purdue Classes\AAE 590ACA\AAE590ACA-Stochastic-SCP-Rocket-Landing\Deterministic SCP\PIPG\codegen\mex\custom_power_iteration_noops\interface" -I "C:\Program Files\MATLAB\R2024b\extern\include" -I "." -DMODEL=custom_power_iteration_noops_mex -D__USE_MINGW_ANSI_STDIO=1 -Wno-stringop-overflow -Wno-maybe-uninitialized 
+
+ldflags = custom_power_iteration_noops.def  -m64 -Wl,--no-undefined -shared -static -L"C:\Program Files\MATLAB\R2024b\extern\lib\win64\mingw64" -llibmx -llibmex -llibmat -lm -llibmwlapack -llibmwblas -o "custom_power_iteration_noops_mex.mexw64" -llibemlrt -llibcovrt -llibut -llibmwmathutil 
+
+ldxxflags = custom_power_iteration_noops.def  -m64 -Wl,--no-undefined -shared -static -L"C:\Program Files\MATLAB\R2024b\extern\lib\win64\mingw64" -llibmx -llibmex -llibmat -lm -llibmwlapack -llibmwblas -llibMatlabDataArray -llibMatlabEngine  -o "custom_power_iteration_noops_mex.mexw64" -llibemlrt -llibcovrt -llibut -llibmwmathutil 
+
+linkobjs = 
+
+# Build Rules
+rule cc
+    command = $cc $cflags $in -o $out
+
+rule cxx
+    command = $cxx $cxxflags $in -o $out
+
+rule link
+    command = $linker @$out.rsp $linkobjs $ldflags
+    rspfile = $out.rsp
+    rspfile_content = $in
+
+rule linkxx
+    command = $linkerxx $in $linkobjs $ldxxflags
+
+# Build
+build $builddir/custom_power_iteration_noops_data.o : cc $root/custom_power_iteration_noops_data.c
+build $builddir/rt_nonfinite.o : cc $root/rt_nonfinite.c
+build $builddir/custom_power_iteration_noops_initialize.o : cc $root/custom_power_iteration_noops_initialize.c
+build $builddir/custom_power_iteration_noops_terminate.o : cc $root/custom_power_iteration_noops_terminate.c
+build $builddir/custom_power_iteration_noops.o : cc $root/custom_power_iteration_noops.c
+build $builddir/vecnorm.o : cc $root/vecnorm.c
+build $builddir/sumMatrixIncludeNaN.o : cc $root/sumMatrixIncludeNaN.c
+build $builddir/_coder_custom_power_iteration_noops_api.o : cc $root/interface/_coder_custom_power_iteration_noops_api.c
+build $builddir/_coder_custom_power_iteration_noops_mex.o : cc $root/interface/_coder_custom_power_iteration_noops_mex.c
+build $builddir/_coder_custom_power_iteration_noops_info.o : cc $root/interface/_coder_custom_power_iteration_noops_info.c
+build $builddir/c_mexapi_version.o : cc $matlabdir/extern/version/c_mexapi_version.c
+
+# Link
+build $root\custom_power_iteration_noops_mex.mexw64 : link $builddir/custom_power_iteration_noops_data.o $builddir/rt_nonfinite.o $builddir/custom_power_iteration_noops_initialize.o $builddir/custom_power_iteration_noops_terminate.o $builddir/custom_power_iteration_noops.o $builddir/vecnorm.o $builddir/sumMatrixIncludeNaN.o $builddir/_coder_custom_power_iteration_noops_api.o $builddir/_coder_custom_power_iteration_noops_mex.o $builddir/_coder_custom_power_iteration_noops_info.o $builddir/c_mexapi_version.o 

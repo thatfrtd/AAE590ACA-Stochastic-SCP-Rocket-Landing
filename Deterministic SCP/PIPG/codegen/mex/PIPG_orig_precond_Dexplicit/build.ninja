@@ -1,0 +1,63 @@
+# CompilerName=msvc170
+# Mode=optim
+ninja_required_version = 1.3
+
+# Basic folders
+root = .
+builddir = $root\build\win64
+matlabdir = C:\Program Files\MATLAB\R2024b
+startdir = C:\Users\thatf\OneDrive\Documents\Purdue Classes\AAE 590ACA\AAE590ACA-Stochastic-SCP-Rocket-Landing\Deterministic SCP\PIPG
+
+# Toolchain information
+cc = cl
+cxx = cl
+linker = link
+linkerxx = link
+
+cflags =  /c /Zc:__cplusplus /Zp8 /GR /W3 /EHs /nologo /MD /D_CRT_SECURE_NO_DEPRECATE /D_SCL_SECURE_NO_DEPRECATE /D_SECURE_SCL=0   /DMATLAB_MEX_FILE  /DMATLAB_MEX_FILE /O2 /Oy- /DNDEBUG /fp:strict /utf-8 /I "$root" /I "$startdir" /I "$root\interface" /I "$matlabdir\extern\include" /I "." -DMODEL=PIPG_orig_precond_Dexplicit_mex  
+
+cxxflags =  /c /Zc:__cplusplus /Zp8 /GR /W3 /EHs /nologo /MD /D_CRT_SECURE_NO_DEPRECATE /D_SCL_SECURE_NO_DEPRECATE /D_SECURE_SCL=0   /DMATLAB_MEX_FILE  /DMATLAB_MEX_FILE /O2 /Oy- /DNDEBUG /fp:strict /utf-8 /I "$root" /I "$startdir" /I "$root\interface" /I "$matlabdir\extern\include" /I "." -DMODEL=PIPG_orig_precond_Dexplicit_mex  
+
+ldflags =  /nologo    /DLL /LIBPATH:"$matlabdir\extern\lib\win64\microsoft" libmx.lib libmex.lib libmat.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib  /out:"PIPG_orig_precond_Dexplicit_mex.mexw64" /LIBPATH:"$matlabdir\extern\lib\win64\microsoft" libmwblas.lib libemlrt.lib libcovrt.lib libut.lib libmwmathutil.lib  /export:mexFunction /export:mexfilerequiredapiversion /export:emlrtMexFcnProperties /export:PIPG_orig_precond_Dexplicit /export:PIPG_orig_precond_Dexplicit_initialize /export:PIPG_orig_precond_Dexplicit_terminate /export:PIPG_orig_precond_Dexplicit_atexit /export:emlrt_marshallIn /export:b_emlrt_marshallIn /export:v_emlrt_marshallIn /export:emxEnsureCapacity_real_T /export:emxEnsureCapacity_int32_T /export:emxFreeStruct_struct0_T /export:emxFreeStruct_sparse /export:emxFree_real_T /export:emxFree_int32_T /export:emxInitStruct_struct0_T /export:emxInitStruct_rtString /export:emxInitStruct_sparse /export:emxInit_real_T /export:emxInit_int32_T
+
+ldxxflags =  /nologo    /DLL /LIBPATH:"$matlabdir\extern\lib\win64\microsoft" libmx.lib libmex.lib libmat.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib libMatlabDataArray.lib libMatlabEngine.lib  /out:"PIPG_orig_precond_Dexplicit_mex.mexw64" /LIBPATH:"$matlabdir\extern\lib\win64\microsoft" libmwblas.lib libemlrt.lib libcovrt.lib libut.lib libmwmathutil.lib  /export:mexFunction /export:mexfilerequiredapiversion /export:emlrtMexFcnProperties /export:PIPG_orig_precond_Dexplicit /export:PIPG_orig_precond_Dexplicit_initialize /export:PIPG_orig_precond_Dexplicit_terminate /export:PIPG_orig_precond_Dexplicit_atexit /export:emlrt_marshallIn /export:b_emlrt_marshallIn /export:v_emlrt_marshallIn /export:emxEnsureCapacity_real_T /export:emxEnsureCapacity_int32_T /export:emxFreeStruct_struct0_T /export:emxFreeStruct_sparse /export:emxFree_real_T /export:emxFree_int32_T /export:emxInitStruct_struct0_T /export:emxInitStruct_rtString /export:emxInitStruct_sparse /export:emxInit_real_T /export:emxInit_int32_T
+
+linkobjs = 
+
+# Build Rules
+rule cc
+    command = $cc $cflags $in /Fo$out
+
+rule cxx
+    command = $cxx $cxxflags $in /Fo$out
+
+rule link
+    command = $linker @$out.rsp $linkobjs $ldflags
+    rspfile = $out.rsp
+    rspfile_content = $in
+
+rule linkxx
+    command = $linkerxx $in $linkobjs $ldxxflags
+
+# Build
+build $builddir\PIPG_orig_precond_Dexplicit_data.obj : cc $root\PIPG_orig_precond_Dexplicit_data.c
+build $builddir\rt_nonfinite.obj : cc $root\rt_nonfinite.c
+build $builddir\PIPG_orig_precond_Dexplicit_initialize.obj : cc $root\PIPG_orig_precond_Dexplicit_initialize.c
+build $builddir\PIPG_orig_precond_Dexplicit_terminate.obj : cc $root\PIPG_orig_precond_Dexplicit_terminate.c
+build $builddir\PIPG_orig_precond_Dexplicit.obj : cc $root\PIPG_orig_precond_Dexplicit.c
+build $builddir\tic.obj : cc $root\tic.c
+build $builddir\mtimes.obj : cc $root\mtimes.c
+build $builddir\mtimes1.obj : cc $root\mtimes1.c
+build $builddir\sparse.obj : cc $root\sparse.c
+build $builddir\mod.obj : cc $root\mod.c
+build $builddir\toc.obj : cc $root\toc.c
+build $builddir\_coder_PIPG_orig_precond_Dexplicit_api.obj : cc $root\interface\_coder_PIPG_orig_precond_Dexplicit_api.c
+build $builddir\_coder_PIPG_orig_precond_Dexplicit_mex.obj : cc $root\interface\_coder_PIPG_orig_precond_Dexplicit_mex.c
+build $builddir\eml_int_forloop_overflow_check.obj : cc $root\eml_int_forloop_overflow_check.c
+build $builddir\PIPG_orig_precond_Dexplicit_emxutil.obj : cc $root\PIPG_orig_precond_Dexplicit_emxutil.c
+build $builddir\PIPG_orig_precond_Dexplicit_mexutil.obj : cc $root\PIPG_orig_precond_Dexplicit_mexutil.c
+build $builddir\_coder_PIPG_orig_precond_Dexplicit_info.obj : cc $root\interface\_coder_PIPG_orig_precond_Dexplicit_info.c
+build $builddir\c_mexapi_version.obj : cc $matlabdir\extern\version\c_mexapi_version.c
+
+# Link
+build $root\PIPG_orig_precond_Dexplicit_mex.mexw64 : link $builddir\PIPG_orig_precond_Dexplicit_data.obj $builddir\rt_nonfinite.obj $builddir\PIPG_orig_precond_Dexplicit_initialize.obj $builddir\PIPG_orig_precond_Dexplicit_terminate.obj $builddir\PIPG_orig_precond_Dexplicit.obj $builddir\tic.obj $builddir\mtimes.obj $builddir\mtimes1.obj $builddir\sparse.obj $builddir\mod.obj $builddir\toc.obj $builddir\_coder_PIPG_orig_precond_Dexplicit_api.obj $builddir\_coder_PIPG_orig_precond_Dexplicit_mex.obj $builddir\eml_int_forloop_overflow_check.obj $builddir\PIPG_orig_precond_Dexplicit_emxutil.obj $builddir\PIPG_orig_precond_Dexplicit_mexutil.obj $builddir\_coder_PIPG_orig_precond_Dexplicit_info.obj $builddir\c_mexapi_version.obj 

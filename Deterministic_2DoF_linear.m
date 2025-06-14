@@ -17,7 +17,7 @@ T_min = 0.55 * T_max; % [kg km / s2]
 
 % Problem Parameters
 N = 25; % []
-delta_t = 35/N; % [s]
+delta_t = 25/N; % [s]
 r_0 = [0; 4.6]; % [km]
 theta_0 = deg2rad(120); % [rad]
 v_0 = make_R2(-deg2rad(60)) * [0.306; 0]; % [km / s]
@@ -46,8 +46,8 @@ tolerances = odeset(RelTol=default_tolerance, AbsTol=default_tolerance);
 % PTR algorithm parameters
 ptr_ops.iter_max = 20;
 ptr_ops.Delta_min = 5e-5;
-ptr_ops.w_vc = 1e5;
-ptr_ops.w_tr = ones(1, Nu) * 5e0;
+ptr_ops.w_vc = 1e2;
+ptr_ops.w_tr = ones(1, Nu) * 5e-2;
 ptr_ops.w_tr_p = 1e-1;
 ptr_ops.update_w_tr = false;
 ptr_ops.delta_tol = 1e-3;
@@ -56,8 +56,10 @@ ptr_ops.alpha_x = 1;
 ptr_ops.alpha_u = 1;
 ptr_ops.alpha_p = 0;
 
+scale = true;
+
 %% Get Dynamics
-f = @(t, x, u, p) SymDynamics2DoF_linear(t, x, u, alpha);
+f = @(t, x, u, p) SymDynamics2DoF_linear(t, x, u, 1, alpha);
 
 %% Specify Constraints
 z_lb = @(t) log(m_0 - alpha * T_max * t);
@@ -98,11 +100,16 @@ if u_hold == "ZOH"
 elseif u_hold == "FOH"
     sl_guess.x = [sl_guess.x; m_0 - alpha * cumsum(sl_guess.u(3, :) * delta_t)];
 end
+sl_guess.u = sl_guess.u ./ sl_guess.x(5, 1:(end - 1));
+sl_guess.x(5, :) = log(sl_guess.x(5, :));
 
 guess = sl_guess;
 
+%%
+prob_2DoF.scale_u(guess.u);
+
 %% Construct Problem Object
-prob_2DoF = DeterministicProblem(x_0, x_f, N, u_hold, tspan(end), f, guess, convex_constraints, min_fuel_objective, scale = false, terminal_bc = terminal_bc);
+prob_2DoF = DeterministicProblem(x_0, x_f, N, u_hold, tspan(end), f, guess, convex_constraints, min_fuel_objective, scale = scale, terminal_bc = terminal_bc);
 
 %% Test Discretization
 [prob_2DoF, Delta_disc] = prob_2DoF.discretize(guess.x, guess.u, guess.p);
@@ -117,10 +124,17 @@ ptr_sol = ptr(prob_2DoF, ptr_ops);
 X = ptr_sol.x(:, :, ptr_sol.converged_i);
 U = ptr_sol.u(:, :, ptr_sol.converged_i);
 
+%%
+T_min .* exp(-X(5, 1:(end - 1))) - U(3, :);
+
 %% Plot Solution
+[t_cont_sol, x_cont_sol, u_cont_sol] = prob_2DoF.cont_prop(ptr_sol.u(:, :, ptr_sol.converged_i), ptr_sol.p(:, ptr_sol.converged_i));
+
+t_scaled = t_cont_sol;
+
 tiledlayout(1, 4)
 nexttile
-plot(t_k, X(1:2, :)) % - also include continuous solution and look at error?
+plot(t_scaled, x_cont_sol(1:2, :)) % - also include continuous solution and look at error?
 title("Position History")
 xlabel("Time [s]")
 ylabel("Position [km]")
@@ -128,7 +142,7 @@ legend("r_x", "r_y", Location="southoutside", Orientation="horizontal")
 grid on
 
 nexttile
-plot(t_k, X(3:4, :) * 1000) % - also include continuous solution and look at error?
+plot(t_scaled, x_cont_sol(3:4, :) * 1000) % - also include continuous solution and look at error?
 title("Velocity History")
 xlabel("Time [s]")
 ylabel("Velocity [m / s]")
@@ -136,14 +150,14 @@ legend("v_x", "v_y", Location="southoutside", Orientation="horizontal")
 grid on
 
 nexttile
-plot(t_k, exp(X(5, :))) % - also include continuous solution and look at error?
+plot(t_scaled, exp(x_cont_sol(5, :))) % - also include continuous solution and look at error?
 title("Mass History")
 xlabel("Time [s]")
 ylabel("Mass [kg]")
 grid on
 
 nexttile
-stairs(t_k(2:end), (U(:, :) .* exp(X(end, 2:end)))')
+stairs(t_scaled(2:end), (u_cont_sol(:, :) .* exp(x_cont_sol(end, 2:end)))')
 title("Control History")
 xlabel("Time [s]")
 ylabel("Thrust [kN]")

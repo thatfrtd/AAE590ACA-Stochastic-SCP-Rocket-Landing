@@ -34,7 +34,7 @@ for i = 1:(N-1)
     % Define the state derivatives
     
     % Runge Kutta 4 integration for dynamics constraints
-    x_next = rk4(@(t, x, u, p) SymDynamics3DoF_mass_noumag(t, x, u, vehicle.m, vehicle.L, vehicle.I(2), vehicle.alpha), delta_t * (i - 1), x_current, @(t) u_current, 0, delta_t);
+    x_next = rk4(@(t, x, u, p) SymDynamics3DoF_mass_noumag(t, x, u, vehicle.L, vehicle.I(2), vehicle.alpha), delta_t * (i - 1), x_current, @(t) u_current, 0, delta_t);
     %x_next = x_current + delta_t * SymDynamics3DoF(delta_t * (i - 1), x_current, u_current, vehicle.m, vehicle.L, vehicle.I(2));
 
     % Impose the dynamics constraint

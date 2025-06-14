@@ -101,7 +101,7 @@ end
 sl_guess.x(13, :) = log(sl_guess.x(13, :));
 sl_guess.u = sl_guess.u * T_max .* exp(-sl_guess.x(13, 1:Nu));
 %%
-%CasADi_sol = CasADi_solve_6DoF_mass_convexified(x_0, x_f, guess.x, guess.u, vehicle, N, delta_t, glideslope_angle_max);
+%\CasADi_sol = CasADi_solve_6DoF_mass_convexified(x_0, x_f, guess.x, guess.u, vehicle, N, delta_t, glideslope_angle_max);
 %%
 guess = sl_guess;
 if u_hold == "ZOH"

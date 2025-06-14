@@ -1,0 +1,62 @@
+# CompilerName=mingw64
+# Mode=optim
+ninja_required_version = 1.3
+
+# Basic folders
+root = .
+builddir = $root/build/win64
+matlabdir = C:/Program Files/MATLAB/R2024b
+startdir = C:/Users/thatf/OneDrive/Documents/Purdue Classes/AAE 590ACA/AAE590ACA-Stochastic-SCP-Rocket-Landing/Deterministic SCP/PIPG
+
+# Toolchain information
+cc = C:\ProgramData\MATLAB\SupportPackages\R2024b\3P.instrset\mingw_w64.instrset\bin\gcc
+cxx = C:\ProgramData\MATLAB\SupportPackages\R2024b\3P.instrset\mingw_w64.instrset\bin\g++
+linker = C:\ProgramData\MATLAB\SupportPackages\R2024b\3P.instrset\mingw_w64.instrset\bin\gcc
+linkerxx = C:\ProgramData\MATLAB\SupportPackages\R2024b\3P.instrset\mingw_w64.instrset\bin\g++
+
+cflags =  -c -fexceptions -fno-omit-frame-pointer -m64 -DMATLAB_MEX_FILE  -DMATLAB_MEX_FILE -O2 -fwrapv -DNDEBUG -std=c99 -I "C:\Users\thatf\OneDrive\Documents\Purdue Classes\AAE 590ACA\AAE590ACA-Stochastic-SCP-Rocket-Landing\Deterministic SCP\PIPG\codegen\mex\PIPG_new_explicit" -I "C:\Users\thatf\OneDrive\Documents\Purdue Classes\AAE 590ACA\AAE590ACA-Stochastic-SCP-Rocket-Landing\Deterministic SCP\PIPG" -I "C:\Users\thatf\OneDrive\Documents\Purdue Classes\AAE 590ACA\AAE590ACA-Stochastic-SCP-Rocket-Landing\Deterministic SCP\PIPG\codegen\mex\PIPG_new_explicit\interface" -I "C:\Program Files\MATLAB\R2024b\extern\include" -I "." -DMODEL=PIPG_new_explicit_mex -D__USE_MINGW_ANSI_STDIO=1 -Wno-stringop-overflow -Wno-maybe-uninitialized 
+
+cxxflags =  -c -fexceptions -fno-omit-frame-pointer -m64 -DMATLAB_MEX_FILE  -DMATLAB_MEX_FILE -O2 -fwrapv -DNDEBUG -std=c++11 -I "C:\Users\thatf\OneDrive\Documents\Purdue Classes\AAE 590ACA\AAE590ACA-Stochastic-SCP-Rocket-Landing\Deterministic SCP\PIPG\codegen\mex\PIPG_new_explicit" -I "C:\Users\thatf\OneDrive\Documents\Purdue Classes\AAE 590ACA\AAE590ACA-Stochastic-SCP-Rocket-Landing\Deterministic SCP\PIPG" -I "C:\Users\thatf\OneDrive\Documents\Purdue Classes\AAE 590ACA\AAE590ACA-Stochastic-SCP-Rocket-Landing\Deterministic SCP\PIPG\codegen\mex\PIPG_new_explicit\interface" -I "C:\Program Files\MATLAB\R2024b\extern\include" -I "." -DMODEL=PIPG_new_explicit_mex -D__USE_MINGW_ANSI_STDIO=1 -Wno-stringop-overflow -Wno-maybe-uninitialized 
+
+ldflags = PIPG_new_explicit.def  -m64 -Wl,--no-undefined -shared -static -L"C:\Program Files\MATLAB\R2024b\extern\lib\win64\mingw64" -llibmx -llibmex -llibmat -lm -llibmwlapack -llibmwblas -o "PIPG_new_explicit_mex.mexw64" -L"$matlabdir\extern\lib\win64\mingw64" -llibmwblas -llibemlrt -llibcovrt -llibut -llibmwmathutil 
+
+ldxxflags = PIPG_new_explicit.def  -m64 -Wl,--no-undefined -shared -static -L"C:\Program Files\MATLAB\R2024b\extern\lib\win64\mingw64" -llibmx -llibmex -llibmat -lm -llibmwlapack -llibmwblas -llibMatlabDataArray -llibMatlabEngine  -o "PIPG_new_explicit_mex.mexw64" -L"$matlabdir\extern\lib\win64\mingw64" -llibmwblas -llibemlrt -llibcovrt -llibut -llibmwmathutil 
+
+linkobjs = 
+
+# Build Rules
+rule cc
+    command = $cc $cflags $in -o $out
+
+rule cxx
+    command = $cxx $cxxflags $in -o $out
+
+rule link
+    command = $linker @$out.rsp $linkobjs $ldflags
+    rspfile = $out.rsp
+    rspfile_content = $in
+
+rule linkxx
+    command = $linkerxx $in $linkobjs $ldxxflags
+
+# Build
+build $builddir/PIPG_new_explicit_data.o : cc $root/PIPG_new_explicit_data.c
+build $builddir/rt_nonfinite.o : cc $root/rt_nonfinite.c
+build $builddir/PIPG_new_explicit_initialize.o : cc $root/PIPG_new_explicit_initialize.c
+build $builddir/PIPG_new_explicit_terminate.o : cc $root/PIPG_new_explicit_terminate.c
+build $builddir/PIPG_new_explicit.o : cc $root/PIPG_new_explicit.c
+build $builddir/tic.o : cc $root/tic.c
+build $builddir/mtimes.o : cc $root/mtimes.c
+build $builddir/vecnorm.o : cc $root/vecnorm.c
+build $builddir/mod.o : cc $root/mod.c
+build $builddir/stopping.o : cc $root/stopping.c
+build $builddir/toc.o : cc $root/toc.c
+build $builddir/_coder_PIPG_new_explicit_api.o : cc $root/interface/_coder_PIPG_new_explicit_api.c
+build $builddir/_coder_PIPG_new_explicit_mex.o : cc $root/interface/_coder_PIPG_new_explicit_mex.c
+build $builddir/PIPG_new_explicit_emxutil.o : cc $root/PIPG_new_explicit_emxutil.c
+build $builddir/PIPG_new_explicit_mexutil.o : cc $root/PIPG_new_explicit_mexutil.c
+build $builddir/_coder_PIPG_new_explicit_info.o : cc $root/interface/_coder_PIPG_new_explicit_info.c
+build $builddir/c_mexapi_version.o : cc $matlabdir/extern/version/c_mexapi_version.c
+
+# Link
+build $root\PIPG_new_explicit_mex.mexw64 : link $builddir/PIPG_new_explicit_data.o $builddir/rt_nonfinite.o $builddir/PIPG_new_explicit_initialize.o $builddir/PIPG_new_explicit_terminate.o $builddir/PIPG_new_explicit.o $builddir/tic.o $builddir/mtimes.o $builddir/vecnorm.o $builddir/mod.o $builddir/stopping.o $builddir/toc.o $builddir/_coder_PIPG_new_explicit_api.o $builddir/_coder_PIPG_new_explicit_mex.o $builddir/PIPG_new_explicit_emxutil.o $builddir/PIPG_new_explicit_mexutil.o $builddir/_coder_PIPG_new_explicit_info.o $builddir/c_mexapi_version.o 

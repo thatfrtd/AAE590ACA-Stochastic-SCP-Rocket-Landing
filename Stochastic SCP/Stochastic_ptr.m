@@ -1,8 +1,11 @@
-function [ptr_sol] = Stochastic_ptr(prob, ptr_ops, options)
+function [ptr_sol] = Stochastic_ptr(prob, ptr_ops, parser, options)
 arguments
     prob
     ptr_ops
+    parser string {mustBeMember(parser, ["CVX", "CVXPY"])} = "CVX"
     options.slack_control = false
+    options.X_k_guess = zeros([prob.n.x, prob.n.x * prob.N * (prob.N + 1) / 2])
+    options.S_k_guess = zeros([prob.n.u, prob.n.x * prob.N * (prob.N + 1) / 2])
 end
 %PTR Sequential Convex Programming algorithm
 %   If converged, solution satisfies the nonlinear continuous-time equations of motion
@@ -18,6 +21,8 @@ S_ref = zeros([prob.n.u, prob.n.x * prob.N * (prob.N + 1) / 2, ptr_ops.iter_max 
 x_ref(:, :, 1) = prob.scale_x(prob.guess.x);
 u_ref(:, :, 1) = prob.scale_u(prob.guess.u);
 p_ref(:, 1) = prob.scale_p(prob.guess.p);
+X_ref(:, :, 1) = options.X_k_guess;
+S_ref(:, :, 1) = options.S_k_guess;
 
 ptr_sol.converged = false;
 ptr_sol.objective = zeros([1, ptr_ops.iter_max + 1]);
@@ -35,7 +40,16 @@ for i = 1:(ptr_ops.iter_max)
         if options.slack_control
             [x_ref(:, :, i + 1), u_ref(:, :, i + 1), X_ref(:, :, i + 1), S_ref(:, :, i + 1), sol_info] = solve_stochastic_ptr_convex_subproblem_no_p_slackcontrol(prob, ptr_ops, x_ref(:, :, i), u_ref(:, :, i), X_ref(:, :, i), S_ref(:, :, i));
         else
-            [x_ref(:, :, i + 1), u_ref(:, :, i + 1), X_ref(:, :, i + 1), S_ref(:, :, i + 1), sol_info] = solve_stochastic_ptr_convex_subproblem_no_p_2(prob, ptr_ops, x_ref(:, :, i), u_ref(:, :, i), X_ref(:, :, i), S_ref(:, :, i));
+            if parser == "CVX"
+                [x_ref(:, :, i + 1), u_ref(:, :, i + 1), X_ref(:, :, i + 1), S_ref(:, :, i + 1), sol_info] = solve_stochastic_ptr_convex_subproblem_no_p_2(prob, ptr_ops, x_ref(:, :, i), u_ref(:, :, i), X_ref(:, :, i), S_ref(:, :, i));
+            elseif parser == "CVXPY"
+                %[x_ref_CVX, u_ref_CVX, X_ref_CVX, S_ref_CVX, sol_info_CVX] = solve_stochastic_ptr_convex_subproblem_no_p_2(prob, ptr_ops, x_ref(:, :, i), u_ref(:, :, i), X_ref(:, :, i), S_ref(:, :, i));
+
+                [x_ref(:, :, i + 1), u_ref(:, :, i + 1), X_ref(:, :, i + 1), S_ref(:, 1:tri(prob.N - 1, prob.n.x), i + 1), sol_info] = solve_stochastic_ptr_convex_subproblem_no_p_CVXPY(prob, ptr_ops, x_ref(:, :, i), u_ref(:, :, i), X_ref(:, :, i), S_ref(:, :, i));
+
+                %figure
+                %comparison_plot_3DoF_trajectory({x_ref(:, :, i + 1), x_ref_CVX}, ["CVXPY", "CVX"], prob.params(4))
+            end
         end
     else
         [x_ref(:, :, i + 1), u_ref(:, :, i + 1), p_ref(:, i + 1), sol_info] = solve_stochastic_ptr_convex_subproblem(prob, ptr_ops, x_ref(:, :, i), u_ref(:, :, i), p_ref(:, i));

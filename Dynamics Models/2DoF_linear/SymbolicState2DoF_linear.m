@@ -21,17 +21,20 @@ thrust = sym("thrust", [2, 1]);
 thrust_mag = sym("thrust_mag", 1);
 u = [thrust; thrust_mag];
 
+tf = sym("tf");
+p = [tf];
+
 A = [zeros(2), eye(2), zeros(2, 1); zeros(2), zeros(2), zeros(2, 1); zeros(1, 2), zeros(1, 2), 0];
 B = [zeros(2), zeros(2, 1); eye(2), zeros(2, 1); zeros(1, 2), -alpha];
 c = [zeros(2, 1); [0; -g]; 0];
 
-xdot = A * x + B * u + c;
+xdot = (A * x + B * u + c) * tf;
 
 %j_a = jacobian(xdot, x);
 %j_b = jacobian(xdot, u);
 
 % Create equations of motion function for optimizer
-matlabFunction(xdot,"File","Dynamics Models/2DoF_linear/SymDynamics2DoF_linear","Vars", [{t}; {x}; {u}; {alpha}]);
+matlabFunction(xdot,"File","Dynamics Models/2DoF_linear/SymDynamics2DoF_linear","Vars", [{t}; {x}; {u}; {p}; {alpha}]);
 
 % Create equations of motion block for Simulink model
 %matlabFunctionBlock('EoM_3DoF/SymDynamics3DoF',xdot,'Vars',[x; u; mass; L; I])

@@ -7,10 +7,10 @@ function [A_k, B_k, E_k, c_k, Delta] = discretize_dynamics_ZOH(f, A, B, E, c, N,
     np = numel(p_ref);
 
     t_k = linspace(tspan(1), tspan(2), N);
-    A_k = zeros([nx, nx, N]);
-    B_k = zeros([nx, nu, N]);
-    E_k = zeros([nx, np, N]);
-    c_k = zeros([nx, 1, N]);
+    A_k = zeros([nx, nx, N - 1]);
+    B_k = zeros([nx, nu, N - 1]);
+    E_k = zeros([nx, np, N - 1]);
+    c_k = zeros([nx, 1, N - 1]);
     Delta = zeros([1, N - 1]);
     
     for k = 1:(N - 1)
