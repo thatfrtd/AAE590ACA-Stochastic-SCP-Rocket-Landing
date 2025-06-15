@@ -8,7 +8,7 @@ c = [g; mass; L; I];
 % states
 
 r = sym("r", [3;1]);
-v = sym("v", [3,1]);
+v = sym("v", [3;1]);
 theta = sym("theta", [3;1]);
 w = sym("w", [3;1]);
 
@@ -16,11 +16,12 @@ x = [r; v; theta; w];
 
 % controls
 
-T = sym("T", [3;1]);
-thrust_mag = sym("thrust_mag", 1);
-gamma = sym("gamma", 1);
+T = sym("T", [1;1]); % thrust magnitude 
+delta = sym("delta", [1;1]); % gimbal deflection angle
+phi = sym("delta", [1;1]); % gimbal azimuth angle
+tau = sym("gamma", [3;1]); % RCS moment
 
-u = [T; thrust_mag; gamma];
+u = [T; delta; phi; tau];
 
 % calculate theta dot
 b_inverse =  (1/sin(theta(2))) .* [0 sin(theta(3)) cos(theta(3));

@@ -33,7 +33,7 @@ x_f = zeros(4, 1);
 tspan = [0, N * delta_t];
 t_k = linspace(tspan(1), tspan(2), N);
 
-u_hold = "ZOH";
+u_hold = "FOH";
 Nu = (u_hold == "ZOH") * (N - 1) + (u_hold == "FOH") * N;
 
 nx = 5;
@@ -47,10 +47,10 @@ tolerances = odeset(RelTol=default_tolerance, AbsTol=default_tolerance);
 ptr_ops.iter_max = 20;
 ptr_ops.Delta_min = 5e-5;
 ptr_ops.w_vc = 1e2;
-ptr_ops.w_tr = ones(1, Nu) * 5e-2;
+ptr_ops.w_tr = ones(1, Nu) * 5e-4;
 ptr_ops.w_tr_p = 1e-1;
 ptr_ops.update_w_tr = false;
-ptr_ops.delta_tol = 1e-3;
+ptr_ops.delta_tol = 3e-2;
 ptr_ops.q = 2;
 ptr_ops.alpha_x = 1;
 ptr_ops.alpha_u = 1;
@@ -100,7 +100,7 @@ if u_hold == "ZOH"
 elseif u_hold == "FOH"
     sl_guess.x = [sl_guess.x; m_0 - alpha * cumsum(sl_guess.u(3, :) * delta_t)];
 end
-sl_guess.u = sl_guess.u ./ sl_guess.x(5, 1:(end - 1));
+sl_guess.u = sl_guess.u ./ sl_guess.x(5, 1:Nu);
 sl_guess.x(5, :) = log(sl_guess.x(5, :));
 
 guess = sl_guess;
@@ -116,16 +116,13 @@ prob_2DoF = DeterministicProblem(x_0, x_f, N, u_hold, tspan(end), f, guess, conv
 
 %% Check with Matrix Exponential
 A_k_exp = expm((t_k(2) - t_k(1)) * prob_2DoF.cont.A(0, x_0, guess.u(:, 1), 0));
-A_k_ck = sum(pagenorm(prob_2DoF.disc.A_k(:, :, 1:Nu) - A_k_exp), "all") < default_tolerance; % Checks out
+A_k_ck = sum(pagenorm(prob_2DoF.disc.A_k(:, :, 1:(end - 1)) - A_k_exp), "all") < default_tolerance; % Checks out
 
 %% Solve Problem with PTR
 ptr_sol = ptr(prob_2DoF, ptr_ops);
 
 X = ptr_sol.x(:, :, ptr_sol.converged_i);
 U = ptr_sol.u(:, :, ptr_sol.converged_i);
-
-%%
-T_min .* exp(-X(5, 1:(end - 1))) - U(3, :);
 
 %% Plot Solution
 [t_cont_sol, x_cont_sol, u_cont_sol] = prob_2DoF.cont_prop(ptr_sol.u(:, :, ptr_sol.converged_i), ptr_sol.p(:, ptr_sol.converged_i));
@@ -157,7 +154,11 @@ ylabel("Mass [kg]")
 grid on
 
 nexttile
-stairs(t_scaled(2:end), (u_cont_sol(:, :) .* exp(x_cont_sol(end, 2:end)))')
+if u_hold == "ZOH"
+    stairs(t_scaled(1:size(u_cont_sol, 2)), (u_cont_sol(:, :) .* exp(x_cont_sol(end, 1:size(u_cont_sol, 2))))')
+elseif u_hold == "FOH"
+    plot(t_scaled(1:size(u_cont_sol, 2)), (u_cont_sol(:, :) .* exp(x_cont_sol(end, 1:size(u_cont_sol, 2))))')
+end
 title("Control History")
 xlabel("Time [s]")
 ylabel("Thrust [kN]")
@@ -169,7 +170,7 @@ sgtitle("State and Control Histories for Mars Optimal Fuel Rocket Landing")
 %% Plot Solution 2D
 figure
 plot(X(1, :), X(2, :), DisplayName="Trajectory"); hold on
-quiver(X(1, 2:end), X(2, 2:end), U(1, :), U(2, :), DisplayName = "Thrust")
+quiver(X(1, 1:Nu), X(2, 1:Nu), U(1, :), U(2, :), DisplayName = "Thrust")
 grid on
 title("2D Plot of Mars Optimal Fuel Rocket Landing")
 xlabel("r_1 [km]")

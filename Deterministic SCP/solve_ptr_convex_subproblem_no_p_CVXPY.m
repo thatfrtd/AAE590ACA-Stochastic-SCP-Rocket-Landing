@@ -9,7 +9,7 @@ if prob.n.x == 7
     if prob.u_hold == "ZOH"
         [X_py, U_py, eta_py, V_py, v_0_py, v_N_py, solve_status_py, problem] = pyrunfile("Deterministic3DoF_clarabel.py", ["X_sol", "U_sol", "eta", "V", "v_0", "v_N", "solve_status", "problem"], x_ref = x_ref, u_ref = u_ref, x_0 = prob.x0, x_f = prob.xf, A_k = prob.disc.A_k, B_k = prob.disc.B_k, c_k = prob.disc.c_k, params = prob.params, N = prob.N - 1, delta_t = prob.tf / (prob.N - 1), w_vc = ptr_ops.w_vc, w_tr = ptr_ops.w_tr, problem = problem);
     elseif prob.u_hold == "FOH"
-        [X_py, U_py, eta_py, V_py, v_0_py, v_N_py, solve_status_py, problem] = pyrunfile("Deterministic3DoF_clarabel_FOH_cgen.py", ["X_sol", "U_sol", "eta", "V", "v_0", "v_N", "solve_status", "problem"], x_ref = x_ref, u_ref = u_ref, x_0 = prob.x0, x_f = prob.xf, A_k = prob.disc.A_k, B_k_minus = prob.disc.B_minus_k, B_k_plus = prob.disc.B_plus_k, c_k = prob.disc.c_k, params = prob.params, N = prob.N - 1, delta_t = prob.tf / (prob.N - 1), w_vc = ptr_ops.w_vc, w_tr = ptr_ops.w_tr, problem = problem);
+        [X_py, U_py, eta_py, V_py, v_0_py, v_N_py, solve_status_py, problem] = pyrunfile("Deterministic3DoF_clarabel_FOH.py", ["X_sol", "U_sol", "eta", "V", "v_0", "v_N", "solve_status", "problem"], x_ref = x_ref, u_ref = u_ref, x_0 = prob.x0, x_f = prob.xf, A_k = prob.disc.A_k, B_k_minus = prob.disc.B_minus_k, B_k_plus = prob.disc.B_plus_k, c_k = prob.disc.c_k, params = prob.params, N = prob.N - 1, delta_t = prob.tf / (prob.N - 1), w_vc = ptr_ops.w_vc, w_tr = ptr_ops.w_tr, problem = problem);
     end
 end
 

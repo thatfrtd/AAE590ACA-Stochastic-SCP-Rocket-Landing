@@ -54,7 +54,8 @@ cvx_begin quiet
         prob.terminal_bc(prob.unscale_x(X(:, prob.N)), 0) + v_N == 0;
 
         % Trust Region Constraints
-        ptr_ops.alpha_x * norms(X(:, 1:prob.Nu) - x_ref(:, 1:prob.Nu), ptr_ops.q, 1) + ptr_ops.alpha_u * norms(U - u_ref, ptr_ops.q, 1) <= eta;
+        ptr_ops.alpha_x * sum_square(X(:, 1:prob.Nu) - x_ref(:, 1:prob.Nu)) + ptr_ops.alpha_u * sum_square(U - u_ref) <= eta;
+        %ptr_ops.alpha_x * norms(X(:, 1:prob.Nu) - x_ref(:, 1:prob.Nu), 2, 1) + ptr_ops.alpha_u * norms(U - u_ref, 2, 1) <= eta;
 cvx_end
 
 %t2 = toc(t1);

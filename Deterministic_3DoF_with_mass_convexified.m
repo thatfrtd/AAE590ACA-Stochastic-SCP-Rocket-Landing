@@ -41,8 +41,8 @@ delta_t = t_k(2) - t_k(1);
 u_hold = "FOH";
 Nu = (u_hold == "ZOH") * (N - 1) + (u_hold == "FOH") * N;
 
-initial_guess = "straight line"; % "CasADi" or "straight line" or "screw"
-parser = "CVX";
+initial_guess = "screw"; % "CasADi" or "straight line" or "screw"
+parser = "CVXPY";
 
 % PTR algorithm parameters
 ptr_ops.iter_max = 20;
@@ -52,7 +52,7 @@ ptr_ops.w_vc = 1e1;
 ptr_ops.w_tr = ones(1, Nu) * 5e-2;
 ptr_ops.w_tr_p = 1e-1;
 ptr_ops.update_w_tr = false;
-ptr_ops.delta_tol = 1e-3;
+ptr_ops.delta_tol = 2e-2;
 ptr_ops.q = 2;
 ptr_ops.alpha_x = 1;
 ptr_ops.alpha_u = 1;
@@ -131,8 +131,6 @@ elseif u_hold == "FOH"
     scl_guess.x = [scl_guess.x; m_0 - alpha * [0, cumsum(scl_guess.u(3, 1:(end - 1)) * delta_t)]];
 end
 scl_guess.x(7, :) = log(scl_guess.x(7, :));
-scl_guess.u = scl_guess.u .* exp(-scl_guess.x(7, 1:Nu));
-
 
 CasADi_sol = CasADi_solve_mass_convexified(x_0, sl_guess.x, sl_guess.u, vehicle, N, delta_t, glideslope_angle_max);%
 
@@ -268,13 +266,16 @@ fprintf("A: %.3f, B-: %.3f, B+: %.3f, S: %.3f, d: %.3f, Delta: %.10f\n", A_err, 
 
 %% Solve Problem with PTR
 ptr_ops.w_tr = ones(1, Nu) * 5e-2;
-ptr_sol = ptr(prob_3DoF, ptr_ops, parser);
+ptr_sol_vc = ptr(prob_3DoF, ptr_ops, parser);
 
 %%
-ptr_ops.w_vse = 1e3;
+ptr_ops.w_vse = 1e4;
 ptr_ops.w_tr = 5e-2;
 ptr_ops.w_prime = 1e2;
-ptr_sol = ptr_virtual_state(prob_3DoF, ptr_ops, "CVX");
+ptr_sol_vs = ptr_virtual_state(prob_3DoF, ptr_ops, "CVX");
+
+%%
+ptr_sol = ptr_sol_vc;
 
 %%
 figure
@@ -289,11 +290,13 @@ grid on
 
 nexttile
 plot(ptr_sol.delta_xp)
+yscale("log")
 title("Stopping Criteria vs Iteration")
 grid on
 
 nexttile
 plot(0:ptr_sol.converged_i, vecnorm(ptr_sol.Delta(:, 1:(ptr_sol.converged_i + 1)), 2, 1))
+yscale("log")
 title("Defect Norm vs Iteration")
 grid on
 

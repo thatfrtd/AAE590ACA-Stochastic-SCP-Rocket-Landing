@@ -41,7 +41,7 @@ delta_t = t_k(2) - t_k(1);
 u_hold = "FOH";
 Nu = (u_hold == "ZOH") * (N - 1) + (u_hold == "FOH") * N;
 
-initial_guess = "CasADi"; % "CasADi" or "straight line"
+initial_guess = "straight line"; % "CasADi" or "straight line"
 
 % PTR algorithm parameters
 ptr_ops.iter_max = 50;
@@ -51,10 +51,10 @@ ptr_ops.w_vc = 1e5;
 ptr_ops.w_tr = ones(1, Nu) * 5e-2;
 ptr_ops.w_tr_p = 1e-1;
 ptr_ops.update_w_tr = false;
-ptr_ops.delta_tol = 1e-3;
+ptr_ops.delta_tol = 2e-2;
 ptr_ops.q = 2;
 ptr_ops.alpha_x = 1;
-ptr_ops.alpha_u = 0;
+ptr_ops.alpha_u = 1;
 ptr_ops.alpha_p = 0;
 
 scale = false;
@@ -123,7 +123,7 @@ plot_3DoF_time_histories(t_k, guess.x, guess.u)
 guess.u = [guess.u(3, :); atan2(guess.u(2, :), guess.u(1, :))];
 
 %% Construct Problem Object
-prob_3DoF = DeterministicProblem(x_0, x_f, N, u_hold, tf, f, guess, convex_constraints, min_fuel_objective, scale = scale, terminal_bc = terminal_bc, discretization_method = "errorRKV65", N_sub = 1);
+prob_3DoF = DeterministicProblem(x_0, x_f, N, u_hold, tf, f, guess, convex_constraints, min_fuel_objective, scale = scale, terminal_bc = terminal_bc, discretization_method = "error", N_sub = 1);
 prob_3DoF.vehicle = vehicle;
 
 %% Test Scaling
@@ -154,23 +154,23 @@ figure
 comparison_plot_3DoF_trajectory({guess.x, x_cont, x_disc}, ["Guess", "Continuous Propagation", "Discrete Propagation"], glideslope_angle_max, linestyle = [":", "-", "--"], title = "Continuous vs Discrete Propagation of Initial Guess")
 
 %%
-x_sol_p = x_sol;
-x_sol_p(7, :) = exp(x_sol_p(7, :));
-u_sol_p = u_sol(1:2, :);
-u_sol_p(1, :) = u_sol(3, :) .* x_sol_p(7, :);
-u_sol_p(2, :) = atan2(u_sol(2, :), u_sol(1, :));
-
-guess.x = x_sol_p;
-guess.u = u_sol_p;
-
-[prob_3DoF, Delta_disc] = prob_3DoF.discretize(x_sol_p, u_sol_p, guess.p);
-
-x_disc = prob_3DoF.disc_prop(u_sol_p, guess.p);
-
-[t_cont, x_cont, u_cont] = prob_3DoF.cont_prop(u_sol_p, guess.p);
-
-figure
-comparison_plot_3DoF_trajectory({x_sol_p, x_cont, x_disc}, ["Guess", "Continuous Propagation", "Discrete Propagation"], glideslope_angle_max, linestyle = [":", "-", "--"], title = "Continuous vs Discrete Propagation of Initial Guess")
+% x_sol_p = x_sol;
+% x_sol_p(7, :) = exp(x_sol_p(7, :));
+% u_sol_p = u_sol(1:2, :);
+% u_sol_p(1, :) = u_sol(3, :) .* x_sol_p(7, :);
+% u_sol_p(2, :) = atan2(u_sol(2, :), u_sol(1, :));
+% 
+% guess.x = x_sol_p;
+% guess.u = u_sol_p;
+% 
+% [prob_3DoF, Delta_disc] = prob_3DoF.discretize(x_sol_p, u_sol_p, guess.p);
+% 
+% x_disc = prob_3DoF.disc_prop(u_sol_p, guess.p);
+% 
+% [t_cont, x_cont, u_cont] = prob_3DoF.cont_prop(u_sol_p, guess.p);
+% 
+% figure
+% comparison_plot_3DoF_trajectory({x_sol_p, x_cont, x_disc}, ["Guess", "Continuous Propagation", "Discrete Propagation"], glideslope_angle_max, linestyle = [":", "-", "--"], title = "Continuous vs Discrete Propagation of Initial Guess")
 
 %%
 guess3 = guess;
@@ -240,13 +240,16 @@ fprintf("A: %.3f, B-: %.3f, B+: %.3f, S: %.3f, d: %.3f, Delta: %.10f\n", A_err, 
 
 %% Solve Problem with PTR
 ptr_ops.w_tr = ones(1, Nu) * 5e-2;
-ptr_sol = ptr(prob_3DoF, ptr_ops);
+ptr_sol_vc = ptr(prob_3DoF, ptr_ops);
 
 %%
 ptr_ops.w_vse = 1e6;
 ptr_ops.w_tr = 5e-2;
 ptr_ops.w_prime = 1e2;
-ptr_sol = ptr_virtual_state(prob_3DoF, ptr_ops, "CVX");
+ptr_sol_vs = ptr_virtual_state(prob_3DoF, ptr_ops, "CVX");
+
+%%
+ptr_sol = ptr_sol_vc;
 
 %%
 figure
@@ -261,16 +264,18 @@ grid on
 
 nexttile
 plot(ptr_sol.delta_xp)
+yscale("log")
 title("Stopping Criteria vs Iteration")
 grid on
 
 nexttile
 plot(0:ptr_sol.converged_i, vecnorm(ptr_sol.Delta(:, 1:(ptr_sol.converged_i + 1)), 2, 1))
+yscale("log")
 title("Defect Norm vs Iteration")
 grid on
 
 %%
-i = ptr_sol.converged_i;
+i = 12;% ptr_sol.converged_i;
 
 [t_cont_sol, x_cont_sol, u_cont_sol] = prob_3DoF.cont_prop(ptr_sol.u(:, :, i), ptr_sol.p(:, i));
 
