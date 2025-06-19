@@ -34,7 +34,7 @@ x_f = zeros(4, 1);
 tspan = [0, 1];
 t_k = linspace(tspan(1), tspan(2), N);
 
-u_hold = "ZOH";
+u_hold = "FOH";
 Nu = (u_hold == "ZOH") * (N - 1) + (u_hold == "FOH") * N;
 
 nx = 5;
@@ -97,9 +97,9 @@ terminal_bc = @(x, p) [x(1:4) - x_f; 0];
 %% Specify Objective
 min_fuel_angular_velocity_objective = @(x, u, p) sum(u(3, :) / T_max + x(6, 1:Nu) .^ 2) * delta_t;
 if u_hold == "ZOH"
-    min_fuel_objective = @(x, u, p, x_ref, u_ref, p_ref) sum(u(3, :)) * p_ref(1) / N + sum(u_ref(3, :)) / N * (p(1) - p_ref(1));
+    min_fuel_objective = @(x, u, p, x_ref, u_ref, p_ref) -x(5, N); %sum(u(3, :)) * p_ref(1) / N + sum(u_ref(3, :)) / N * (p(1) - p_ref(1));
 elseif u_hold == "FOH"
-    min_fuel_objective = @(x, u, p, x_ref, u_ref, p_ref) sum((u(3, 1:(end - 1)) + u(3, 2:end)) / 2) * p(1) / N;
+    min_fuel_objective = @(x, u, p, x_ref, u_ref, p_ref) -x(5, N); %sum((u(3, 1:(end - 1)) + u(3, 2:end)) / 2) * p_ref(1) / N + sum((u_ref(3, 1:(end - 1)) + u_ref(3, 2:end)) / 2) * (p(1) - p_ref(1)) / N;
 end
 
 %% Create Guess
@@ -112,6 +112,8 @@ if u_hold == "ZOH"
 elseif u_hold == "FOH"
     sl_guess.x = [sl_guess.x; m_0 - alpha * cumsum(sl_guess.u(3, :) * delta_t)];
 end
+sl_guess.u = sl_guess.u ./ sl_guess.x(5, 1:Nu);
+sl_guess.x(5, :) = log(sl_guess.x(5, :));
 
 guess = sl_guess;
 guess.p = tf;
@@ -127,6 +129,8 @@ A_k_exp = expm((t_k(2) - t_k(1)) * prob_2DoF.cont.A(0, x_0, guess.u(:, 1), tf));
 A_k_ck = sum(pagenorm(prob_2DoF.disc.A_k(:, :, 1:Nu) - A_k_exp), "all") < default_tolerance; % Checks out
 
 %% Solve Problem with PTR
+ptr_ops.w_vc = 1e2;
+ptr_ops.w_tr = ones(1, Nu) * 1e-5;
 ptr_sol = ptr(prob_2DoF, ptr_ops);
 
 %%
@@ -135,8 +139,6 @@ X = ptr_sol.x(:, :, ptr_sol.converged_i);
 U = ptr_sol.u(:, :, ptr_sol.converged_i);
 p = ptr_sol.p(:, ptr_sol.converged_i);
 
-%%
-sum(U(3, :) .* exp(X(5, 2:end)) * alpha) * p(1) / N
 
 %% Plot Solution
 [t_cont_sol, x_cont_sol, u_cont_sol] = prob_2DoF.cont_prop(ptr_sol.u(:, :, ptr_sol.converged_i), ptr_sol.p(:, ptr_sol.converged_i));
@@ -167,13 +169,27 @@ xlabel("Time [s]")
 ylabel("Mass [kg]")
 grid on
 
-nexttile
-stairs(t_scaled(2:end), (u_cont_sol(:, :) .* exp(x_cont_sol(end, 2:end)))')
-title("Control History")
-xlabel("Time [s]")
-ylabel("Thrust [kN]")
-legend("T_x", "T_y", "\sigma", Location="southoutside", Orientation="horizontal")
-grid on
+if u_hold == "ZOH"
+    Nu_cont = numel(t_scaled) - 1;
+
+    nexttile
+    stairs(t_scaled(1:Nu_cont), (u_cont_sol(:, :) .* exp(x_cont_sol(end, 1:Nu_cont)))')
+    title("Control History")
+    xlabel("Time [s]")
+    ylabel("Thrust [kN]")
+    legend("T_x", "T_y", "\sigma", Location="southoutside", Orientation="horizontal")
+    grid on
+elseif u_hold == "FOH"
+    Nu_cont = numel(t_scaled);
+
+    nexttile
+    plot(t_scaled(1:Nu_cont), (u_cont_sol(:, :) .* exp(x_cont_sol(end, 1:Nu_cont)))')
+    title("Control History")
+    xlabel("Time [s]")
+    ylabel("Thrust [kN]")
+    legend("T_x", "T_y", "\sigma", Location="southoutside", Orientation="horizontal")
+    grid on
+end
 
 sgtitle("State and Control Histories for Mars Optimal Fuel Rocket Landing")
 
@@ -181,7 +197,7 @@ sgtitle("State and Control Histories for Mars Optimal Fuel Rocket Landing")
 
 figure
 
-step = 200;
+step = 100;
 
 plot(x_cont_sol(1, :), x_cont_sol(2, :), DisplayName="Trajectory"); hold on
 quiver(x_cont_sol(1, 2:step:end), x_cont_sol(2, 2:step:end), u_cont_sol(1, 1:step:end), u_cont_sol(2, 1:step:end), DisplayName = "Thrust")

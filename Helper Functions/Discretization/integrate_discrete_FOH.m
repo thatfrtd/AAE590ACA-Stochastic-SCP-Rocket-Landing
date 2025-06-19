@@ -9,7 +9,7 @@ function [A_k, B_k_plus, B_k_minus, E_k, c_k, x] = integrate_discrete_FOH(x0, A,
     np = numel(p);
 
     STM0 = eye(nx);
-    B0 = zeros(size(B(0, x0, u(tspan(1)))));
+    B0 = zeros(size(B(0, x0, u(tspan(1)), p)));
     E0 = zeros(nx, np);
     c0 = zeros([nx, 1]);
 

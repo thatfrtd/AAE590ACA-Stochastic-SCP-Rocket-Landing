@@ -17,7 +17,7 @@ T_max = 3 * m_0 * 9.81e-3; % [kg km / s2]
 T_min = 0.55 * T_max; % [kg km / s2]
 
 % Problem Parameters
-tf =    20.5310; % [s]
+tf = 23.6318; % [s]
 N = 25; % []
 delta_t = tf/N; % [s]
 r_0 = [0; 4.6]; % [km]
@@ -100,6 +100,8 @@ if u_hold == "ZOH"
 elseif u_hold == "FOH"
     sl_guess.x = [sl_guess.x;m_0 - alpha * cumsum(sl_guess.u(3, :) * delta_t)];
 end
+sl_guess.u = sl_guess.u ./ sl_guess.x(5, 1:Nu);
+sl_guess.x(5, :) = log(sl_guess.x(5, :));
 
 guess = sl_guess;
 
