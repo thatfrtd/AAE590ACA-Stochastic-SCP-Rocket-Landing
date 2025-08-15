@@ -89,7 +89,7 @@ function [A_k, B_k_plus, B_k_minus, S_k, d_k, Delta] = discretize_error_dynamics
         + pagemtimes(B_k_plus, reshape(u_ref(:, 2 : N), nu, 1, N - 1)) ...
         + zero_if_empty(S_k * zero_if_empty(s_ref)));
     
-    Delta = vecnorm(x_kp1 - x_ref(:, 2 : N), 2, 1);
+    Delta = x_kp1 - x_ref(:, 2 : N);
 end
 
 function [xdot, A_kdot, B_k_plusdot, B_k_minusdot, S_kdot] = STM_diff_eq_FOH(t, x, A, B, S, f, u, s, sigma_plus, sigma_minus, STM, Phi_B_plus, Phi_B_minus, Phi_S)

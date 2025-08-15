@@ -47,7 +47,7 @@ tolerances = odeset(RelTol=default_tolerance, AbsTol=default_tolerance);
 
 % PTR algorithm parameters
 ptr_ops.iter_min = 2;
-ptr_ops.iter_max = 20;
+ptr_ops.iter_max = 10;
 ptr_ops.Delta_min = 5e-5;
 ptr_ops.w_vc = 1e5;
 ptr_ops.w_tr = ones(1, Nu) * 5e-2;
@@ -59,7 +59,7 @@ ptr_ops.alpha_x = 1;
 ptr_ops.alpha_u = 1;
 ptr_ops.alpha_p = 0;
 
-scale = false;
+scale = true;
 
 %% Get Dynamics
 f = @(t, x, u, p) SymDynamics2DoF_linear(t, x, u, p, alpha);
@@ -69,26 +69,31 @@ z_lb = @(t, tf) log(m_0 - alpha * T_max * t * tf);
 z_lb_k = z_lb(t_k, tf);
 
 % Convex state path constraints
-glideslope_constraint = @(t, x, u, p) norm(x(1:2)) - x(2) / cos(pi/2 - gamma_min);
-min_mass_constraint = @(t, x, u, p) z_lb(t, p(1)) - x(5);
+glideslope_constraint = {1:N, @(t, x, u, p) norm(x(1:2)) - x(2) / cos(pi/2 - gamma_min)};
+min_mass_constraint = {N, @(t, x, u, p) z_lb(t, p(1)) - x(5)};
 state_convex_constraints = {glideslope_constraint};
 
 % Convex control constraints
 min_thrust_constraint = @(t, x, u, p) T_min * exp(-x(5)) - u(3);
-lcvx_thrust_constraint = @(t, x, u, p) norm(u(1:2)) - u(3); 
+lcvx_thrust_constraint = {1:N, @(t, x, u, p) norm(u(1:2)) - u(3)}; 
 control_convex_constraints = {lcvx_thrust_constraint};
 
+% Parameter constraints
+min_tf_constraint = {1, @(t, x, u, p) 23 - p};
+max_tf_constraint = {1, @(t, x, u, p) p - 25};
+parameter_convex_constraints = {min_tf_constraint, max_tf_constraint};
+
 % Combine convex constraints
-convex_constraints = [state_convex_constraints, control_convex_constraints];
+convex_constraints = [state_convex_constraints, control_convex_constraints, parameter_convex_constraints];
 
 % Nonconvex state path constraints
 state_nonconvex_constraints = {};
 
 % Nonconvex control constraints
 max_thrust_constraint = @(t, x, u, p) u(3) - T_max * exp(-z_lb(t, p(1))) * (1 - (x(5) - z_lb(t, p(1))));
-max_thrust_constraint_linearized = linearize_constraint(max_thrust_constraint, nx, nu, np, "p", 1);
+max_thrust_constraint_linearized = {1:N, linearize_constraint(max_thrust_constraint, nx, nu, np, "p", 1)};
 min_thrust_constraint = @(t, x, u, p) T_min * exp(-z_lb(t, p(1))) * (1 - (x(5) - z_lb(t, p(1))) + 0.5 * (x(5) - z_lb(t, p(1))) ^ 2) - u(3);
-min_thrust_constraint_linearized = linearize_constraint(min_thrust_constraint, nx, nu, np, "p", 1);
+min_thrust_constraint_linearized = {1:N, linearize_constraint(min_thrust_constraint, nx, nu, np, "p", 1)};
 control_nonconvex_constraints = {max_thrust_constraint_linearized, min_thrust_constraint_linearized};
 
 nonconvex_constraints = [state_nonconvex_constraints, control_nonconvex_constraints];
@@ -101,7 +106,7 @@ min_fuel_angular_velocity_objective = @(x, u, p) sum(u(3, :) / T_max + x(6, 1:Nu
 if u_hold == "ZOH"
     min_fuel_objective = @(x, u, p, x_ref, u_ref, p_ref) sum(u(3, :)) * p_ref(1) / N + sum(u_ref(3, :)) / N * (p(1) - p_ref(1));
 elseif u_hold == "FOH"
-    min_fuel_objective = @(x, u, p, x_ref, u_ref, p_ref) sum((u(3, 1:(end - 1)) + u(3, 2:end)) / 2) * p(1) / N;
+    min_fuel_objective = @(x, u, p, x_ref, u_ref, p_ref) -x(5); %sum((u(3, 1:(end - 1)) + u(3, 2:end)) / 2) * p_ref(1) / N;
 end
 
 %% Create Guess
@@ -114,49 +119,49 @@ if u_hold == "ZOH"
 elseif u_hold == "FOH"
     sl_guess.x = [sl_guess.x; m_0 - alpha * cumsum(sl_guess.u(3, :) * delta_t)];
 end
-sl_guess.u = sl_guess.u ./ sl_guess.x(5, 1:Nu);
-sl_guess.x(5, :) = log(sl_guess.x(5, :));
+%sl_guess.u = sl_guess.u ./ sl_guess.x(5, 1:Nu);
+%sl_guess.x(5, :) = log(sl_guess.x(5, :));
 
 guess = sl_guess;
 guess.p = tf;
-
-
-t_scaled = t_k * p(1);
-figure
-tiledlayout(1, 4)
-nexttile
-plot(t_scaled, guess.x(1:2, :)) % - also include continuous solution and look at error?
-title("Position History")
-xlabel("Time [s]")
-ylabel("Position [km]")
-legend("r_x", "r_y", Location="southoutside", Orientation="horizontal")
-grid on
-
-nexttile
-plot(t_scaled, guess.x(3:4, :) * 1000) % - also include continuous solution and look at error?
-title("Velocity History")
-xlabel("Time [s]")
-ylabel("Velocity [m / s]")
-legend("v_x", "v_y", Location="southoutside", Orientation="horizontal")
-grid on
-
-nexttile
-plot(t_scaled, exp(guess.x(5, :))) % - also include continuous solution and look at error?
-title("Mass History")
-xlabel("Time [s]")
-ylabel("Mass [kg]")
-grid on
-
-nexttile
-stairs(t_scaled(2:end), (guess.u(:, :) .* exp(guess.x(end, 2:end)))')
-title("Control History")
-xlabel("Time [s]")
-ylabel("Thrust [kN]")
-legend("T_x", "T_y", "\sigma", Location="southoutside", Orientation="horizontal")
-grid on
-
-sgtitle("State and Control Histories for Mars Optimal Fuel Rocket Landing")
-
+% 
+% 
+% t_scaled = t_k * guess.p;
+% figure
+% tiledlayout(1, 4)
+% nexttile
+% plot(t_scaled, guess.x(1:2, :)) % - also include continuous solution and look at error?
+% title("Position History")
+% xlabel("Time [s]")
+% ylabel("Position [km]")
+% legend("r_x", "r_y", Location="southoutside", Orientation="horizontal")
+% grid on
+% 
+% nexttile
+% plot(t_scaled, guess.x(3:4, :) * 1000) % - also include continuous solution and look at error?
+% title("Velocity History")
+% xlabel("Time [s]")
+% ylabel("Velocity [m / s]")
+% legend("v_x", "v_y", Location="southoutside", Orientation="horizontal")
+% grid on
+% 
+% nexttile
+% plot(t_scaled, exp(guess.x(5, :))) % - also include continuous solution and look at error?
+% title("Mass History")
+% xlabel("Time [s]")
+% ylabel("Mass [kg]")
+% grid on
+% 
+% nexttile
+% stairs(t_scaled(2:end), (guess.u(:, :) .* exp(guess.x(end, 2:end)))')
+% title("Control History")
+% xlabel("Time [s]")
+% ylabel("Thrust [kN]")
+% legend("T_x", "T_y", "\sigma", Location="southoutside", Orientation="horizontal")
+% grid on
+% 
+% sgtitle("State and Control Histories for Mars Optimal Fuel Rocket Landing")
+% 
 
 %% Construct Problem Object
 prob_2DoF = DeterministicProblem(x_0, x_f, N, u_hold, 1, f, guess, convex_constraints, min_fuel_objective, nonconvex_constraints = nonconvex_constraints, scale = scale, terminal_bc = terminal_bc);
@@ -166,13 +171,13 @@ prob_2DoF = DeterministicProblem(x_0, x_f, N, u_hold, 1, f, guess, convex_constr
 
 %% Check with Matrix Exponential
 A_k_exp = expm((t_k(2) - t_k(1)) * prob_2DoF.cont.A(0, x_0, guess.u(:, 1), tf));
-A_k_ck = sum(pagenorm(prob_2DoF.disc.A_k(:, :, 1:Nu) - A_k_exp), "all") < default_tolerance; % Checks out
+%A_k_ck = sum(pagenorm(prob_2DoF.disc.A_k(:, :, 1:Nu) - A_k_exp), "all") < default_tolerance; % Checks out
 
 %% Solve Problem with PTR
 ptr_sol = ptr(prob_2DoF, ptr_ops);
 
 %%
-ptr_sol.converged_i = 10;
+ptr_sol.converged_i = ptr_ops.iter_max;
 X = ptr_sol.x(:, :, ptr_sol.converged_i);
 U = ptr_sol.u(:, :, ptr_sol.converged_i);
 p = ptr_sol.p(:, ptr_sol.converged_i);

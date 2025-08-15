@@ -31,11 +31,13 @@ thetadot = w;
 M = cross([-L; 0; 0], [T; 0]);
 wdot = M(3) / I;
 
-rotationMatrix = [cos(theta) -sin(theta); sin(theta) cos(theta)];
+rotationMatrix = [cos(theta) -sin(theta); sin(theta) cos(theta)]; % make_R2(theta)
 a_T_e = rotationMatrix * thrust_accel;
+force = a_T_e * m;
 vdot = a_T_e - [0; g];
 
 zdot = -alpha * thrust_accel_mag;
+mdot = -alpha * thrust_accel_mag * m;
 
 xdot = [rdot; vdot; thetadot; wdot; zdot];
 
@@ -44,6 +46,10 @@ xdot = [rdot; vdot; thetadot; wdot; zdot];
 
 % Create equations of motion function for optimizer
 matlabFunction(xdot,"File","Dynamics Models/3DoF/SymDynamics3DoF_mass_convexified","Vars", [{t}; {x}; {u}; {L; I; alpha}]);
+
+matlabFunctionBlock("SymDynamics3DoF_mass_convexified_Force", force, "Vars", [{t}; {x}; {u}; {L; I; alpha}]);
+matlabFunctionBlock("SymDynamics3DoF_mass_convexified_Moment", M, "Vars", [{t}; {x}; {u}; {L; I; alpha}]);
+matlabFunctionBlock("SymDynamics3DoF_mass_convexified_MassRate", mdot, "Vars", [{t}; {x}; {u}; {L; I; alpha}]);
 
 % Create equations of motion block for Simulink model
 %matlabFunctionBlock('EoM_3DoF/SymDynamics3DoF',xdot,'Vars',[x; u; mass; L; I])

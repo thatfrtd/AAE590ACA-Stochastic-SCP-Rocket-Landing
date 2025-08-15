@@ -11,21 +11,21 @@
 %% Initialize
 % Vehicle Parameters
 alpha = 0.5086; % [s / km]
-T_min = 4.97; % [kg km / s2]
-T_max = 13.26; % [kg km / s2]
-I = 150000 * (1e-3) ^ 2; % [kg km2] ASSUMING CONSTANT MOMENT OF INERTIA
-L = 3e-3; % [km] Distance from CoM to nozzle
 m_dry = 2000; % [kg]
 m_wet = 600; % [kg]
 m_0 = m_dry + m_wet;
+T_max = 2.2 * m_0 * 9.81e-3; % [kg km / s2]
+T_min = 0.55 * T_max; % [kg km / s2]
+I = 150000 * (1e-3) ^ 2; % [kg km2] ASSUMING CONSTANT MOMENT OF INERTIA
+L = 3e-3; % [km] Distance from CoM to nozzle
 gimbal_max = deg2rad(8); % [rad]
 
 vehicle = Vehicle(m_dry, L, L * 3, gimbal_max, T_min, T_max, I = I);
 
 % Problem Parameters
-tf = 60; % [s]
-N = 15; % []
-r_0 = [1.5; 2.0]; % [km]
+tf = 30; % [s]
+N = 50; % []
+r_0 = [1.5; 3.0]; % [km]
 v_0 = [0.0385; -0.0647]; % [km / s]
 theta_0 = deg2rad(90); % [rad]
 w_0 = deg2rad(0); % [rad / s]
@@ -38,7 +38,7 @@ tspan = [0, tf];
 t_k = linspace(tspan(1), tspan(2), N);
 delta_t = t_k(2) - t_k(1);
 
-u_hold = "ZOH";
+u_hold = "FOH";
 Nu = (u_hold == "ZOH") * (N - 1) + (u_hold == "FOH") * N;
 
 % PTR algorithm parameters
@@ -46,10 +46,10 @@ ptr_ops.iter_max = 20;
 ptr_ops.iter_min = 2;
 ptr_ops.Delta_min = 5e-5;
 ptr_ops.w_vc = 1e5;
-ptr_ops.w_tr = ones(1, Nu) * 5e0;
+ptr_ops.w_tr = ones(1, Nu) * 5e-2;
 ptr_ops.w_tr_p = 1e-1;
 ptr_ops.update_w_tr = false;
-ptr_ops.delta_tol = 1e-3;
+ptr_ops.delta_tol = 2e-2;
 ptr_ops.q = 2;
 ptr_ops.alpha_x = 1;
 ptr_ops.alpha_u = 1;
@@ -62,14 +62,14 @@ f = @(t, x, u, p) SymDynamics3DoF(t, x, u, vehicle.m, vehicle.L, vehicle.I(2));
 
 %% Specify Constraints
 % Convex state path constraints
-glideslope_constraint = @(t, x, u, p) norm(x(1:2)) - x(2) / cos(glideslope_angle_max);
+glideslope_constraint = {1:N, @(t, x, u, p) norm(x(1:2)) - x(2) / cos(glideslope_angle_max)};
 state_convex_constraints = {glideslope_constraint};
 
 % Convex control constraints
-max_thrust_constraint = @(t, x, u, p) u(3) - T_max;
-min_thrust_constraint = @(t, x, u, p) T_min - u(3);
-max_gimbal_constraint = @(t, x, u, p) u(3) - u(1) / cos(gimbal_max);
-lcvx_thrust_constraint = @(t, x, u, p) norm(u(1:2))- u(3); 
+max_thrust_constraint = {1:N, @(t, x, u, p) u(3) - T_max};
+min_thrust_constraint = {1:N, @(t, x, u, p) T_min - u(3)};
+max_gimbal_constraint = {1:N, @(t, x, u, p) u(3) - u(1) / cos(gimbal_max)};
+lcvx_thrust_constraint = {1:N, @(t, x, u, p) norm(u(1:2))- u(3)}; 
 control_convex_constraints = {min_thrust_constraint,max_gimbal_constraint,max_thrust_constraint,lcvx_thrust_constraint};
 
 % Combine convex constraints

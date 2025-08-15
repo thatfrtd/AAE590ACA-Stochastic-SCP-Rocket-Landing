@@ -39,48 +39,57 @@ cvx_begin quiet
         for k = 1:prob.Nu
             % Convex Constraints
             for cc = 1:prob.n.cvx
-                prob.convex_constraints{cc}(t_k(k), prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0) <= 0;
+                cc_k = prob.convex_constraints{cc}{1};
+                if ismember(k, cc_k)
+                    cvx_constraint_func = prob.convex_constraints{cc}{2};
+                    cvx_constraint_func(t_k(k), prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0) <= 0;
+                end
             end
             % Nonconvex Constraints
             for nc = 1:prob.n.ncvx
-                prob.nonconvex_constraints{nc}(t_k(k), prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, prob.unscale_x(x_ref), prob.unscale_u(u_ref), 0) ...
-                    - v_prime(nc) <= 0;
+                nc_k = prob.nonconvex_constraints{nc}{1};
+                if ismember(k, nc_k)
+                    ncvx_constraint_func = prob.nonconvex_constraints{nc}{2};
+                    ncvx_constraint_func(t_k(k), prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, prob.unscale_x(x_ref), prob.unscale_u(u_ref), 0, k) ...
+                        - v_prime(nc) <= 0;
+                end
             end
         end
         v_prime >= 0;
 
         % Boundary Conditions
         prob.initial_bc(prob.unscale_x(X(:, 1)), 0) + v_0 == 0;
-        prob.terminal_bc(prob.unscale_x(X(:, prob.N)), 0) + v_N == 0;
+        prob.terminal_bc(prob.unscale_x(X(:, prob.N)), 0, prob.unscale_x(x_ref(:, prob.N)), 0) + v_N == 0;
 
         % Trust Region Constraints
         ptr_ops.alpha_x * sum_square(X(:, 1:prob.Nu) - x_ref(:, 1:prob.Nu)) + ptr_ops.alpha_u * sum_square(U - u_ref) <= eta;
         %ptr_ops.alpha_x * norms(X(:, 1:prob.Nu) - x_ref(:, 1:prob.Nu), 2, 1) + ptr_ops.alpha_u * norms(U - u_ref, 2, 1) <= eta;
+        norm(eta) <= 5e-1;
 cvx_end
 
 %t2 = toc(t1);
-
-if size(U,1) == 5
-    figure
-    
-    tiledlayout(1, 3)
-    nexttile
-    plot3(X(1, :), X(2, :), X(3, :)); 
-    grid on
-    axis equal
-    
-    nexttile
-    stairs(U(1, :)); hold on
-    stairs(U(2, :)); hold on
-    stairs(U(3, :)); hold on
-    stairs(U(4, :)); hold off
-    grid on
-    
-    nexttile
-    stairs(rad2deg(U(5, :))); hold on
-    stairs(acosd(U(1, :) ./ U(4, :)));
-    grid on
-end
+% 
+% if size(U,1) == 5
+%     figure
+% 
+%     tiledlayout(1, 3)
+%     nexttile
+%     plot3(X(1, :), X(2, :), X(3, :)); 
+%     grid on
+%     axis equal
+% 
+%     nexttile
+%     stairs(U(1, :)); hold on
+%     stairs(U(2, :)); hold on
+%     stairs(U(3, :)); hold on
+%     stairs(U(4, :)); hold off
+%     grid on
+% 
+%     nexttile
+%     stairs(rad2deg(U(5, :))); hold on
+%     stairs(acosd(U(1, :) ./ U(4, :)));
+%     grid on
+% end
 
 x_sol = X;
 u_sol = U;

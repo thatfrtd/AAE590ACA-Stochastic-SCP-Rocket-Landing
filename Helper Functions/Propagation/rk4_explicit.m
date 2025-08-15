@@ -15,5 +15,5 @@ function [x_kp1, x_est] = rk4_explicit(f, t, x, u, p, dt)
 
     x_kp1 = x + (dt/6) * (k0 + 2 * k1 + 2 * k2 + k3);
 
-    x_est = [es1, est2, est3];
+    x_est = [est1, est2, est3];
 end

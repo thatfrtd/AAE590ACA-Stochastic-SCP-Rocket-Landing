@@ -10,23 +10,24 @@
 %% Initialize
 % Vehicle Parameters
 alpha = 0.5086; % [s / km]
-T_min = 4.97; % [kg km / s2]
-T_max = 13.26; % [kg km / s2]
-I = [50000; 150000; 150000] * (1e-3) ^ 2; % [kg km2] ASSUMING CONSTANT MOMENT OF INERTIA
-L = 3e-3; % [km] Distance from CoM to nozzle
 m_dry = 2000; % [kg]
 m_wet = 600; % [kg]
 m_0 = m_dry + m_wet;
+T_max = 3 * m_0 * 9.81e-3; % [kg km / s2]
+T_min = 0.55 * T_max; % [kg km / s2]
+I = [50000; 150000; 150000] * (1e-3) ^ 2; % [kg km2] ASSUMING CONSTANT MOMENT OF INERTIA
+L = 3e-3; % [km] Distance from CoM to nozzle
 gimbal_max = deg2rad(8); % [rad]
 
 vehicle = Vehicle(m_dry, L, L * 3, gimbal_max, T_min, T_max, I = I, alpha = alpha);
 
 % Problem Parameters
-tf = 90; % [s]
-N = 20; % []
-r_0 = [1.5; 0; 3.0]; % [km]
-v_0 = [0.0385; 0; -0.0647]; % [km / s]
-[theta1_0, theta2_0, theta3_0] = dcm2angle(angle2dcm(0, deg2rad(-90), 0,"ZYX"), "XYX"); % [rad]
+tf = 30; % [s]
+N = 50; % []
+r_0 = [0; 0; 4.6]; % [km]
+theta_0 = deg2rad(120); % [rad]
+v_0 = [1 0; 0 0; 0 1] * make_R2(deg2rad(-60)) * [0.306; 0]; % [km / s]
+[theta1_0, theta2_0, theta3_0] = dcm2angle(angle2dcm(0, deg2rad(-theta_0), 0,"ZYX"), "XYX"); % [rad]
 theta_0 = [theta1_0; theta2_0; theta3_0];
 w_0 = deg2rad([0; 0; 0]); % [rad / s]
 glideslope_angle_max = deg2rad(60); % [rad]
@@ -41,14 +42,17 @@ tspan = [0, tf];
 t_k = linspace(tspan(1), tspan(2), N);
 delta_t = t_k(2) - t_k(1);
 
-u_hold = "ZOH";
+u_hold = "FOH";
 Nu = (u_hold == "ZOH") * (N - 1) + (u_hold == "FOH") * N;
+
+[X_6DoF, U_6DoF] = Deterministic_3DoF_linear_func(x_0, tf, N, T_max, T_min, alpha, L, glideslope_angle_max, u_hold);
 
 % PTR algorithm parameters
 ptr_ops.iter_max = 100;
+ptr_ops.iter_min = 2;
 ptr_ops.Delta_min = 5e-5;
 ptr_ops.w_vc = 2e3;
-ptr_ops.w_tr = ones(1, Nu) * 5e0;
+ptr_ops.w_tr = ones(1, Nu) * 5e1;
 ptr_ops.w_tr_p = 1e-1;
 ptr_ops.update_w_tr = false;
 ptr_ops.delta_tol = 1e-3;
@@ -57,24 +61,31 @@ ptr_ops.alpha_x = 1;
 ptr_ops.alpha_u = 1;
 ptr_ops.alpha_p = 0;
 
-scale = false;
+scale = true;
+% 
+% scale_hint.x_max = [max(r_I_i) * ones([3, 1]); v_max * ones([3, 1]); pi * ones([3, 1]); w_max * ones([3, 1])];
+% scale_hint.x_min = [-max(r_I_i) * ones([3, 1]); -v_max * ones([3, 1]); -pi * ones([3, 1]); -w_max * ones([3, 1])];
+% scale_hint.u_max = [T_max; sin(gimbal_max) * ones([2, 1]); T_max; pi / 4];
+% scale_hint.u_min = [T_min; -sin(gimbal_max) * ones([2, 1]); T_min; -pi / 4];
+% scale_hint.p_max = 80;
+% scale_hint.p_min = 40;
 
 %% Get Dynamics
 f = @(t, x, u, p) SymDynamicsEuler6DoF_convex(x, u, vehicle.L, vehicle.I, vehicle.alpha);
 
 %% Specify Constraints
 % Convex state path constraints
-glideslope_constraint = @(t, x, u, p) norm(x(1:3)) - x(3) / cos(glideslope_angle_max);
+glideslope_constraint = {1:N, @(t, x, u, p) norm(x(1:3)) - x(3) / cos(glideslope_angle_max)};
 state_convex_constraints = {glideslope_constraint};
 
 z_lb = @(t) log(m_0 - alpha * T_max * t);
 z_lb_k = z_lb(t_k);
 
 % Convex control constraints
-max_thrust_constraint = @(t, x, u, p) u(4) - T_max * exp(-z_lb(t)) * (1 - (x(13) - z_lb(t)));
-min_thrust_constraint = @(t, x, u, p) T_min * exp(-x(13)) - u(4);
-max_gimbal_constraint = @(t, x, u, p) u(4) - u(1) / cos(gimbal_max);
-lcvx_thrust_constraint = @(t, x, u, p) norm(u(1:3))- u(4); 
+max_thrust_constraint = {1:N, @(t, x, u, p) u(4) - T_max * exp(-z_lb(t)) * (1 - (x(13) - z_lb(t)))};
+min_thrust_constraint = {1:N, @(t, x, u, p) T_min * exp(-x(13)) - u(4)};
+max_gimbal_constraint = {1:N, @(t, x, u, p) u(4) - u(1) / cos(gimbal_max)};
+lcvx_thrust_constraint = {1:N, @(t, x, u, p) norm(u(1:3))- u(4)}; 
 control_convex_constraints = {min_thrust_constraint,max_gimbal_constraint,max_thrust_constraint,lcvx_thrust_constraint};
 
 % Combine convex constraints
@@ -94,9 +105,9 @@ end
 %% Create Guess
 sl_guess = guess_6DoF(x_0(1:12), x_f, N, Nu, delta_t, vehicle);
 if u_hold == "ZOH"
-    sl_guess.x = [sl_guess.x; m_0 - alpha * [cumsum(sl_guess.u(4, :) * delta_t), sum(sl_guess.u(4, :)) * delta_t]];
+    sl_guess.x = [sl_guess.x; m_0 - alpha * [cumsum(sl_guess.u(4, :) * T_max * delta_t), T_max * sum(sl_guess.u(4, :)) * delta_t]];
 elseif u_hold == "FOH"
-    sl_guess.x = [sl_guess.x; m_0 - alpha * cumsum(sl_guess.u(4, :) * delta_t)];
+    sl_guess.x = [sl_guess.x; m_0 - alpha * cumsum(sl_guess.u(4, :) * delta_t * T_max)];
 end
 sl_guess.x(13, :) = log(sl_guess.x(13, :));
 sl_guess.u = sl_guess.u * T_max .* exp(-sl_guess.x(13, 1:Nu));
@@ -165,6 +176,30 @@ prob_6DoF = DeterministicProblem(x_0, x_f, N, u_hold, tf, f, guess, convex_const
 
 %% Solve Problem with PTR
 ptr_sol = ptr(prob_6DoF, ptr_ops);
+
+%%
+scvxstar_ops.D_x = 1;
+scvxstar_ops.D_u = 1;
+scvxstar_ops.D_p = 1;
+scvxstar_ops.opt_tol = ptr_ops.delta_tol;
+scvxstar_ops.feas_tol = 5e-4;%ptr_ops.Delta_min;
+scvxstar_ops.eta_0 = 1;
+scvxstar_ops.eta_1 = 0.5;
+scvxstar_ops.eta_2 = 0.1;
+scvxstar_ops.alpha_1 = 2;
+scvxstar_ops.alpha_2 = 4;
+scvxstar_ops.beta = 2;
+scvxstar_ops.gamma = 0.95;
+scvxstar_ops.w_0 = 1e3;
+scvxstar_ops.w_max = 1e6;
+scvxstar_ops.r_0 = 0.1;
+scvxstar_ops.r_min = 1e-8;
+scvxstar_ops.r_max = 1;
+scvxstar_ops.tau = 1.1;
+scvxstar_ops.iter_max = ptr_ops.iter_max;
+scvxstar_ops.iter_min = 2;
+
+scvxstar_sol = SCvx_star(prob_6DoF, scvxstar_ops, "CVX");
 
 %%
 tiledlayout(1, 3)

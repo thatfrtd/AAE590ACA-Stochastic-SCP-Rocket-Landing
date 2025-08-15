@@ -19,13 +19,13 @@ p_ref(:, 1) = prob.scale_p(prob.guess.p);
 
 ptr_sol.converged = false;
 ptr_sol.objective = zeros([1, ptr_ops.iter_max + 1]);
-ptr_sol.Delta = zeros([prob.Nu, ptr_ops.iter_max + 1]);
+ptr_sol.Delta = zeros([prob.n.x, prob.N + 1, ptr_ops.iter_max + 1]);
 ptr_sol.delta_xp = zeros([1, ptr_ops.iter_max]);
 
 problem = [];
 
 % Convexify along initial guess
-[prob, ptr_sol.Delta(:, 1)] = convexify_along_reference(prob, prob.guess.x, prob.guess.u, prob.guess.p);
+[prob, ptr_sol.Delta(:, :, 1)] = convexify_along_reference(prob, prob.guess.x, prob.guess.u, prob.guess.p);
 
 disp(" k |       status      |   vd  |   vs  |  vbc_0 |  vbc_N |    J    |   J_tr  |   J_vc   |   dJ %  |   dx   |   du   |   dp   | delta |  dyn  |  eta  | eta_x | eta_u | eta_p")
 
@@ -47,10 +47,10 @@ for i = 1:(ptr_ops.iter_max)
     end
 
     % Convexify along reference trajectory
-    [prob, ptr_sol.Delta(:, i + 1)] = convexify_along_reference(prob, prob.unscale_x(x_ref(:, :, i + 1)), prob.unscale_u(u_ref(:, :, i + 1)), prob.unscale_p(p_ref(:, i + 1)));
+    [prob, ptr_sol.Delta(:, :, i + 1)] = convexify_along_reference(prob, prob.unscale_x(x_ref(:, :, i + 1)), prob.unscale_u(u_ref(:, :, i + 1)), prob.unscale_p(p_ref(:, i + 1)));
 
     % Update algorithm weights (4.24)
-    ptr_ops.w_tr = update_trust_region_weights(ptr_sol.Delta(:, i + 1)', ptr_ops.update_w_tr, ptr_ops.w_tr, ptr_ops.Delta_min);
+    ptr_ops.w_tr = update_trust_region_weights(vecnorm(ptr_sol.Delta(:, 2:(prob.Nu + 1), i + 1)), ptr_ops.update_w_tr, ptr_ops.w_tr, ptr_ops.Delta_min);
 
     % Check stopping criteria (4.30)
     ptr_sol.delta_xp(i) = ptr_stopping(x_ref(:, :, i + 1), p_ref(:, i + 1), x_ref(:, :, i), p_ref(:, i), ptr_ops.q);
@@ -60,14 +60,19 @@ for i = 1:(ptr_ops.iter_max)
         ptr_sol.info(i).dJ = ptr_sol.info(i - 1);
     end
     sol_info.delta = ptr_sol.delta_xp(i);
-    sol_info.dyn = norm(ptr_sol.Delta(:, i + 1)) <= ptr_ops.Delta_min;
+    sol_info.dyn = sum(vecnorm(ptr_sol.Delta(:, :, i + 1))) <= ptr_ops.Delta_min;
+    if sol_info.dyn
+        dyn_str = string(sol_info.dyn);
+    else
+        dyn_str = sum(vecnorm(ptr_sol.Delta(:, :, i + 1)));
+    end
 
     ptr_sol.info(i) = sol_info;
 
     if i == 1
-        fprintf("%2.f | %17s | %5.1g | %5.1g | %5.1g | %5.1g | %5.3g | %5.3g | %5.3g |         | %6.1g | %6.1g | %5.1g | %5.1g | %5s | %5.1g | %5.1g | %5.1g | %5.1g\n", i, ptr_sol.info(i).status, norm(ptr_sol.info(i).vd), norm(ptr_sol.info(i).vs), norm(ptr_sol.info(i).vbc_0), norm(ptr_sol.info(i).vbc_N), ptr_sol.info(i).J, ptr_sol.info(i).J_tr, ptr_sol.info(i).J_vc, sum(ptr_sol.info(i).dx), sum(ptr_sol.info(i).du), sum(ptr_sol.info(i).dp), ptr_sol.info(i).delta, string(ptr_sol.info(i).dyn), norm(ptr_sol.info(i).eta), norm(ptr_sol.info(i).eta_x), norm(ptr_sol.info(i).eta_u), norm(ptr_sol.info(i).eta_p))
+        fprintf("%2.f | %17s | %5.1g | %5.1g | %5.1g | %5.1g | %5.3g | %5.3g | %5.3g |         | %6.1g | %6.1g | %5.1g | %5.1g | %5s | %5.1g | %5.1g | %5.1g | %5.1g\n", i, ptr_sol.info(i).status, norm(ptr_sol.info(i).vd), norm(ptr_sol.info(i).vs), norm(ptr_sol.info(i).vbc_0), norm(ptr_sol.info(i).vbc_N), ptr_sol.info(i).J, ptr_sol.info(i).J_tr, ptr_sol.info(i).J_vc, sum(ptr_sol.info(i).dx), sum(ptr_sol.info(i).du), sum(ptr_sol.info(i).dp), ptr_sol.info(i).delta, dyn_str, norm(ptr_sol.info(i).eta), norm(ptr_sol.info(i).eta_x), norm(ptr_sol.info(i).eta_u), norm(ptr_sol.info(i).eta_p))
     else
-        fprintf("%2.f | %17s | %5.1g | %5.1g | %5.1g | %5.1g | %5.3g | %5.3g | %5.3g | %6.3f | %6.1g | %6.1g | %5.1g | %5.1g | %5s | %5.1g | %5.1g | %5.1g | %5.1g\n", i, ptr_sol.info(i).status, norm(ptr_sol.info(i).vd), norm(ptr_sol.info(i).vs), norm(ptr_sol.info(i).vbc_0), norm(ptr_sol.info(i).vbc_N), ptr_sol.info(i).J, ptr_sol.info(i).J_tr, ptr_sol.info(i).J_vc, ptr_sol.info(i).dJ, sum(ptr_sol.info(i).dx), sum(ptr_sol.info(i).du), sum(ptr_sol.info(i).dp), ptr_sol.info(i).delta, string(ptr_sol.info(i).dyn), norm(ptr_sol.info(i).eta), norm(ptr_sol.info(i).eta_x), norm(ptr_sol.info(i).eta_u), norm(ptr_sol.info(i).eta_p))
+        fprintf("%2.f | %17s | %5.1g | %5.1g | %5.1g | %5.1g | %5.3g | %5.3g | %5.3g | %6.3f | %6.1g | %6.1g | %5.1g | %5.1g | %5s | %5.1g | %5.1g | %5.1g | %5.1g\n", i, ptr_sol.info(i).status, norm(ptr_sol.info(i).vd), norm(ptr_sol.info(i).vs), norm(ptr_sol.info(i).vbc_0), norm(ptr_sol.info(i).vbc_N), ptr_sol.info(i).J, ptr_sol.info(i).J_tr, ptr_sol.info(i).J_vc, ptr_sol.info(i).dJ, sum(ptr_sol.info(i).dx), sum(ptr_sol.info(i).du), sum(ptr_sol.info(i).dp), ptr_sol.info(i).delta, dyn_str, norm(ptr_sol.info(i).eta), norm(ptr_sol.info(i).eta_x), norm(ptr_sol.info(i).eta_u), norm(ptr_sol.info(i).eta_p))
     end
 
     if i >= ptr_ops.iter_min && ptr_sol.delta_xp(i) < ptr_ops.delta_tol && ~ptr_sol.converged && sol_info.dyn
@@ -79,7 +84,7 @@ for i = 1:(ptr_ops.iter_max)
 end
 
 if ptr_sol.converged == false
-    warning("PTR did not converge after %g iterations. delta_xp = %.3f. norm(Delta) = %.3f\n", i, ptr_sol.delta_xp(i), norm(ptr_sol.Delta(:, end)))
+    warning("PTR did not converge after %g iterations. delta_xp = %.3f. norm(Delta) = %.3f\n", i, ptr_sol.delta_xp(i), sum(vecnorm(ptr_sol.Delta(:, :, end))))
 end
 
 ptr_sol.x = prob.unscale_x(x_ref);

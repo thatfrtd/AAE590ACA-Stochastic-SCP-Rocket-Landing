@@ -24,7 +24,7 @@ vehicle = Vehicle(m_dry, L, L * 3, gimbal_max, T_min, T_max, I = I, alpha = alph
 
 % Problem Parameters
 tf = 35; % [s]
-N = 20; % []
+N = 25; % []
 r_0 = [0; 4.6]; % [km]
 theta_0 = deg2rad(120); % [rad]
 v_0 = make_R2(-deg2rad(60)) * [0.306; 0]; % [km / s]
@@ -38,10 +38,10 @@ tspan = [0, tf];
 t_k = linspace(tspan(1), tspan(2), N);
 delta_t = t_k(2) - t_k(1);
 
-u_hold = "FOH";
+u_hold = "ZOH";
 Nu = (u_hold == "ZOH") * (N - 1) + (u_hold == "FOH") * N;
 
-initial_guess = "CasADi"; % "CasADi" or "straight line"
+initial_guess = "straight line"; % "CasADi" or "straight line"
 
 % PTR algorithm parameters
 ptr_ops.iter_max = 50;
@@ -61,21 +61,21 @@ scale = false;
 
 nx = 7;
 nu = 3;
-np = 1;
+np = 0;
 
 %% Get Dynamics
 f = @(t, x, u, p) SymDynamics3DoF_mass(t, x, u, vehicle.L, vehicle.I(2), vehicle.alpha);
 
 %% Specify Constraints
 % Convex state path constraints
-glideslope_constraint = @(t, x, u, p) norm(x(1:2)) - x(2) / cos(glideslope_angle_max);
+glideslope_constraint = {1:N, @(t, x, u, p) norm(x(1:2)) - x(2) / cos(glideslope_angle_max)};
 state_convex_constraints = {glideslope_constraint};
 
 % Convex control constraints
-max_thrust_constraint = @(t, x, u, p) u(3) - T_max;
-min_thrust_constraint = @(t, x, u, p) T_min - u(3);
-max_gimbal_constraint = @(t, x, u, p) u(3) - u(1) / cos(gimbal_max);
-lcvx_thrust_constraint = @(t, x, u, p) norm(u(1:2))- u(3); 
+max_thrust_constraint = {1:N, @(t, x, u, p) u(3) - T_max};
+min_thrust_constraint = {1:N, @(t, x, u, p) T_min - u(3)};
+max_gimbal_constraint = {1:N, @(t, x, u, p) u(3) - u(1) / cos(gimbal_max)};
+lcvx_thrust_constraint = {1:N, @(t, x, u, p) norm(u(1:2))- u(3)}; 
 control_convex_constraints = {min_thrust_constraint,max_gimbal_constraint,max_thrust_constraint,lcvx_thrust_constraint};
 
 % Combine convex constraints
@@ -127,7 +127,7 @@ figure
 plot_3DoF_time_histories(t_k, guess.x, guess.u)
 
 %% Construct Problem Object
-prob_3DoF = DeterministicProblem(x_0, x_f, N, u_hold, tf, f, guess, convex_constraints, min_fuel_objective, scale = scale, terminal_bc = terminal_bc, discretization_method = "errorRKV65", N_sub = 1);
+prob_3DoF = DeterministicProblem(x_0, x_f, N, u_hold, tf, f, guess, convex_constraints, min_fuel_objective, scale = scale, terminal_bc = terminal_bc, discretization_method = "state", N_sub = 1);
 prob_3DoF.vehicle = vehicle;
 
 %% Test Scaling
@@ -146,10 +146,6 @@ Delta = calculate_defect(prob_3DoF, guess.x, guess.u, guess.p);
 norm(Delta)
 
 %% Test Discretization on Initial Guess
-
-%guess.u(1, :) = T_min * 1.5;
-%guess.u(2, :) = T_min / 2000;
-guess.u(3, :) = vecnorm(guess.u(1:2, :));
 
 [prob_3DoF, Delta_disc] = prob_3DoF.discretize(guess.x, guess.u, guess.p);
 
@@ -173,52 +169,81 @@ p_sym = sym("p", [np, 1]);
 A = matlabFunction(jacobian(f(t_sym, x_sym, u_sym, p_sym), x_sym),"Vars", [{t_sym}; {x_sym}; {u_sym}; {p_sym}]);
 B = matlabFunction(jacobian(f(t_sym, x_sym, u_sym, p_sym), u_sym),"Vars", [{t_sym}; {x_sym}; {u_sym}; {p_sym}]);
 S = matlabFunction(jacobian(f(t_sym, x_sym, u_sym, p_sym), p_sym),"Vars", [{t_sym}; {x_sym}; {u_sym}; {p_sym}]);
-
-A_k = prob_3DoF.disc.A_k;
-B_k_plus = prob_3DoF.disc.B_plus_k;
-B_k_minus = prob_3DoF.disc.B_minus_k;
-S_k = prob_3DoF.disc.E_k;
-d_k = prob_3DoF.disc.c_k;
-
-%% Try RK4 Discretization
-N_sub = 1;
-[A_k_rk4, B_k_plus_rk4, B_k_minus_rk4, S_k_rk4, d_k_rk4, Delta_rk4] = discretize_error_dynamics_FOH_RK4(f, A, B, S, N, tspan, guess.x, guess.u, guess.p, N_sub);
-
-A_err = sum(pagenorm(A_k_rk4 - A_k), "all");
-B_minus_err = sum(pagenorm(B_k_minus_rk4 - B_k_minus), "all");
-B_plus_err = sum(pagenorm(B_k_plus_rk4 - B_k_plus), "all");
-S_err = sum(pagenorm(S_k_rk4 - S_k), "all");
-d_err = sum(pagenorm(d_k_rk4 - d_k), "all");
-Delta_err = norm(Delta_rk4 - Delta_disc);
-fprintf("A: %.3f, B-: %.3f, B+: %.3f, S: %.3f, d: %.3f, Delta: %.5f\n", A_err, B_minus_err, B_plus_err, S_err, d_err, Delta_err);
-
-%% Try RKV6(5) Discretization
-N_sub = 1;
-[A_k_rk65, B_k_plus_rk65, B_k_minus_rk65, S_k_rk65, d_k_rk65, Delta_rk65] = discretize_error_dynamics_FOH_RKV65(f, A, B, S, N, tspan, guess.x, guess.u, guess.p, N_sub);
-
-A_err = sum(pagenorm(A_k_rk65 - A_k), "all");
-B_minus_err = sum(pagenorm(B_k_minus_rk65 - B_k_minus), "all");
-B_plus_err = sum(pagenorm(B_k_plus_rk65 - B_k_plus), "all");
-S_err = sum(pagenorm(S_k_rk65 - S_k), "all");
-d_err = sum(pagenorm(d_k_rk65 - d_k), "all");
-Delta_err = norm(Delta_rk65 - Delta_disc);
-fprintf("A: %.3f, B-: %.3f, B+: %.3f, S: %.3f, d: %.3f, Delta: %.10f\n", A_err, B_minus_err, B_plus_err, S_err, d_err, Delta_err);
-
-%% Try RKV8(7) Discretization
-N_sub = 1;
-[A_k_rk87, B_k_plus_rk87, B_k_minus_rk87, S_k_rk87, d_k_rk87, Delta_rk87] = discretize_error_dynamics_FOH_RKV87(f, A, B, S, N, tspan, guess.x, guess.u, guess.p, N_sub);
-
-A_err = sum(pagenorm(A_k_rk87 - A_k), "all");
-B_minus_err = sum(pagenorm(B_k_minus_rk87 - B_k_minus), "all");
-B_plus_err = sum(pagenorm(B_k_plus_rk87 - B_k_plus), "all");
-S_err = sum(pagenorm(S_k_rk87 - S_k), "all");
-d_err = sum(pagenorm(d_k_rk87 - d_k), "all");
-Delta_err = norm(Delta_rk87 - Delta_disc);
-fprintf("A: %.3f, B-: %.3f, B+: %.3f, S: %.3f, d: %.3f, Delta: %.10f\n", A_err, B_minus_err, B_plus_err, S_err, d_err, Delta_err);
-
+% 
+% A_k = prob_3DoF.disc.A_k;
+% B_k_plus = prob_3DoF.disc.B_plus_k;
+% B_k_minus = prob_3DoF.disc.B_minus_k;
+% S_k = prob_3DoF.disc.E_k;
+% d_k = prob_3DoF.disc.c_k;
+% 
+% %% Try RK4 Discretization
+% N_sub = 1;
+% [A_k_rk4, B_k_plus_rk4, B_k_minus_rk4, S_k_rk4, d_k_rk4, Delta_rk4] = discretize_error_dynamics_FOH_RK4(f, A, B, S, N, tspan, guess.x, guess.u, guess.p, N_sub);
+% 
+% A_err = sum(pagenorm(A_k_rk4 - A_k), "all");
+% B_minus_err = sum(pagenorm(B_k_minus_rk4 - B_k_minus), "all");
+% B_plus_err = sum(pagenorm(B_k_plus_rk4 - B_k_plus), "all");
+% S_err = sum(pagenorm(S_k_rk4 - S_k), "all");
+% d_err = sum(pagenorm(d_k_rk4 - d_k), "all");
+% Delta_err = norm(Delta_rk4 - Delta_disc);
+% fprintf("A: %.3f, B-: %.3f, B+: %.3f, S: %.3f, d: %.3f, Delta: %.5f\n", A_err, B_minus_err, B_plus_err, S_err, d_err, Delta_err);
+% 
+% %% Try RKV6(5) Discretization
+% N_sub = 1;
+% [A_k_rk65, B_k_plus_rk65, B_k_minus_rk65, S_k_rk65, d_k_rk65, Delta_rk65] = discretize_error_dynamics_FOH_RKV65(f, A, B, S, N, tspan, guess.x, guess.u, guess.p, N_sub);
+% 
+% A_err = sum(pagenorm(A_k_rk65 - A_k), "all");
+% B_minus_err = sum(pagenorm(B_k_minus_rk65 - B_k_minus), "all");
+% B_plus_err = sum(pagenorm(B_k_plus_rk65 - B_k_plus), "all");
+% S_err = sum(pagenorm(S_k_rk65 - S_k), "all");
+% d_err = sum(pagenorm(d_k_rk65 - d_k), "all");
+% Delta_err = norm(Delta_rk65 - Delta_disc);
+% fprintf("A: %.3f, B-: %.3f, B+: %.3f, S: %.3f, d: %.3f, Delta: %.10f\n", A_err, B_minus_err, B_plus_err, S_err, d_err, Delta_err);
+% 
+% %% Try RKV8(7) Discretization
+% N_sub = 1;
+% [A_k_rk87, B_k_plus_rk87, B_k_minus_rk87, S_k_rk87, d_k_rk87, Delta_rk87] = discretize_error_dynamics_FOH_RKV87(f, A, B, S, N, tspan, guess.x, guess.u, guess.p, N_sub);
+% 
+% A_err = sum(pagenorm(A_k_rk87 - A_k), "all");
+% B_minus_err = sum(pagenorm(B_k_minus_rk87 - B_k_minus), "all");
+% B_plus_err = sum(pagenorm(B_k_plus_rk87 - B_k_plus), "all");
+% S_err = sum(pagenorm(S_k_rk87 - S_k), "all");
+% d_err = sum(pagenorm(d_k_rk87 - d_k), "all");
+% Delta_err = norm(Delta_rk87 - Delta_disc);
+% fprintf("A: %.3f, B-: %.3f, B+: %.3f, S: %.3f, d: %.3f, Delta: %.10f\n", A_err, B_minus_err, B_plus_err, S_err, d_err, Delta_err);
+% 
 
 %% Solve Problem with PTR
 ptr_sol = ptr(prob_3DoF, ptr_ops);
+%%
+scvxstar_ops.D_x = 1;
+scvxstar_ops.D_u = 1;
+scvxstar_ops.D_p = 1;
+scvxstar_ops.opt_tol = ptr_ops.delta_tol;
+scvxstar_ops.feas_tol = 5e-4;%ptr_ops.Delta_min;
+scvxstar_ops.eta_0 = 1;
+scvxstar_ops.eta_1 = 0.5;
+scvxstar_ops.eta_2 = 0.1;
+scvxstar_ops.alpha_1 = 2;
+scvxstar_ops.alpha_2 = 3;
+scvxstar_ops.beta = 2;
+scvxstar_ops.gamma = 0.95;
+scvxstar_ops.w_0 = 1e2;
+scvxstar_ops.w_max = 1e6;
+scvxstar_ops.r_0 = 1;
+scvxstar_ops.r_min = 1e-8;
+scvxstar_ops.r_max = 1;
+scvxstar_ops.tau = 1.1;
+scvxstar_ops.iter_max = ptr_ops.iter_max;
+scvxstar_ops.iter_min = 2;
+
+scvxstar_sol = SCvx_star(prob_3DoF, scvxstar_ops, "CVX");
+
+
+%%
+if ~ptr_sol.converged
+   ptr_sol.converged_i = ptr_ops.iter_max; 
+end
 
 %%
 tiledlayout(1, 3)

@@ -1,21 +1,24 @@
-% constants (same as 3DoF)
-g = 3.7114e-3; % [km / s2]
-
-syms mass L;
-I = sym("I", [3; 1])
-c = [g; mass; L; I];
+syms g L alpha_ME alpha_RCS;
+I = sym("I", [3; 1]);
+c = [g; L; I; alpha_ME; alpha_RCS];
 
 % states
 
-r = sym("r", [3;1]);
-v = sym("v", [3;1]);
-theta = sym("theta", [3;1]);
-w = sym("w", [3;1]);
+v_I = sym("v_I", [3;1]);
+q_var = sym("q", [4;1]);
+w_B = sym("w_B", [3;1]);
+m = sym("m");
 
-x = [r; v; theta; w];
+qq = sym("qq", [8;1]); %[q; 1/2 * q_mul([r_I; 0], q)];
+q = qq(1:4);
+%w_tilde = sym("w_tilde", [8; 1]); %[[w_B; 0]; q_mul(q_conj(q), q_mul([v_I; 0], q))];
+v_B = sym("v_B", [3;1]);%w_tilde(5:7); quat_rot(q, v_I)
+w = [w_B; v_B];
+w_tilde = [w_B; 0; v_B; 0];
+
+x = [m; qq; w];
 
 % controls
-
 T = sym("T", [1;1]); % thrust magnitude 
 delta = sym("delta", [1;1]); % gimbal deflection angle
 phi = sym("delta", [1;1]); % gimbal azimuth angle
@@ -23,36 +26,41 @@ tau = sym("gamma", [3;1]); % RCS moment
 
 u = [T; delta; phi; tau];
 
-% calculate theta dot
-b_inverse =  (1/sin(theta(2))) .* [0 sin(theta(3)) cos(theta(3));
-     0 sin(theta(2))*cos(theta(3)) -sin(theta(2))*sin(theta(3));
-     sin(theta(2)) -cos(theta(2))*sin(theta(3)) -cos(theta(2))*cos(theta(3))];
-thetadot = b_inverse * w;
+% parameters
+tf = sym("tf");
+p = [tf];
 
-% r dot
-r_dot = v;
+Tau_B = [T * sin(delta) * cos(phi); T * sin(delta) * sin(phi); T * cos(delta); tau];
 
-Rxtheta1 = [1 0 0; 0 cos(theta(1)) sin(theta(1)); 0 -sin(theta(1)) cos(theta(1))];
-Rxtheta2 = [cos(theta(2)) 0 -sin(theta(2)); 0 1 0; sin(theta(2)) 0 cos(theta(2))];
-Rxtheta3 = [1 0 0; 0 cos(theta(3)) sin(theta(3)); 0 -sin(theta(3)) cos(theta(3))];
-C_be = Rxtheta3 * Rxtheta2 * Rxtheta1;
-C_eb = C_be.';
-T_e = C_eb * T;
-% v dot
-v_dot = T_e / mass * cos(gamma) - [0; 0; g];
-%
-M = thrust_mag .* sin(gamma) .* [1; 0; 0] + cross([-L; 0; 0], cos(gamma) * T);
-% w dot
-w_dot = (M + (I([2; 3; 1]) - I([3; 1; 2])) .* w([2; 3; 1]) .* w([3; 1; 2])) ./ I([1; 2; 3;]);
+% intermediate variables
+J_mat = [zeros(3, 3), m * eye(3); m * diag(I), zeros(3, 3)];
+J_inv = inv(J_mat);
 
-x_dot = [r_dot; v_dot; thetadot; w_dot];
+Phi = [eye(3), zeros(3, 3); skew([0; 0; -L]), eye(3)];
+
+g_I = [0; 0; -g];
+g_B = quat_rot(q, g_I);
+
+g_B_vec = [zeros([3, 1]); g_B];
+
+% q dot
+qq_dot = 1/2 * qq_mul(qq, w_tilde);
+
+% w_dot
+w_cross = [skew(w_B), zeros(3, 3); skew(v_B), skew(w_B)];
+w_dot = J_inv * (-w_cross * J_mat * w + Phi * Tau_B) + g_B_vec;
+
+% m dot
+m_dot = -(alpha_ME * T + alpha_RCS * sqrt(tau(1) ^ 2 + tau(2) ^ 2 + tau(3) ^ 2) / L);
+
+x_dot = [m_dot; qq_dot; w_dot] * tf;
 %j_a = jacobian(x_dot, x);
 %j_b = jacobian(x_dot, u);
 
-vars = [{x}; {u}; {mass; L; I}];
+vars = [{x}; {u}; {p}; {g; L; I; alpha_ME; alpha_RCS}];
 
 % Create equations of motion function for optimizer
-matlabFunction(x_dot,"File","Dynamics Models/6DoF/SymDynamicsEuler6DoF","Vars",vars);
+matlabFunction(x_dot,"File","Dynamics Models/6DoF/SymDynamicsDualQuat6DoF","Vars",vars);
 
 % % Create equations of motion block for Simulink model
 % open("EoM_Euler6DoF.slx")
@@ -72,3 +80,4 @@ matlabFunction(x_dot,"File","Dynamics Models/6DoF/SymDynamicsEuler6DoF","Vars",v
 %save("SymDynamics6DoF.m", "xdot_func6dof")
 %save("SymUJacobian6DoF.m", "j_b_func6dof")
 %save("SymXJacobian6DoF.m", "j_a_func6dof")
+

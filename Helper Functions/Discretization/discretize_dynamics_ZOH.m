@@ -11,10 +11,10 @@ function [A_k, B_k, E_k, c_k, Delta] = discretize_dynamics_ZOH(f, A, B, E, c, N,
     B_k = zeros([nx, nu, N - 1]);
     E_k = zeros([nx, np, N - 1]);
     c_k = zeros([nx, 1, N - 1]);
-    Delta = zeros([1, N - 1]);
+    Delta = zeros([nx, N - 1]);
     
     for k = 1:(N - 1)
         [A_k(:, :, k), B_k(:, :, k), E_k(:, :, k), c_k(:, :, k), x_kp1] = integrate_discrete_ZOH(x_ref(:, k), A, B, E, c, f, u_ref(:, k), p_ref, [t_k(k), t_k(k + 1)], tolerances);
-        Delta(k) = norm(x_kp1 - x_ref(:, k + 1), 2);
+        Delta(:, k) = x_kp1 - x_ref(:, k + 1);
     end
 end

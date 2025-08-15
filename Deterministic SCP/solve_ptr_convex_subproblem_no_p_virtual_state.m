@@ -35,12 +35,20 @@ cvx_begin quiet
         for k = 1:prob.Nu
             % Convex Constraints
             for cc = 1:prob.n.cvx
-                prob.convex_constraints{cc}(t_k(k), prob.unscale_x(xi(:, k)), prob.unscale_u(U(:, k)), 0) <= 0;
+                cc_k = prob.convex_constraints{cc}{1};
+                if ismember(k, cc_k)
+                    cvx_constraint_func = prob.convex_constraints{cc}{2};
+                    cvx_constraint_func(t_k(k), prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0) <= 0;
+                end
             end
             % Nonconvex Constraints
             for nc = 1:prob.n.ncvx
-                prob.nonconvex_constraints{nc}(t_k(k), prob.unscale_x(xi(:, k)), prob.unscale_u(U(:, k)), 0, x_ref, u_ref, 0) ...
-                    - v_prime(nc) <= 0;
+                nc_k = prob.nonconvex_constraints{nc}{1};
+                if ismember(k, nc_k)
+                    ncvx_constraint_func = prob.nonconvex_constraints{nc}{2};
+                    ncvx_constraint_func(t_k(k), prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, prob.unscale_x(x_ref), prob.unscale_u(u_ref), 0, k) ...
+                        - v_prime(nc) <= 0;
+                end
             end
         end
         v_prime >= 0;
@@ -48,7 +56,7 @@ cvx_begin quiet
         % Boundary Conditions
         %prob.initial_bc(prob.unscale_x(X(:, 1)), 0) == 0;
         prob.initial_bc(prob.unscale_x(xi(:, 1)), 0) == 0;
-        prob.terminal_bc(prob.unscale_x(xi(:, prob.N)), 0) == 0;
+        prob.terminal_bc(prob.unscale_x(xi(:, prob.N)), 0, prob.unscale_x(prob.unscale_x(x_ref(:, prob.N))), 0) == 0;
 cvx_end
 
 %t2 = toc(t1);
@@ -106,7 +114,7 @@ end
 
 % 2-norm squared versions (seem to result in 2 times more ptr iterations than just 2-norm)
 function [J_tr] = trust_region_cost(x, u, p, x_ref, u_ref, p_ref, w_tr, w_tr_p)
-    J_tr = sum(w_tr * (sum_square(x - x_ref) + sum_square(u - u_ref))) + w_tr_p * sum_square(p - p_ref);
+    J_tr = w_tr * (sum(sum_square(x - x_ref)) + sum(sum_square(u - u_ref))) + w_tr_p * sum_square(p - p_ref);
 end
 
 function [J_vse] = virtual_state_cost(x, xi, w_vse)

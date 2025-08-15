@@ -42,12 +42,20 @@ cvx_begin quiet
         for k = 1:prob.Nu
             % Convex Constraints
             for cc = 1:prob.n.cvx
-                prob.convex_constraints{cc}(t_k(k), prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), prob.unscale_p(p)) <= 0;
+                cc_k = prob.convex_constraints{cc}{1};
+                if ismember(k, cc_k)
+                    cvx_constraint_func = prob.convex_constraints{cc}{2};
+                    cvx_constraint_func(t_k(k), prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), prob.unscale_p(p)) <= 0;
+                end
             end
             % Nonconvex Constraints
             for nc = 1:prob.n.ncvx
-                prob.nonconvex_constraints{nc}(t_k(k), prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), prob.unscale_p(p), prob.unscale_x(x_ref), prob.unscale_u(u_ref), prob.unscale_p(p_ref)) ...
-                    - v_prime(nc) <= 0;
+                nc_k = prob.nonconvex_constraints{nc}{1};
+                if ismember(k, nc_k)
+                    ncvx_constraint_func = prob.nonconvex_constraints{nc}{2};
+                    ncvx_constraint_func(t_k(k), prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), prob.unscale_p(p), prob.unscale_x(x_ref), prob.unscale_u(u_ref), prob.unscale_p(p_ref), k) ...
+                        - v_prime(nc) <= 0;
+                end
             end
         end
         v_prime >= 0;

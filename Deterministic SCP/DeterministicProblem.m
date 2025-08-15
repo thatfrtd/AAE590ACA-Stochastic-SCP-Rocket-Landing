@@ -9,6 +9,7 @@ classdef DeterministicProblem
         Nu
         n
         tf
+        t_k
         u_hold string {mustBeMember(u_hold, ["ZOH", "FOH"])} = "ZOH"
         guess
         cont
@@ -45,9 +46,11 @@ classdef DeterministicProblem
                 options.terminal_bc = @(x, p) x - xf % Has to be @(x, p)
                 options.integration_tolerance = 1e-12
                 options.scale = true
+                options.scale_hint = []
                 options.nonconvex_constraints = [] % Cell array of constraint functions @(t, x, u, p, x_ref, u_ref, p_ref)
                 options.discretization_method = "state"
                 options.N_sub = []
+                options.t_k = linspace(0, tf, N)
             end
             %DETERMINISTICPROBLEM Construct an instance of this class
             %   Detailed explanation goes here
@@ -61,7 +64,12 @@ classdef DeterministicProblem
             obj.n.p = size(guess.p, 1);
             obj.n.cvx = numel(convex_constraints);
             obj.n.ncvx = numel(options.nonconvex_constraints);
+            obj.n.ncvx_ineq_total = 0;
+            for i = 1 : obj.n.ncvx
+                obj.n.ncvx_ineq_total = obj.n.ncvx_ineq_total + numel(options.nonconvex_constraints{i}{1});
+            end
             obj.tf = tf;
+            obj.t_k = options.t_k;
             obj.u_hold = u_hold;
             obj.guess = guess;
             obj.cont.f = f;
@@ -72,7 +80,7 @@ classdef DeterministicProblem
             obj.terminal_bc = options.terminal_bc;
             obj.objective = objective;
             obj.scale = options.scale;
-            obj.scaling = obj.compute_scaling();
+            obj.scaling = obj.compute_scaling(options.scale_hint);
             obj.tolerances = odeset(RelTol=options.integration_tolerance, AbsTol=options.integration_tolerance);
             obj.discretization_method = options.discretization_method;
             obj.N_sub = options.N_sub;
@@ -126,20 +134,20 @@ classdef DeterministicProblem
                 if prob.u_hold == "ZOH"
                     error("RKV65 error discretization for ZOH not implemented")
                 elseif prob.u_hold == "FOH"
-                    %[prob.disc.A_k, prob.disc.B_plus_k, prob.disc.B_minus_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_error_dynamics_FOH_RKV65(prob.cont.f, prob.cont.A, prob.cont.B, prob.cont.E, prob.N, [0, prob.tf], x_ref, u_ref, p_ref, prob.N_sub);
-                    [prob.disc.A_k, prob.disc.B_plus_k, prob.disc.B_minus_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_error_dynamics_FOH_RKV65_3DoF_mex(prob.N, [0, prob.tf], x_ref, u_ref, 25, prob.N_sub, prob.vehicle.L, prob.vehicle.I(2), prob.vehicle.alpha);
+                    [prob.disc.A_k, prob.disc.B_plus_k, prob.disc.B_minus_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_error_dynamics_FOH_RKV65(prob.cont.f, prob.cont.A, prob.cont.B, prob.cont.E, prob.N, [0, prob.tf], x_ref, u_ref, p_ref, prob.N_sub);
+                    %[prob.disc.A_k, prob.disc.B_plus_k, prob.disc.B_minus_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_error_dynamics_FOH_RKV65_3DoF_mex(prob.N, [0, prob.tf], x_ref, u_ref, 25, prob.N_sub, prob.vehicle.L, prob.vehicle.I(2), prob.vehicle.alpha);
                     prob.disc.E_k = double.empty([7, 0, 15]);
                 end
             elseif prob.discretization_method == "errorRKV87"
                 if prob.u_hold == "ZOH"
                     error("RKV87 error discretization for ZOH not implemented")
                 elseif prob.u_hold == "FOH"
-                    [prob.disc.A_k, prob.disc.B_plus_k, prob.disc.B_minus_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_error_dynamics_FOH_RKV87(prob.N, [0, prob.tf], x_ref, u_ref, p_ref, prob.N_sub, prob.vehicle.L, prob.vehicle.I, prob.vehicle.alpha);
+                    [prob.disc.A_k, prob.disc.B_plus_k, prob.disc.B_minus_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_error_dynamics_FOH_RKV87(prob.cont.f, prob.cont.A, prob.cont.B, prob.cont.E, prob.N, [0, prob.tf], x_ref, u_ref, p_ref, prob.N_sub);
                 end
             end
         end
 
-        function [scaling] = compute_scaling(obj)
+        function [scaling] = compute_scaling(obj, scale_hint)
             z_ub = 1;
             z_lb = 0;
 
@@ -160,13 +168,23 @@ classdef DeterministicProblem
                 scaling.c_u = zeros([obj.n.u, 1]);%u_min - scaling.S_u * ones([obj.n.u, 1]) * z_lb;
                 scaling.c_p = zeros([obj.n.p, 1]);%p_min - scaling.S_p * ones([obj.n.p, 1]) * z_lb;
             else
-                scaling.S_x = diag(make_not_zero(x_max - x_min) / (z_ub - z_lb));
-                scaling.S_u = diag(make_not_zero(u_max - u_min) / (z_ub - z_lb));
-                scaling.S_p = diag(make_not_zero(p_max - p_min) / (z_ub - z_lb));
-    
-                scaling.c_x = x_min - scaling.S_x * ones([obj.n.x, 1]) * z_lb;
-                scaling.c_u = u_min - scaling.S_u * ones([obj.n.u, 1]) * z_lb;
-                scaling.c_p = p_min - scaling.S_p * ones([obj.n.p, 1]) * z_lb;
+                if isempty(scale_hint)
+                    scaling.S_x = diag(make_not_zero(x_max - x_min) / (z_ub - z_lb));
+                    scaling.S_u = diag(make_not_zero(u_max - u_min) / (z_ub - z_lb));
+                    scaling.S_p = diag(make_not_zero(p_max - p_min) / (z_ub - z_lb));
+        
+                    scaling.c_x = x_min - scaling.S_x * ones([obj.n.x, 1]) * z_lb;
+                    scaling.c_u = u_min - scaling.S_u * ones([obj.n.u, 1]) * z_lb;
+                    scaling.c_p = p_min - scaling.S_p * ones([obj.n.p, 1]) * z_lb;
+                else
+                    scaling.S_x = diag(make_not_zero(scale_hint.x_max - scale_hint.x_min) / (z_ub - z_lb));
+                    scaling.S_u = diag(make_not_zero(scale_hint.u_max - scale_hint.u_min) / (z_ub - z_lb));
+                    scaling.S_p = diag(make_not_zero(scale_hint.p_max - scale_hint.p_min) / (z_ub - z_lb));
+        
+                    scaling.c_x = scale_hint.x_min - scaling.S_x * ones([obj.n.x, 1]) * z_lb;
+                    scaling.c_u = scale_hint.u_min - scaling.S_u * ones([obj.n.u, 1]) * z_lb;
+                    scaling.c_p = scale_hint.p_min - scaling.S_p * ones([obj.n.p, 1]) * z_lb;
+                end
             end
             
             function [not_zero] = make_not_zero(maybe_zero)

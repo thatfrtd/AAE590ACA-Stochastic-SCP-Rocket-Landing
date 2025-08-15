@@ -66,14 +66,14 @@ z_lb = @(t) log(m_0 - alpha * T_max * t);
 z_lb_k = z_lb(t_k);
 
 % Convex state path constraints
-glideslope_constraint = @(t, x, u, p) norm(x(1:2)) - x(2) / cos(pi/2 - gamma_min);
+glideslope_constraint = {1:N, @(t, x, u, p) norm(x(1:2)) - x(2) / cos(pi/2 - gamma_min)};
 min_mass_constraint = @(t, x, u, p) z_lb(t) - x(5);
 state_convex_constraints = {glideslope_constraint};
 
 % Convex control constraints
-max_thrust_constraint = @(t, x, u, p) u(3) - T_max * exp(-z_lb(t)) * (1 - (x(5) - z_lb(t)));
-min_thrust_constraint = @(t, x, u, p) T_min * exp(-x(5)) - u(3);
-lcvx_thrust_constraint = @(t, x, u, p) norm(u(1:2))- u(3); 
+max_thrust_constraint = {1:N, @(t, x, u, p) u(3) - T_max * exp(-z_lb(t)) * (1 - (x(5) - z_lb(t)))};
+min_thrust_constraint = {1:N, @(t, x, u, p) T_min * exp(-x(5)) - u(3)};
+lcvx_thrust_constraint = {1:N, @(t, x, u, p) norm(u(1:2))- u(3)}; 
 control_convex_constraints = {min_thrust_constraint,max_thrust_constraint,lcvx_thrust_constraint};
 
 % Combine convex constraints

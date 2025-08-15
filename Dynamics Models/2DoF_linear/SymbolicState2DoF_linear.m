@@ -10,7 +10,7 @@
 %g = 3.7114e-3; % [km / s2]
 g = 9.81e-3; % [km / s2]
 
-syms alpha;
+syms alpha tf;
 t = sym("t");
 r = sym("r", [2, 1]);
 v = sym("v", [2, 1]);
@@ -21,7 +21,6 @@ thrust = sym("thrust", [2, 1]);
 thrust_mag = sym("thrust_mag", 1);
 u = [thrust; thrust_mag];
 
-tf = sym("tf");
 p = [tf];
 
 A = [zeros(2), eye(2), zeros(2, 1); zeros(2), zeros(2), zeros(2, 1); zeros(1, 2), zeros(1, 2), 0];
