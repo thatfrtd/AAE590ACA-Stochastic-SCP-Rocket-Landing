@@ -3,8 +3,8 @@
 Stochastic Sequential Convex Programming using the Penaliezd Trust Region (PTR) method for robust control of a rocket landing.
 
 <img width="1920" height="1091" alt="image" src="https://github.com/user-attachments/assets/616b8229-368c-4580-8134-6b4d6ee30375" />
-<img width="1920" height="1091" alt="image" src="https://github.com/user-attachments/assets/2419b70b-e833-48e9-a365-bb27b94898ab" />
-<img width="1920" height="1091" alt="image" src="https://github.com/user-attachments/assets/0b8a8470-9ad1-4149-b92a-acbd02dad074" />
+<img width="1120" height="840" alt="image" src="https://github.com/user-attachments/assets/a2129a76-ea67-457c-9ac0-a04b755d3739" />
+<img width="1120" height="840" alt="image" src="https://github.com/user-attachments/assets/8ccf93a4-8718-4770-98aa-cfd7c7041431" />
 
 Report: [AAE590ACA_Project (4).pdf](https://github.com/user-attachments/files/22990766/AAE590ACA_Project.4.pdf)
 
