@@ -2,6 +2,10 @@
 
 Stochastic Sequential Convex Programming using the Penaliezd Trust Region (PTR) method for robust control of a rocket landing.
 
+<img width="1920" height="1091" alt="image" src="https://github.com/user-attachments/assets/616b8229-368c-4580-8134-6b4d6ee30375" />
+
+Report: [AAE590ACA_Project (4).pdf](https://github.com/user-attachments/files/22990766/AAE590ACA_Project.4.pdf)
+
 ## Level 1 Roadmap
 - [x] [4/6] Define the dynamics of the planar system and the constraints. 
 - [x] [4/6] Convexify nonconvex elements of deterministic problem where appropriate
