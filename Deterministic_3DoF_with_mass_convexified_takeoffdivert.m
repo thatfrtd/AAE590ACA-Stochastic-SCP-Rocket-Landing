@@ -99,7 +99,7 @@ state_nonconvex_constraints = {glideslope_STC_constraint};
 nonconvex_constraints = [state_nonconvex_constraints];
 
 % Terminal boundary conditions
-terminal_bc = @(x, u, p) [x(1:6, :) - x_f; 0];
+terminal_bc = @(x, p, x_ref, p_ref) [x(1:6, :) - x_f; 0];
 
 %% Specify Objective
 min_fuel_angular_velocity_objective = @(x, u, p) sum(u(3, :) / T_max + x(6, 1:Nu) .^ 2) * delta_t;
@@ -359,8 +359,8 @@ xlim([0, ptr_sol.converged_i])
 grid on
 
 %%
-ptr_sol = sol_struct.opt_sol;
-prob_3DoF = sol_struct.prob;
+%ptr_sol = sol_struct.opt_sol;
+%prob_3DoF = sol_struct.prob;
 
 %%
 i = ptr_sol.converged_i;

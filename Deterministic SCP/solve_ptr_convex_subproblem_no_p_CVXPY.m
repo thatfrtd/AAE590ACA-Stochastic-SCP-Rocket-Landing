@@ -5,11 +5,11 @@ function [x_sol, u_sol, sol_info, problem] = solve_ptr_convex_subproblem_no_p_CV
 t1 = tic;
 
 % Solve
-if prob.n.x == 7
+if prob.Name == "Deterministic_6DoF_fixed"
     if prob.u_hold == "ZOH"
-        [X_py, U_py, eta_py, V_py, v_0_py, v_N_py, solve_status_py, problem] = pyrunfile("Deterministic3DoF_clarabel.py", ["X_sol", "U_sol", "eta", "V", "v_0", "v_N", "solve_status", "problem"], x_ref = x_ref, u_ref = u_ref, x_0 = prob.x0, x_f = prob.xf, A_k = prob.disc.A_k, B_k = prob.disc.B_k, c_k = prob.disc.c_k, params = prob.params, N = prob.N - 1, delta_t = prob.tf / (prob.N - 1), w_vc = ptr_ops.w_vc, w_tr = ptr_ops.w_tr, problem = problem);
+        [X_py, U_py, eta_py, V_py, v_0_py, v_N_py, solve_status_py, problem] = pyrunfile("Deterministic_6DoF_fixed_ZOH.py", ["X_sol", "U_sol", "eta", "V", "v_0", "v_N", "solve_status", "problem"], x_ref = x_ref, u_ref = u_ref, x_0 = prob.x0, x_f = prob.xf, A_k = prob.disc.A_k, B_k = prob.disc.B_k, c_k = prob.disc.c_k, params = prob.params, N = prob.N - 1, delta_t = prob.tf / (prob.N - 1), w_vc = ptr_ops.w_vc, w_tr = ptr_ops.w_tr, problem = problem);
     elseif prob.u_hold == "FOH"
-        [X_py, U_py, eta_py, V_py, v_0_py, v_N_py, solve_status_py, problem] = pyrunfile("Deterministic3DoF_clarabel_FOH.py", ["X_sol", "U_sol", "eta", "V", "v_0", "v_N", "solve_status", "problem"], x_ref = x_ref, u_ref = u_ref, x_0 = prob.x0, x_f = prob.xf, A_k = prob.disc.A_k, B_k_minus = prob.disc.B_minus_k, B_k_plus = prob.disc.B_plus_k, c_k = prob.disc.c_k, params = prob.params, N = prob.N - 1, delta_t = prob.tf / (prob.N - 1), w_vc = ptr_ops.w_vc, w_tr = ptr_ops.w_tr, problem = problem);
+        [X_py, U_py, eta_py, V_py, v_0_py, v_N_py, solve_status_py, problem] = pyrunfile("Deterministic_6DoF_fixed_FOH.py", ["X_sol", "U_sol", "eta", "V", "v_0", "v_N", "solve_status", "problem"], x_ref = x_ref, u_ref = u_ref, x_0 = prob.x0, x_f = prob.xf, A_k = prob.disc.A_k, B_k_minus = prob.disc.B_minus_k, B_k_plus = prob.disc.B_plus_k, c_k = prob.disc.c_k, params = prob.params, N = prob.N - 1, delta_t = prob.tf / (prob.N - 1), w_vc = ptr_ops.w_vc, w_tr = ptr_ops.w_tr, problem = problem);
     end
 end
 
@@ -25,29 +25,6 @@ v_N = double(v_N_py);
 solve_status = string(solve_status_py);
 
 t2 = toc(t1);
-
-% Maybe plot
-if size(U,1) == 5
-    figure
-    
-    tiledlayout(1, 3)
-    nexttile
-    plot3(X(1, :), X(2, :), X(3, :)); 
-    grid on
-    axis equal
-    
-    nexttile
-    stairs(U(1, :)); hold on
-    stairs(U(2, :)); hold on
-    stairs(U(3, :)); hold on
-    stairs(U(4, :)); hold off
-    grid on
-    
-    nexttile
-    stairs(rad2deg(U(5, :))); hold on
-    stairs(acosd(U(1, :) ./ U(4, :)));
-    grid on
-end
 
 % Package outputs
 

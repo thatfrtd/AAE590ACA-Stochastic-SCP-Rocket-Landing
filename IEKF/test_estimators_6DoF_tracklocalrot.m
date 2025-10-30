@@ -51,7 +51,7 @@ f = @(t, x, u, p) SymDynamicsQuat6DoF_localrot(x, u, L, I, alpha, g);
 % Measurements
 seed = 42;
 
-measure_magnetometer = false;
+measure_magnetometer = true;
 measure_barometer = true;
 measure_gps = true;
 
@@ -72,8 +72,8 @@ baro_acc_press = 5 / 3; % [Pa]
 baro_sensor = Barometer(1 / barometer_sample_rate, baro_acc_press, seed = seed, scale = 1e-3);
 
 gps_sample_rate = 1; % [s]
-gps_acc_horiz = 10 / 3; % [m]
-gps_acc_vert = 10 / 3; % [m]
+gps_acc_horiz = 3 / 3; % [m]
+gps_acc_vert = 3 / 3; % [m]
 gps_sensor = GPS(1 / gps_sample_rate, gps_acc_horiz, gps_acc_vert, seed = seed, scale = 1e-3);
 
 sensors = {baro_sensor, gps_sensor};
@@ -260,7 +260,7 @@ for a = 2 : N
 
     % EKF Measurement Update
     if last_mag_reading_t == t
-        %[x_hat_plus_EKF, Sigma_hat_plus_EKF] = EKF_measurement_update(x_hat_plus_EKF, Sigma_hat_plus_EKF, mag_reading, mag_h(x_hat_plus_EKF(7:9), imu_sensor.magnetic_field', @(x, p) R_b_i(x, eye(3))' * p), mag_H_EKF(x_hat_plus_EKF, imu_sensor.magnetic_field'), imu_sensor.mag_N());
+        [x_hat_plus_EKF, Sigma_hat_plus_EKF] = EKF_measurement_update(x_hat_plus_EKF, Sigma_hat_plus_EKF, mag_reading, mag_h(x_hat_plus_EKF(7:9), imu_sensor.magnetic_field', @(x, p) R_b_i(x, eye(3))' * p), mag_H_EKF(x_hat_plus_EKF, imu_sensor.magnetic_field'), imu_sensor.mag_N());
         %display(mag_h(x_hat_plus_EKF(7:9), imu_sensor.magnetic_field', R_b_i) - mag_reading)
     end
     if last_barometer_reading_t == t
@@ -281,7 +281,7 @@ for a = 2 : N
  
     % % QEKF Measurement Update
     if last_mag_reading_t == t
-        %[x_hat_plus_ESKF, Sigma_hat_plus_ESKF] = ESKF_measurement_update(x_hat_plus_ESKF, Sigma_hat_plus_ESKF, mag_reading, mag_h(x_hat_plus_ESKF(7:10), imu_sensor.magnetic_field', @(q, p) quat_rot(q_conj(q), p)), mag_H_LESKF(x_hat_plus_ESKF, imu_sensor.magnetic_field'), imu_sensor.mag_N(), @(x1, x2) LESKF_add_posquat(x1, x2), [0; 0; 0; 0; 0; 0; 1; 1; 1], x_a);
+        [x_hat_plus_ESKF, Sigma_hat_plus_ESKF] = ESKF_measurement_update(x_hat_plus_ESKF, Sigma_hat_plus_ESKF, mag_reading, mag_h(x_hat_plus_ESKF(7:10), imu_sensor.magnetic_field', @(q, p) quat_rot(q_conj(q), p)), mag_H_LESKF(x_hat_plus_ESKF, imu_sensor.magnetic_field'), imu_sensor.mag_N(), @(x1, x2) LESKF_add_posquat(x1, x2), [0; 0; 0; 0; 0; 0; 1; 1; 1], x_a);
         %[x_hat_plus_ESKF, Sigma_hat_plus_ESKF] = ESKF_measurement_update(x_hat_plus_ESKF, Sigma_hat_plus_ESKF, skew(mag_reading / norm(mag_reading)) * mag_h(x_hat_plus_ESKF(7:10), imu_sensor.magnetic_field' / norm(imu_sensor.magnetic_field), @(q, p) quat_rot(q_conj(q), p)), 0, mag2_H_LESKF(x_hat_plus_ESKF, mag_reading, imu_sensor.magnetic_field'), imu_sensor.mag_N(), @(x1, x2) LESKF_add_posquat(x1, x2), x_a);
         %[x_hat_plus_ESKF, Sigma_hat_plus_ESKF] = ESKF_measurement_update(x_hat_plus_ESKF, Sigma_hat_plus_ESKF, -2 * skew(mag_reading) * mag_h(x_hat_plus_ESKF(7:10), imu_sensor.magnetic_field', @(q, p) quat_rot(q_conj(q), p)), 0, mag3_H_LESKF(x_hat_plus_ESKF, mag_reading, imu_sensor.magnetic_field'), imu_sensor.mag_N(), @(x1, x2) LESKF_add_posquat(x1, x2), 0, x_a);
     end

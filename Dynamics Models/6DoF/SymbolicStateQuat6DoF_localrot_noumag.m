@@ -36,7 +36,7 @@ M = tau .* [1; 0; 0] + cross([-L; 0; 0], T);
 w_dot = (M + (I([2; 3; 1]) - I([3; 1; 2])) .* w([2; 3; 1]) .* w([3; 1; 2])) ./ I([1; 2; 3;]);
 
 % mdot
-m_dot = -alpha * thrust_mag - alpha * tau;
+m_dot = -alpha * thrust_mag - alpha * sqrt(tau ^ 2);
 
 x_dot = [r_dot; v_dot; qdot; w_dot; m_dot];
 %j_a = jacobian(x_dot, x);

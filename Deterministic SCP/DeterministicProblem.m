@@ -3,6 +3,7 @@ classdef DeterministicProblem
     %   Detailed explanation goes here
     
     properties
+        Name
         x0
         xf
         N
@@ -24,7 +25,7 @@ classdef DeterministicProblem
         sol
         tolerances
         params
-        discretization_method string {mustBeMember(discretization_method, ["state", "error", "errorRK4", "errorRKV65", "errorRKV87"])} = "state"
+        discretization_method string {mustBeMember(discretization_method, ["state", "error", "errorRK4", "errorRKV65", "errorRKV65_6DoFq", "errorRKV87"])} = "state"
         N_sub
         virtualization_method string {mustBeMember(virtualization_method, ["control", "state"])} = "control"
         vehicle
@@ -51,6 +52,7 @@ classdef DeterministicProblem
                 options.discretization_method = "state"
                 options.N_sub = []
                 options.t_k = linspace(0, tf, N)
+                options.Name = ""
             end
             %DETERMINISTICPROBLEM Construct an instance of this class
             %   Detailed explanation goes here
@@ -84,6 +86,7 @@ classdef DeterministicProblem
             obj.tolerances = odeset(RelTol=options.integration_tolerance, AbsTol=options.integration_tolerance);
             obj.discretization_method = options.discretization_method;
             obj.N_sub = options.N_sub;
+            obj.Name = options.Name;
         end
 
         function prob = linearize(prob)
@@ -136,7 +139,13 @@ classdef DeterministicProblem
                 elseif prob.u_hold == "FOH"
                     [prob.disc.A_k, prob.disc.B_plus_k, prob.disc.B_minus_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_error_dynamics_FOH_RKV65(prob.cont.f, prob.cont.A, prob.cont.B, prob.cont.E, prob.N, [0, prob.tf], x_ref, u_ref, p_ref, prob.N_sub);
                     %[prob.disc.A_k, prob.disc.B_plus_k, prob.disc.B_minus_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_error_dynamics_FOH_RKV65_3DoF_mex(prob.N, [0, prob.tf], x_ref, u_ref, 25, prob.N_sub, prob.vehicle.L, prob.vehicle.I(2), prob.vehicle.alpha);
-                    prob.disc.E_k = double.empty([7, 0, 15]);
+                    %prob.disc.E_k = double.empty([7, 0, 15]);
+                end
+            elseif prob.discretization_method == "errorRKV65_6DoFq"
+                if prob.u_hold == "ZOH"
+                    error("RKV65_6DoFq error discretization for ZOH not implemented")
+                elseif prob.u_hold == "FOH"
+                    [prob.disc.A_k, prob.disc.B_plus_k, prob.disc.B_minus_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_error_dynamics_FOH_RKV65_6DoFq(prob.cont.f, prob.cont.A, prob.cont.B, prob.cont.E, prob.N, [0, prob.tf], x_ref, u_ref, p_ref, prob.N_sub);
                 end
             elseif prob.discretization_method == "errorRKV87"
                 if prob.u_hold == "ZOH"

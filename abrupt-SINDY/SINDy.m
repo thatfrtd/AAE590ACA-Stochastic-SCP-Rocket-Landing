@@ -3,14 +3,14 @@ function [Xi, residual] = SINDy(x, xdot, Xi0, Theta, lambda, max_iter)
 %   Sparse Identification of Nonlinear Dynamics possibly with control.
 %   Solves the sparse regression problem of 
 %       xdot = Theta(x, u) * Xi
-%   Should also probably try DMDc (should be worse than SINDYc because it's just linear
+%   Should also probably try DMDc (should be worse than SINDYc because it's just linear)
 arguments
     x % state trajectory
     xdot % numerical derivative of state trajectory
     Xi0 % initial model coefficient matrix
     Theta % candidate library which are evaluated at x and u
     lambda = 0.025 % sparsity promoting knob - min coefficient magnitude
-    max_iter = 10 % maximum iterationsend
+    max_iter = 10 % maximum iterations
 end
 
 % TECHNICALLY SHOULD TRANSFORM THETA TO BE UNIT VARIANCE AND ZERO MEAN

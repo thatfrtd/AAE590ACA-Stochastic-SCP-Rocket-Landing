@@ -20,19 +20,24 @@ m_wet = 1150; % [kg]
 m_0 = m_dry + m_wet;
 gimbal_max = deg2rad(20); % [rad]
 g = 1.62e-3;
+time_min_max_thrust = 3; % [s] time to throttle from min to max thrust
+max_gimbal_rate = 10; % [deg / s] max rate of change of gimbal angle
+gimbal_max_STC = deg2rad(5); % [rad]
+gimbal_STC_trigger_height = 100 * 1e-3;
 
 vehicle = Vehicle(m_dry, L, L * 3, gimbal_max, T_min, T_max, I = I);
 
 % Problem Parameters
 tf = 35; % [s]
-N = 25; % []
+N = 15; % []
 r_0 = [250; -100; 433] * 1e-3; % [km]
-v_0 = [-30; 0; -15] * 1e-3; % [km / s]
+v_0 = [0; 0; -35] * 1e-3; % [km / s]
 theta_0 = [deg2rad(0); deg2rad(90); deg2rad(0)]; % [rad]
-R_0 = make_R(deg2rad(0), 3) * angle2dcm(theta_0(1), theta_0(2), theta_0(3));
+initial_roll = deg2rad(0);
+R_0 = make_R(initial_roll, 3) * angle2dcm(theta_0(1), theta_0(2), theta_0(3));
 q_0 = qexp(RLog(R_0));
 w_0 = deg2rad([0; 0; 0]); % [rad / s]
-glideslope_angle_max = deg2rad(80); % [rad]
+glideslope_angle_max = deg2rad(65); % [rad]
 
 theta_f = [0; deg2rad(90); 0]; % [rad]
 R_f = angle2dcm(theta_f(1), theta_f(2), theta_f(3));
@@ -55,13 +60,13 @@ nu = 4;
 np = 0;
 
 % PTR algorithm parameters
-ptr_ops.iter_max = 200;
-ptr_ops.iter_min = 5;
-ptr_ops.Delta_min = 1e-2;
-ptr_ops.w_vc = 1e6;
-ptr_ops.w_tr = ones(1, Nu) * 1e-1;
+ptr_ops.iter_max = 30;
+ptr_ops.iter_min = 1;
+ptr_ops.Delta_min = 5e-4;
+ptr_ops.w_vc = 1e2;
+ptr_ops.w_tr = ones(1, Nu) * 5e-2;
 ptr_ops.w_tr_p = 1e-1;
-ptr_ops.update_w_tr = true;
+ptr_ops.update_w_tr = false;
 ptr_ops.delta_tol = 2e-2;
 ptr_ops.q = 2;
 ptr_ops.alpha_x = 1;
@@ -84,33 +89,37 @@ f = @(t, x, u, p) SymDynamicsQuat6DoF_localrot_noumag(x, u, L, I, alpha, g);
 % Convex state path constraints
 glideslope_constraint = {1:N, @(t, x, u, p) norm(x(1:3)) - x(3) / cos(glideslope_angle_max)};
 mass_constraint = {1:N, @(t, x, u, p) m_dry - x(14)};
-angular_velocity_constraint = {1:N, @(t, x, u, p) norm(x(11:13), Inf) - deg2rad(10)};
+angular_velocity_constraint = {1:N, @(t, x, u, p) norm(x(11:13), Inf) - norm([w_0; deg2rad(20)], Inf)};
+flipper_constraint = {round(N / 2), @(t, x, u, p) -x(12) + deg2rad(5)};
 
-state_convex_constraints = {glideslope_constraint, mass_constraint};
+state_convex_constraints = {glideslope_constraint, mass_constraint, angular_velocity_constraint};
 
 % Convex control constraints
 max_thrust_constraint = {1:N, @(t, x, u, p) norm(u(1:3)) - T_max};
 %min_thrust_constraint = {1:N, @(t, x, u, p) T_min - u(4)};
 max_gimbal_constraint = {1:N, @(t, x, u, p) norm(u(1:3)) - u(1) / cos(gimbal_max)};
 %lcvx_thrust_constraint = {1:N, @(t, x, u, p) norm(u(1:3)) - u(4)}; 
-max_vane_angle_constraint = {1:N, @(t, x, u, p) square(u(4)) - deg2rad(0.5) ^ 2};
-control_convex_constraints = {max_gimbal_constraint,max_thrust_constraint, max_vane_angle_constraint};
+max_vane_angle_constraint = {1:N, @(t, x, u, p) abs(u(4)) - deg2rad(10)};
+control_convex_constraints = {max_gimbal_constraint,max_thrust_constraint};
 
 % Combine convex constraints
 convex_constraints = [state_convex_constraints, control_convex_constraints];
 
 % Nonconvex state constraints
-pitch_constraint = @(t, x, u, p) 1 - (2 * (x(7, :) .* x(9, :) - x(8, :) .* x(10, :))) .^ 2 - sin(deg2rad(75)) ^ 2;
+pitch_constraint = @(t, x, u, p) 1 - (2 * (x(7, :) .* x(9, :) - x(8, :) .* x(10, :))) .^ 2 - sin(deg2rad(45)) ^ 2;
 pitch_constraint_linearized = {1:N, linearize_constraint(pitch_constraint, nx, nu, np, "x", 7:10)};
 pitch_func = @(t, x, u, p) 2 * (x(7, :) .* x(9, :) - x(8, :) .* x(10, :));
 pitch_func_linearized = linearize_constraint(pitch_func, nx, nu, np, "x", 7:10);
 flip_constraint_linearized = {round(N / 2), @(t, x, u, p, x_ref, u_ref, p_ref, k) pitch_func_linearized(t, x, u, p, x_ref, u_ref, p_ref, k) + 0.99};
-state_nonconvex_constraints = {};
+state_nonconvex_constraints = {pitch_constraint_linearized};
 
 % Nonconvex control constraints
 min_thrust_constraint = @(t, x, u, p) T_min ^ 2 - sum_square(u(1:3));
 min_thrust_constraint_linearized = {1:N, linearize_constraint(min_thrust_constraint, nx, nu, np, "u", 1:3)};
-control_nonconvex_constraints = {min_thrust_constraint_linearized};
+max_thrust_rate_constraint = {1:(N - 1), @(t, x, u, p, x_ref, u_ref, p_ref, k) abs((norm(u_ref(1:3, k + 1)) + u_ref(1:3, k + 1)' / norm(u_ref(1:3, k + 1)) * (u(1:3, k + 1) - u_ref(1:3, k + 1))) - (norm(u_ref(1:3, k)) + u_ref(1:3, k)' / norm(u_ref(1:3, k)) * (u(1:3, k) - u_ref(1:3, k)))) / delta_t - (T_max - T_min) / time_min_max_thrust};
+max_gimbal_rate_constraint = {1:(N - 1), @(t, x, u, p, x_ref, u_ref, p_ref, k) -(u_ref(1:3, k)' * u_ref(1:3, k + 1) + u_ref(1:3, k)' * (u(1:3, k + 1) - u_ref(1:3, k + 1)) + u_ref(1:3, k + 1)' * (u(1:3, k) - u_ref(1:3, k))) + (norm(u_ref(1:3, k + 1)) * norm(u_ref(1:3, k))  + norm(u_ref(1:3, k)) * u(1:3, k + 1)' / norm(u_ref(1:3, k + 1)) * (u(1:3, k + 1) - u_ref(1:3, k + 1)) + norm(u_ref(1:3, k + 1)) * u_ref(1:3, k)' / norm(u_ref(1:3, k)) * (u(1:3, k) - u_ref(1:3, k))) * cosd(max_gimbal_rate * delta_t)};
+max_gimbal_constraint_STC = {round(N / 2) : N, @(t, x, u, p, x_ref, u_ref, p_ref, k) (norm(u(1:3)) - u(1) / cos(gimbal_max_STC)) * (x_ref(3, k) <= gimbal_STC_trigger_height)};
+control_nonconvex_constraints = {min_thrust_constraint_linearized, max_thrust_rate_constraint, max_gimbal_rate_constraint, max_gimbal_constraint_STC};
 
 % Combine nonconvex constraints
 nonconvex_constraints = [state_nonconvex_constraints, control_nonconvex_constraints];
@@ -118,13 +127,14 @@ nonconvex_constraints = [state_nonconvex_constraints, control_nonconvex_constrai
 % Terminal boundary conditions
 terminal_bc = @(x, p, x_ref, p_ref) [x(1:13) - x_f; 0];
 %terminal_bc = @(x, p, x_ref, p_ref) [x([1:6, 11:13], :) - x_f([1:6, 11:13]); x(7) - x(9); x(8) + x(10); x_ref(8) ^ 2 + x_ref(9) ^ 2 + [2, 2] * [x(8) - x_ref(8); x(9) - x_ref(9)] - 1 / 2; 0; 0];
+%terminal_bc = @(x, p, x_ref, p_ref) [x([1:6, 11:13], :) - x_f([1:6, 11:13]); x(7) - x(9); x(8) + x(10); 0; 0; 0];
 
 %% Specify Objective
 min_fuel_angular_velocity_objective = @(x, u, p) sum(u(3, :) / T_max + x(6, 1:Nu) .^ 2) * delta_t;
 if u_hold == "ZOH"
-    min_fuel_objective = @(x, u, p) sum(u(4, :)) * delta_t;
+    min_fuel_objective = @(x, u, p) -x(14, end) / m_0 + sum(abs(u(4, :)));
 elseif u_hold == "FOH"
-    min_fuel_objective = @(x, u, p) -x(14, end) / m_0 + sum(abs(u(4, :)));% + sum_square(u(4, :)); %sum((u(4, 1:(end - 1)) + u(4, 2:end)) / 2) * delta_t;
+    min_fuel_objective = @(x, u, p) -x(14, end) / m_0 + sum(abs(u(4, :))) + 0 * sum(abs(x(11, :)));% + sum_square(u(4, :)); %sum((u(4, 1:(end - 1)) + u(4, 2:end)) / 2) * delta_t;
 end
 
 %% Create Guess
@@ -141,7 +151,7 @@ elseif initial_guess == "straight line"
     %CasADi_sol = CasADi_solve_6DoF(x_0, x_f, sl_guess.x, sl_guess.u, vehicle, N, delta_t, glideslope_angle_max);
     sl_guess.x(4:6, 1) = x_0(4:6);
     sl_guess.u(1:3, :) = sl_guess.u(1:3, :) * T_max * 0.8;
-    sl_guess.u = sl_guess.u([1, 2, 3, 5], :);
+    sl_guess.u = sl_guess.u([1, 2, 3, 5], :) + 1e-12;
     if u_hold == "ZOH"
         sl_guess.x = [sl_guess.x; m_0 - alpha * [cumsum(vecnorm(sl_guess.u(1:3, :)) * delta_t), sum(vecnorm(sl_guess.u(1:3, :))) * delta_t]];
     elseif u_hold == "FOH"
@@ -155,6 +165,7 @@ if u_hold == "ZOH"
 elseif u_hold == "FOH"
     guess.u = interp1(t_k(1:size(guess.u, 2)), guess.u', t_k(1:Nu), "linear","extrap")';
 end
+
 %%
 % figure
 % plot_6DoF_trajectory(t_k, sl_guess.x, sl_guess.u, glideslope_angle_max, gimbal_max, T_min, T_max)
@@ -170,7 +181,7 @@ end
 
 
 %% Construct Problem Object
-prob_6DoF = DeterministicProblem(x_0, x_f, N, u_hold, tf, f, guess, convex_constraints, min_fuel_objective, scale = scale, scale_hint = scale_hint, terminal_bc = terminal_bc, nonconvex_constraints = nonconvex_constraints, discretization_method = "error");
+prob_6DoF = DeterministicProblem(x_0, x_f, N, u_hold, tf, f, guess, convex_constraints, min_fuel_objective, scale = scale, scale_hint = scale_hint, terminal_bc = terminal_bc, nonconvex_constraints = nonconvex_constraints, discretization_method = "error", N_sub = 1);
 
 %% Test Scaling
 % guess_scaled.x = prob_3DoF.scale_x(guess.x);
@@ -220,7 +231,7 @@ S_k = prob_6DoF.disc.E_k;
 d_k = prob_6DoF.disc.c_k;
 
 %% Try RK4 Discretization
-N_sub = 1;
+N_sub = 100;
 [A_k_rk4, B_k_plus_rk4, B_k_minus_rk4, S_k_rk4, d_k_rk4, Delta_rk4] = discretize_error_dynamics_FOH_RK4(f, A, B, S, N, tspan, guess.x, guess.u, guess.p, N_sub);
 
 A_err = sum(pagenorm(A_k_rk4 - A_k), "all");
@@ -405,23 +416,25 @@ function [R] = quat_rotmatrix(q)
 
     R = (w ^ 2 - v' * v) * eye(3) + 2 * v * v' + 2 * w * skew(v);
 end
+% %%
+% theta_0 = [deg2rad(0); deg2rad(90); deg2rad(0)]; % [rad]
+% R_0 = make_R(deg2rad(10), 3) * angle2dcm(theta_0(1), theta_0(2), theta_0(3));
+% q_0 = qexp(RLog(R_0));
+% w_0 = deg2rad([0; 0; 0]); % [rad / s]
+% glideslope_angle_max = deg2rad(80); % [rad]
+% 
+% theta_f = [0; deg2rad(90); 0]; % [rad]
+% R_f = angle2dcm(theta_f(1), theta_f(2), theta_f(3));
+% q_f = qexp(RLog(R_f));
+% 
+% Rq_0 = quat_rotmatrix(q_0);
+% Rq_f = quat_rotmatrix(q_f);
+% % 
+% figure
+% plot_basis(R_0, "q_0", "-"); hold on
+% plot_basis(R_f, "q_f", "--"); hold off
 %%
-theta_0 = [deg2rad(0); deg2rad(90); deg2rad(0)]; % [rad]
-R_0 = make_R(deg2rad(10), 3) * angle2dcm(theta_0(1), theta_0(2), theta_0(3));
-q_0 = qexp(RLog(R_0));
-w_0 = deg2rad([0; 0; 0]); % [rad / s]
-glideslope_angle_max = deg2rad(80); % [rad]
-
-theta_f = [0; deg2rad(90); 0]; % [rad]
-R_f = angle2dcm(theta_f(1), theta_f(2), theta_f(3));
-q_f = qexp(RLog(R_f));
-
-Rq_0 = quat_rotmatrix(q_0);
-Rq_f = quat_rotmatrix(q_f);
-
-figure
-plot_basis(R_0, "q_0", "-"); hold on
-plot_basis(R_f, "q_f", "--"); hold off
+quat_rotmatrix(x_cont_sol(7:10, end))
 
 %%
 theta_1 = zeros([numel(t_cont_sol), 1]);
@@ -443,10 +456,51 @@ figure
 plot(t_cont_sol, acosd(pagemtimes([0, 0, 1], quat_rot_array(x_cont_sol(7:10, :), repmat([1; 0; 0], 1, numel(t_cont_sol)))))); hold on
 plot(t_cont_sol, acosd(2 * (x_cont_sol(7, :) .* x_cont_sol(9, :) - x_cont_sol(8, :) .* x_cont_sol(10, :)))); hold off
 %%
-figure
-plot(t_cont_sol, 1 - (2 * (x_cont_sol(7, :) .* x_cont_sol(9, :) - x_cont_sol(8, :) .* x_cont_sol(10, :))) .^ 2); hold on
-yline(sin(deg2rad(45)) ^ 2)
-hold off
+% figure
+% plot(t_cont_sol, 1 - (2 * (x_cont_sol(7, :) .* x_cont_sol(9, :) - x_cont_sol(8, :) .* x_cont_sol(10, :))) .^ 2); hold on
+% yline(sin(deg2rad(45)) ^ 2)
+% hold off
 %%
 q_sym = sym("q", [4, 1]);
-dot([0; 0; 1], quat_rot(q_sym, [1; 0; 0]))
+dot([0; 0; 1], quat_rot(q_sym, [1; 0; 0]));
+
+%%
+t_iters = {};
+x_iters = {};
+u_iters = {};
+linestyle = string(1:ptr_sol.converged_i);
+for i = 1:ptr_sol.converged_i
+    t_iters{i} = t_k;
+    x_iters{i} = ptr_sol.x(:, :, i);
+    u_iters{i} = ptr_sol.u(:, :, i);
+    linestyle(i) = "-";
+end
+figure
+comparison_plot_6DoF_trajectory(x_iters, "iter " + string(1:ptr_sol.converged_i), glideslope_angle_max, linestyle = linestyle, title = "Solution vs Iteration")
+
+figure 
+comparison_plot_6DoFq_time_histories(t_iters, x_iters, u_iters, "iter " + string(1:ptr_sol.converged_i), linestyle = linestyle, title = "Solution vs Iteration")
+
+%%
+u_sol = ptr_sol.u(:, :, i);
+gimbal_rate_check = acosd(dot(u_cont_sol(1:3, 1: (end - 1)), u_cont_sol(1:3, 2:end)) ./ (vecnorm(u_cont_sol(1:3, 1 : (end - 1))) .* vecnorm(u_cont_sol(1:3, 2 : end)))) ./ diff(t_cont_sol)';
+gimbal_rate_check_disc = acosd(dot(u_sol(1:3, 1: (end - 1)), u_sol(1:3, 2:end)) ./ (vecnorm(u_sol(1:3, 1 : (end - 1))) .* vecnorm(u_sol(1:3, 2 : end)))) / delta_t;
+
+figure
+plot(t_cont_sol(2:end), gimbal_rate_check, t_k(1:(end - 1)), gimbal_rate_check_disc); 
+
+%% Validate with 6DoF Simulink Model
+opt_time = t_k;
+control_inputs = ptr_sol.u(:, :, i);
+input_vector = 1:nu;
+x_opt = ptr_sol.x(:, :, i);
+state_vector = 1:nx;
+r_0_6DoF = r_0;
+v_0_6DoF = v_0;
+v_0_b_6DoF = quat_rot(q_conj(q_0), v_0);
+[theta_1, theta_2, theta_3] = dcm2angle(R_0, "YXZ");
+rpy_0_6DoF = [theta_3; theta_1; theta_2];
+w_0_6DoF = w_0;
+
+x_0_6DoF = x_0;
+I_matrix = diag(I);

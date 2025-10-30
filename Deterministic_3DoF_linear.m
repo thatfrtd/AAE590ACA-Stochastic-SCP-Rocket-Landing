@@ -60,7 +60,7 @@ ptr_ops.alpha_p = 0;
 scale = true;
 
 %% Get Dynamics
-f = @(t, x, u, p) SymDynamics3DoF_linear(t, x, u, 1, alpha);
+f = @(t, x, u, p) SymDynamics3DoF_linear(t, x, u, 1, alpha, -g(3));
 
 %% Specify Constraints
 z_lb = @(t) log(m_0 - alpha * T_max * t);
@@ -84,7 +84,7 @@ control_convex_constraints = {min_thrust_constraint,max_thrust_constraint,lcvx_t
 convex_constraints = [state_convex_constraints, control_convex_constraints];
 
 % Terminal boundary condition
-terminal_bc = @(x, p) [x(1:6) - x_f; 0];
+terminal_bc = @(x, p, x_ref, p_ref) [x(1:6) - x_f; 0];
 
 %% Specify Objective
 min_fuel_angular_velocity_objective = @(x, u, p) sum(u(3, :) / T_max + x(6, 1:Nu) .^ 2) * delta_t;
@@ -111,7 +111,7 @@ sl_guess.x(7, :) = log(sl_guess.x(7, :));
 guess = sl_guess;
 
 %% Construct Problem Object
-prob_3DoF = DeterministicProblem(x_0, x_f, N, u_hold, tspan(end), f, guess, convex_constraints, min_fuel_objective, scale = scale, terminal_bc = terminal_bc);
+prob_3DoF = DeterministicProblem(x_0, x_f, N, u_hold, tspan(end), f, guess, convex_constraints, min_fuel_objective, scale = scale, terminal_bc = terminal_bc, discretization_method = "errorRKV87", N_sub = 1);
 
 %% Test Discretization
 [prob_3DoF, Delta_disc] = prob_3DoF.discretize(guess.x, guess.u, guess.p);

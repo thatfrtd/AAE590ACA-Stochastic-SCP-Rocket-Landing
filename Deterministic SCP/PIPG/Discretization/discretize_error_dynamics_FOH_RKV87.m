@@ -122,7 +122,7 @@ function [A_k, B_k_plus, B_k_minus, S_k, d_k, Delta] = discretize_error_dynamics
     d_k = reshape(x_kp1, nx, 1, N - 1) - (pagemtimes(A_k, reshape(x_ref(:, 1 : (N - 1)), nx, 1, N - 1)) ...
         + pagemtimes(B_k_minus, reshape(u_ref(:, 1 : (N - 1)), nu, 1, N - 1)) ...
         + pagemtimes(B_k_plus, reshape(u_ref(:, 2 : N), nu, 1, N - 1)) ...
-        + zero_if_empty(S_k * zero_if_empty(s_ref)));
+        + zero_if_empty(pagemtimes(S_k, zero_if_empty(s_ref))));
     
     Delta = x_kp1 - x_ref(:, 2 : N);
 end
@@ -132,15 +132,17 @@ function [xdot, A_kdot, B_k_plusdot, B_k_minusdot, S_kdot] = STM_diff_eq_FOH(t, 
 
     A_t = zeros(size(STM));
     B_t = zeros(size(Phi_B_plus));
+    S_t = zeros(size(Phi_S));
     xdot = zeros(size(x));
     for k = 1:n
         A_t(:, :, k) = A(t(k), x(:, k), u(:, k), s);
         B_t(:, :, k) = B(t(k), x(:, k), u(:, k), s);
+        S_t(:, :, k) = S(t(k), x(:, k), u(:, k), s);
         xdot(:, k) = f(t(k), x(:, k), u(:, k), s);
     end
 
     A_kdot = pagemtimes(A_t, STM);
     B_k_plusdot = pagemtimes(A_t, Phi_B_plus) + B_t .* sigma_plus;
     B_k_minusdot = pagemtimes(A_t, Phi_B_minus) + B_t .* sigma_minus;
-    S_kdot = pagemtimes(A_t, Phi_S) + reshape(S(t, x, u, s), [size(x, 1), size(s, 1), n]);
+    S_kdot = pagemtimes(A_t, Phi_S) + S_t;
 end

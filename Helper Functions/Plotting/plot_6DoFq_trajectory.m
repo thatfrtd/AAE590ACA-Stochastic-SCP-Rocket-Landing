@@ -34,6 +34,10 @@ u_N = quat_rot_array(x(7:10, 1:Nu), u(1:3, :));
 plot3(x(1, :), x(2, :), x(3, :)); hold on
 %line([x_lim(1), 0, x_lim(2)], abs([x_lim(1), 0, x_lim(2)]) / tan(glideslope_angle), 'Color', 'k', 'LineStyle', '--'); hold on
 quiver3(x(1, 1:options.step:Nu), x(2, 1:options.step:Nu), x(3, 1:options.step:Nu), -u_N(1, 1:options.step:end), -u_N(2, 1:options.step:end), -u_N(3, 1:options.step:end), ShowArrowHead = "off", color = "r", AutoScaleFactor=0.4)
+[X,Y,Z]=cylinder([0 1 / tan(pi / 2 - glideslope_angle)], 50);
+h=surf(X,Y,Z,'LineStyle','none','FaceAlpha',0.1);
+grid on
+light
 title(options.title)
 %legend("", "Glideslope", "Thrust", Location="southoutside", Orientation="horizontal")
 xlabel("X [km]")

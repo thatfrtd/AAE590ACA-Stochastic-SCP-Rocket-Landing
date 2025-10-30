@@ -53,7 +53,7 @@ cvx_begin quiet
                 nc_k = prob.nonconvex_constraints{nc}{1};
                 if ismember(k, nc_k)
                     ncvx_constraint_func = prob.nonconvex_constraints{nc}{2};
-                    ncvx_constraint_func(t_k(k), prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), prob.unscale_p(p), prob.unscale_x(x_ref), prob.unscale_u(u_ref), prob.unscale_p(p_ref), k) ...
+                    ncvx_constraint_func(t_k(k), prob.unscale_x(X), prob.unscale_u(U), prob.unscale_p(p), prob.unscale_x(x_ref), prob.unscale_u(u_ref), prob.unscale_p(p_ref), k) ...
                         - v_prime(nc) <= 0;
                 end
             end
@@ -62,7 +62,7 @@ cvx_begin quiet
 
         % Boundary Conditions
         prob.initial_bc(prob.unscale_x(X(:, 1)), prob.unscale_p(p)) + v_0 == 0;
-        prob.terminal_bc(prob.unscale_x(X(:, prob.N)), prob.unscale_p(p)) + v_N == 0;
+        prob.terminal_bc(prob.unscale_x(X(:, prob.N)), prob.unscale_p(p), prob.unscale_x(x_ref(:, prob.N)), prob.unscale_p(p_ref)) + v_N == 0;
 
         % Trust Region Constraints
         ptr_ops.alpha_x * sum(sum_square(X(:, 1:prob.Nu) - x_ref(:, 1:prob.Nu))) + ptr_ops.alpha_u * sum(sum_square(U - u_ref)) <= eta;

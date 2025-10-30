@@ -9,7 +9,7 @@ function [A_k, B_k_plus, B_k_minus, E_k, c_k, x] = integrate_discrete_FOH(x0, A,
     np = numel(p);
 
     STM0 = eye(nx);
-    B0 = zeros(size(B(0, x0, u(tspan(1)), p)));
+    B0 = zeros(size(B(0, x0, u(:, 1), p)));
     E0 = zeros(nx, np);
     c0 = zeros([nx, 1]);
 
@@ -39,12 +39,14 @@ function ydot = STM_diff_eq_FOH(t, y, A, B, E, c, f, u, p, sigma_plus, sigma_min
     x = y(1:n);
     STM = reshape(y((n + 1) : (n * (n + 1))), n, n);
 
-    xdot = f(t, x, u(t), p);
-    A_kdot = A(t, x, u(t), p) * STM;
-    B_k_plusdot = STM \ B(t, x, u(t), p) * sigma_plus(t);
-    B_k_minusdot = STM \ B(t, x, u(t), p) * sigma_minus(t);
-    E_kdot = STM \ E(t, x, u(t), p);
-    c_kdot = STM \ c(t, x, u(t), p);
+    u = u(:, 1) * sigma_minus(t) + u(:, 2) * sigma_plus(t);
+
+    xdot = f(t, x, u, p);
+    A_kdot = A(t, x, u, p) * STM;
+    B_k_plusdot = STM \ B(t, x, u, p) * sigma_plus(t);
+    B_k_minusdot = STM \ B(t, x, u, p) * sigma_minus(t);
+    E_kdot = STM \ E(t, x, u, p);
+    c_kdot = STM \ c(t, x, u, p);
 
     ydot = [xdot; A_kdot(:); B_k_plusdot(:); B_k_minusdot(:); E_kdot(:); c_kdot];
 end

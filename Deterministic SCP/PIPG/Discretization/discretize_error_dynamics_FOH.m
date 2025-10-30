@@ -1,6 +1,5 @@
 function [A_k, B_k_plus, B_k_minus, S_k, d_k, Delta] = discretize_error_dynamics_FOH(f, A, B, S, N, tspan, x_ref, u_ref, s_ref, tolerances)
-    % Discretization of the devition from a reference trajectory for a dynamical system assuming FOH control
-    % Make c optional? c = f - Ax - Bu
+    % Discretization of the deviation from a reference trajectory for a dynamical system assuming FOH control
 
     nx = numel(x_ref(:, 1));
     nu = numel(u_ref(:, 1));
@@ -13,8 +12,6 @@ function [A_k, B_k_plus, B_k_minus, S_k, d_k, Delta] = discretize_error_dynamics
     S_k = zeros([nx, np, N - 1]);
     d_k = zeros([nx, 1, N - 1]);
     Delta = zeros([nx, N - 1]);
-
-    %u_ref = @(t) interp1(t_k(1:size(u_ref, 2)), u_ref', t, "linear", "extrap")';
 
     for k = 1:(N - 1)
         u_ref_k = [u_ref(:, k), u_ref(:, k + 1)];

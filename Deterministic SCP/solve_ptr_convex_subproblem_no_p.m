@@ -50,7 +50,7 @@ cvx_begin quiet
                 nc_k = prob.nonconvex_constraints{nc}{1};
                 if ismember(k, nc_k)
                     ncvx_constraint_func = prob.nonconvex_constraints{nc}{2};
-                    ncvx_constraint_func(t_k(k), prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, prob.unscale_x(x_ref), prob.unscale_u(u_ref), 0, k) ...
+                    ncvx_constraint_func(t_k(k), prob.unscale_x(X), prob.unscale_u(U), 0, prob.unscale_x(x_ref), prob.unscale_u(u_ref), 0, k) ...
                         - v_prime(nc) <= 0;
                 end
             end
@@ -64,7 +64,7 @@ cvx_begin quiet
         % Trust Region Constraints
         ptr_ops.alpha_x * sum_square(X(:, 1:prob.Nu) - x_ref(:, 1:prob.Nu)) + ptr_ops.alpha_u * sum_square(U - u_ref) <= eta;
         %ptr_ops.alpha_x * norms(X(:, 1:prob.Nu) - x_ref(:, 1:prob.Nu), 2, 1) + ptr_ops.alpha_u * norms(U - u_ref, 2, 1) <= eta;
-        norm(eta) <= 5e-1;
+        %norm(eta) <= 5e-1;
 cvx_end
 
 %t2 = toc(t1);
