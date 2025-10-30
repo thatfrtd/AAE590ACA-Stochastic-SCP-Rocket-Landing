@@ -6,17 +6,16 @@ function [Delta] = calculate_defect(prob, x_ref, u_ref, p_ref)
 %   feasibility
     
     x_prop = zeros([prob.n.x, prob.N - 1]);
-    t_k = linspace(0, prob.tf, prob.N);
 
     if prob.u_hold == "ZOH"
-        u_ref_func = @(t) interp1(t_k(1:prob.Nu), u_ref(:, 1:prob.Nu)', t, "previous","extrap")';
+        u_ref_func = @(t) interp1(prob.t_k(1:prob.Nu), u_ref(:, 1:prob.Nu)', t, "previous","extrap")';
     elseif prob.u_hold == "FOH"
-        u_ref_func = @(t) interp1(t_k(1:size(u_ref, 2)), u_ref', t, "linear","extrap")';
+        u_ref_func = @(t) interp1(prob.t_k(1:size(u_ref, 2)), u_ref', t, "linear","extrap")';
     end
 
     % Propagate trajectory with actual control and dynamics
     for k = 1:(prob.N - 1)
-        [~, x_prop_k] = ode45(@(t, x) prob.cont.f(t, x, u_ref_func(t), p_ref), [t_k(k), t_k(k + 1)], x_ref(:, k), prob.tolerances);
+        [~, x_prop_k] = ode45(@(t, x) prob.cont.f{k}(t, x, u_ref_func(t), p_ref), [prob.t_k(k), prob.t_k(k + 1)], x_ref(:, k), prob.tolerances);
         x_prop(:, k) = x_prop_k(end, :)';
     end
    

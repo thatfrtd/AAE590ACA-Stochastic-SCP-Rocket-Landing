@@ -1,4 +1,4 @@
-function [x_sol, u_sol, p_sol, sol_info] = solve_ptr_convex_subproblem(prob, ptr_ops, x_ref, u_ref, p_ref)
+function [x_sol, u_sol, p_sol, sol_info] = solve_ptr_convex_subproblem_phase(prob, ptr_ops, x_ref, u_ref, p_ref)
 %SOLVE_PTR_CONVEX_SUBPROBLEM Summary of this function goes here
 %   Detailed explanation goes here
 
@@ -7,32 +7,37 @@ cvx_begin quiet
     variable U(prob.n.u, prob.Nu)
     variable p(prob.n.p, 1)
     variable eta(1, prob.Nu)
-    variable eta_p(prob.n.p, 1)
+    variable eta_p(1, prob.n.p)
     variable V(prob.n.x, prob.N - 1)
     variable v_prime(prob.n.ncvx)
+    variable v_trans(prob.n.pncvx)
     variable v_0(prob.n.x, 1)
     variable v_N(prob.n.x, 1)
     minimize( prob.objective(prob.unscale_x(X), prob.unscale_u(U), prob.unscale_p(p), prob.unscale_x(x_ref), prob.unscale_u(u_ref), prob.unscale_p(p_ref)) ...
-        + virtual_control_cost(V, v_prime, v_0, v_N, ptr_ops.w_vc) ...
+        + virtual_control_cost(V, [v_prime v_trans], v_0, v_N, ptr_ops.w_vc) ...
         + trust_region_cost(eta, eta_p, ptr_ops.w_tr, ptr_ops.w_tr_p) )
     subject to
         % Dynamics
         if prob.u_hold == "ZOH"
             for k = 1:(prob.N - 1)
-                X(:, k + 1) == prob.scale_x(prob.disc.A_k(:, :, k) * prob.unscale_x(X(:, k)) ...
-                             + prob.disc.B_k(:, :, k) * prob.unscale_u(U(:, k)) ...
-                             + prob.disc.E_k(:, :, k) * prob.unscale_p(p) ...
-                             + prob.disc.c_k(:, :, k) ...
-                             + V(:, k));
+                if ~ismember(k, prob.phase_transition_k)
+                    X(:, k + 1) == prob.scale_x(prob.disc.A_k(:, :, k) * prob.unscale_x(X(:, k)) ...
+                                 + prob.disc.B_k(:, :, k) * prob.unscale_u(U(:, k)) ...
+                                 + prob.disc.E_k(:, :, k) * prob.unscale_p(p) ...
+                                 + prob.disc.c_k(:, :, k) ...
+                                 + V(:, k));
+                end
             end
         elseif prob.u_hold == "FOH"
             for k = 1:(prob.N - 1)
-                X(:, k + 1) == prob.scale_x(prob.disc.A_k(:, :, k) * prob.unscale_x(X(:, k)) ...
-                             + prob.disc.B_minus_k(:, :, k) * prob.unscale_u(U(:, k)) ...
-                             + prob.disc.B_plus_k(:, :, k) * prob.unscale_u(U(:, k + 1)) ...
-                             + prob.disc.E_k(:, :, k) * prob.unscale_p(p) ...
-                             + prob.disc.c_k(:, :, k) ...
-                             + V(:, k));
+                if ~ismember(k, prob.phase_transition_k)
+                    X(:, k + 1) == prob.scale_x(prob.disc.A_k(:, :, k) * prob.unscale_x(X(:, k)) ...
+                                 + prob.disc.B_minus_k(:, :, k) * prob.unscale_u(U(:, k)) ...
+                                 + prob.disc.B_plus_k(:, :, k) * prob.unscale_u(U(:, k + 1)) ...
+                                 + prob.disc.E_k(:, :, k) * prob.unscale_p(p) ...
+                                 + prob.disc.c_k(:, :, k) ...
+                                 + V(:, k));
+                end
             end
         end
 
@@ -56,7 +61,39 @@ cvx_begin quiet
                 end
             end
         end
-        v_prime >= 0;
+
+        % Phase transition constraints
+        pncvx_count = 0;
+        for e = 1:(prob.n.phase - 1)
+            ph_k = prob.phase_transition_k(e);
+            % Convex Constraints
+            for pcc = 1:prob.phase_transition{e}.n.cvx
+                cvx_constraint_func = prob.phase_transition{e}.convex_constraints{pcc}{1};
+                cvx_constraint_type = prob.phase_transition{e}.convex_constraints{pcc}{2};
+                if cvx_constraint_type == "<="
+                    cvx_constraint_func(prob.t_k(ph_k), prob.unscale_x(X(:, [ph_k, ph_k + 1])), prob.unscale_u(U(:, [ph_k, ph_k + 1])), prob.unscale_p(p)) <= 0;
+                elseif cvx_constraint_type == "=="
+                    cvx_constraint_func(prob.t_k(ph_k), prob.unscale_x(X(:, [ph_k, ph_k + 1])), prob.unscale_u(U(:, [ph_k, ph_k + 1])), prob.unscale_p(p)) == 0;
+                end
+            end
+            % Nonconvex Constraints
+            for pnc = 1:prob.phase_transition{e}.n.ncvx
+                pncvx_count = pncvx_count + 1;
+                ncvx_constraint_func = prob.phase_transition{e}.nonconvex_constraints{pnc}{1};
+                ncvx_constraint_type = prob.phase_transition{e}.nonconvex_constraints{pnc}{2};
+                if ncvx_constraint_type == "<="
+                    ncvx_constraint_func(prob.t_k(ph_k), prob.unscale_x(X(:, [ph_k, ph_k + 1])), prob.unscale_u(U(:, [ph_k, ph_k + 1])), prob.unscale_p(p), prob.unscale_x(x_ref(:, [ph_k, ph_k + 1])), prob.unscale_u(u_ref(:, [ph_k, ph_k + 1])), prob.unscale_p(p_ref)) ...
+                        - v_trans(pncvx_count) <= 0;
+                    v_trans(pncvx_count) >= 0;
+                elseif ncvx_constraint_type == "=="
+                    ncvx_constraint_func(prob.t_k(ph_k), prob.unscale_x(X(:, [ph_k, ph_k + 1])), prob.unscale_u(U(:, [ph_k, ph_k + 1])), prob.unscale_p(p), prob.unscale_x(x_ref(:, [ph_k, ph_k + 1])), prob.unscale_u(u_ref(:, [ph_k, ph_k + 1])), prob.unscale_p(p_ref)) ...
+                        - v_trans(pncvx_count) == 0;
+                end
+            end
+        end
+
+        %p(1) == 2.62;
+        %p(2) == 10;
 
         % Boundary Conditions
         prob.initial_bc(prob.unscale_x(X(:, 1)), prob.unscale_p(p), prob.unscale_x(x_ref(:, 1)), prob.unscale_p(p_ref)) + v_0 == 0;
@@ -87,12 +124,12 @@ p_sol = p;
 
 sol_info.status = cvx_status;
 sol_info.vd = V;
-sol_info.vs = v_prime;
+sol_info.vs = [v_prime v_trans];
 sol_info.vbc_0 = v_0;
 sol_info.vbc_N = v_N;
 sol_info.J = prob.objective(prob.unscale_x(X), prob.unscale_u(U), prob.unscale_p(p), prob.unscale_x(x_ref), prob.unscale_u(u_ref), prob.unscale_p(p_ref));
 sol_info.J_tr = trust_region_cost(eta, eta_p, ptr_ops.w_tr, ptr_ops.w_tr_p);
-sol_info.J_vc = virtual_control_cost(V, v_prime, v_0, v_N, ptr_ops.w_vc);
+sol_info.J_vc = virtual_control_cost(V, [v_prime v_trans], v_0, v_N, ptr_ops.w_vc);
 sol_info.dJ = 100 * (prob.objective(prob.unscale_x(X), prob.unscale_u(U), prob.unscale_p(p), prob.unscale_x(x_ref), prob.unscale_u(u_ref), prob.unscale_p(p_ref)) ...
     - prob.objective(prob.unscale_x(x_ref), prob.unscale_u(u_ref), prob.unscale_p(p_ref), prob.unscale_x(x_ref), prob.unscale_u(u_ref), prob.unscale_p(p_ref))) ...
     / prob.objective(prob.unscale_x(x_ref), prob.unscale_u(u_ref), prob.unscale_p(p_ref), prob.unscale_x(x_ref), prob.unscale_u(u_ref), prob.unscale_p(p_ref));
@@ -106,7 +143,7 @@ sol_info.eta_p = eta_p;
 end
 
 function [J_tr] = trust_region_cost(eta, eta_p, w_tr, w_tr_p)
-    J_tr = w_tr * eta' + w_tr_p * eta_p;
+    J_tr = w_tr * eta' + w_tr_p * eta_p';
 end
 
 function [J_vc] = virtual_control_cost(V, v_prime, v_0, v_N, w_vc)

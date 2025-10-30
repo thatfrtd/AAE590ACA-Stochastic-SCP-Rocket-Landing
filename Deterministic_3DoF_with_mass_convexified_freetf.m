@@ -101,7 +101,7 @@ terminal_bc = @(x, u, p) [x(1:6, :) - x_f; 0];
 %% Specify Objective
 min_fuel_angular_velocity_objective = @(x, u, p) sum(u(3, :) / T_max + x(6, 1:Nu) .^ 2) * delta_t;
 if u_hold == "ZOH"
-    min_fuel_objective = @(x, u, p, x_ref, u_ref, p_ref) -x(7);%sum(u(3, :)) * p_ref(1) / N + sum(u_ref(3, :)) / N * (p(1) - p_ref(1));
+    min_fuel_objective = @(x, u, p, x_ref, u_ref, p_ref) sum(u(3, :)) * p_ref(1) / N + sum(u_ref(3, :)) / N * (p(1) - p_ref(1));
 elseif u_hold == "FOH"
     min_fuel_objective = @(x, u, p, x_ref, u_ref, p_ref) -x(7);%sum((u(3, 1:(end - 1)) + u(3, 2:end)) / 2) * p_ref(1) / N + sum((u_ref(3, 1:(end - 1)) + u_ref(3, 2:end)) / 2) * (p(1) - p_ref(1)) / N;
 end
@@ -117,7 +117,7 @@ sl_guess.x(7, :) = log(sl_guess.x(7, :));
 sl_guess.u = sl_guess.u .* exp(-sl_guess.x(7, 1:Nu));
 sl_guess.p = tf;
 
-CasADi_sol = CasADi_solve_mass_convexified(x_0, sl_guess.x, sl_guess.u, vehicle, N, delta_t * tf, glideslope_angle_max);%
+CasADi_sol = CasADi_solve_mass_convexified(x_0, sl_guess.x, sl_guess.u, vehicle, N, delta_t * 35, glideslope_angle_max);%
 
 if initial_guess == "straight line"
     guess = sl_guess;

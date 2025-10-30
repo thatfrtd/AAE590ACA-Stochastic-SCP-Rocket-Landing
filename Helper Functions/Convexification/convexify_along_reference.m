@@ -10,4 +10,6 @@ if numel(Delta) ~= prob.Nu
     Delta = [Delta, 0.00000001]; % Figure out what to do...
 end
 
+Delta(prob.phase_transition_k) = 1e-5;
+
 end

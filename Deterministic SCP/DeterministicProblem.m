@@ -22,6 +22,9 @@ classdef DeterministicProblem
         scaling
         sol
         tolerances
+        phase_transition
+        phase_transition_k
+        t_k
     end
     
     methods
@@ -36,11 +39,14 @@ classdef DeterministicProblem
                 guess % Has to have values .x, .u, .p
                 convex_constraints % Cell array of constraint functions @(t, x, u, p)
                 objective
-                options.initial_bc = @(x, p) x - x0 % Has to be @(x, p)
-                options.terminal_bc = @(x, p) x - xf % Has to be @(x, p)
+                options.initial_bc = @(x, p, x_ref, p_ref) x - x0 % Has to be @(x, p, x_ref, p_ref)
+                options.terminal_bc = @(x, p, x_ref, p_ref) x - xf % Has to be @(x, p, x_ref, p_ref)
                 options.integration_tolerance = 1e-12
                 options.scale = true
                 options.nonconvex_constraints = [] % Cell array of constraint functions @(t, x, u, p, x_ref, u_ref, p_ref)
+                options.phase_transition = []
+                options.phase_transition_k = []
+                options.t_k = []
             end
             %DETERMINISTICPROBLEM Construct an instance of this class
             %   Detailed explanation goes here
@@ -67,27 +73,41 @@ classdef DeterministicProblem
             obj.scale = options.scale;
             obj.scaling = obj.compute_scaling();
             obj.tolerances = odeset(RelTol=options.integration_tolerance, AbsTol=options.integration_tolerance);
-        end
+            obj.n.pncvx = 0;
+            obj.n.phase = numel(options.phase_transition) + 1;
+            if ~isempty(options.phase_transition)
+                for e = 1:numel(options.phase_transition)
+                    options.phase_transition{e}.n.cvx = numel(options.phase_transition{e}.convex_constraints);
+                    options.phase_transition{e}.n.ncvx = numel(options.phase_transition{e}.nonconvex_constraints);
+
+                    obj.n.pncvx = obj.n.pncvx + options.phase_transition{e}.n.ncvx;
+                end
+            end
+            obj.phase_transition = options.phase_transition;
+            obj.phase_transition_k = options.phase_transition_k;
+            if ~isempty(options.t_k)
+                obj.t_k = options.t_k;
+            else
+                obj.t_k = linspace(0, tf, N);
+            end
+        end     
 
         function prob = linearize(prob)
             %LINEARIZE 
-
+            
             t_sym = sym("t");
             x_sym = sym("x", [prob.n.x, 1]);
             u_sym = sym("u", [prob.n.u, 1]);
             p_sym = sym("p", [prob.n.p, 1]);
             
             % Linearize Dynamics
-            prob.cont.A = matlabFunction(jacobian(prob.cont.f(t_sym, x_sym, u_sym, p_sym), x_sym),"Vars", [{t_sym}; {x_sym}; {u_sym}; {p_sym}]);
-            prob.cont.B = matlabFunction(jacobian(prob.cont.f(t_sym, x_sym, u_sym, p_sym), u_sym),"Vars", [{t_sym}; {x_sym}; {u_sym}; {p_sym}]);
-            prob.cont.E = matlabFunction(jacobian(prob.cont.f(t_sym, x_sym, u_sym, p_sym), p_sym),"Vars", [{t_sym}; {x_sym}; {u_sym}; {p_sym}]);
+            for k = 1:(prob.N - 1)
+                prob.cont.A{k} = matlabFunction(jacobian(prob.cont.f{k}(t_sym, x_sym, u_sym, p_sym), x_sym),"Vars", [{t_sym}; {x_sym}; {u_sym}; {p_sym}]);
+                prob.cont.B{k} = matlabFunction(jacobian(prob.cont.f{k}(t_sym, x_sym, u_sym, p_sym), u_sym),"Vars", [{t_sym}; {x_sym}; {u_sym}; {p_sym}]);
+                prob.cont.E{k} = matlabFunction(jacobian(prob.cont.f{k}(t_sym, x_sym, u_sym, p_sym), p_sym),"Vars", [{t_sym}; {x_sym}; {u_sym}; {p_sym}]);
 
-            prob.cont.c = @(t, x, u, p) prob.cont.f(t, x, u, p) - prob.cont.A(t, x, u, p) * x - prob.cont.B(t, x, u, p) * u - zero_if_empty(prob.cont.E(t, x, u, p) * p);
-
-            % Linearize Nonconvex Constraints (Needed??)
-
-            % Linearize Boundary Conditions (6DoF Quaternion)
-            
+                prob.cont.c{k} = @(t, x, u, p) prob.cont.f{k}(t, x, u, p) - prob.cont.A{k}(t, x, u, p) * x - prob.cont.B{k}(t, x, u, p) * u - zero_if_empty(prob.cont.E{k}(t, x, u, p) * p);
+            end
         end
         
         function [prob, Delta] = discretize(prob, x_ref, u_ref, p_ref)
@@ -96,9 +116,9 @@ classdef DeterministicProblem
             
             % Discretize Dynamics
             if prob.u_hold == "ZOH"
-                [prob.disc.A_k, prob.disc.B_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_dynamics_ZOH(prob.cont.f, prob.cont.A, prob.cont.B, prob.cont.E, prob.cont.c, prob.N, [0, prob.tf], x_ref, u_ref, p_ref, prob.tolerances);
+                [prob.disc.A_k, prob.disc.B_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_dynamics_ZOH(prob.cont.f, prob.cont.A, prob.cont.B, prob.cont.E, prob.cont.c, prob.N, prob.t_k, x_ref, u_ref, p_ref, prob.tolerances);
             elseif prob.u_hold == "FOH"
-                [prob.disc.A_k, prob.disc.B_plus_k, prob.disc.B_minus_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_dynamics_FOH(prob.cont.f, prob.cont.A, prob.cont.B, prob.cont.E, prob.cont.c, prob.N, [0, prob.tf], x_ref, u_ref, p_ref, prob.tolerances);
+                [prob.disc.A_k, prob.disc.B_plus_k, prob.disc.B_minus_k, prob.disc.E_k, prob.disc.c_k, Delta] = discretize_dynamics_FOH(prob.cont.f, prob.cont.A, prob.cont.B, prob.cont.E, prob.cont.c, prob.N, prob.t_k, x_ref, u_ref, p_ref, prob.tolerances);
             end
         end
 
@@ -191,19 +211,57 @@ classdef DeterministicProblem
                 u
                 p
                 options.tspan = [0, prob.tf]
+                options.x_k = []
             end
             %DISC_PROP Summary of this function goes here
             %   Detailed explanation goes here
-            t_k = linspace(0, prob.tf, prob.N);
-
             if prob.u_hold == "ZOH"
-                u_func = @(t) interp1(t_k(1:prob.Nu), u', t, "previous", "extrap")';
+                u_func = @(t) interp1(prob.t_k(1:prob.Nu), u', t, "previous", "extrap")';
             elseif prob.u_hold == "FOH"
-                u_func = @(t) interp1(t_k, u', t)';
+                u_func = @(t) interp1(prob.t_k, u', t)';
             end
 
-            [t_cont, x_cont] = ode45(@(t, x) prob.cont.f(t, x, u_func(t), p), options.tspan, prob.x0, prob.tolerances);
-            x_cont = x_cont';
+            x_cont = prob.x0;
+            t_cont = 0;
+            for e = 1:prob.n.phase
+                if e == 1
+                    x_0 = x_cont(:, end);
+                    if prob.n.phase == 1
+                        k_0 = 1;
+                        k_f = prob.N;
+                    else
+                        k_0 = 1;
+                        k_f = prob.phase_transition_k(e);
+                    end
+                else
+                    t_0 = prob.t_k(prob.phase_transition_k(e - 1) + 1);
+                    x_0 = prob.phase_transition{e - 1}.transition_func(t_0, x_cont(:, end), options.x_k(:, prob.phase_transition_k(e - 1)), options.x_k(:, prob.phase_transition_k(e - 1) + 1));
+
+                    if e == prob.n.phase
+                        k_0 = prob.phase_transition_k(e - 1) + 1;
+                        k_f = prob.N;
+                    else
+                        k_0 = prob.phase_transition_k(e - 1) + 1;
+                        k_f = prob.phase_transition_k(e);
+                    end
+                end
+
+                for k = k_0 : (k_f - 1)
+                    tspan_k = [prob.t_k(k) + 1e-12, prob.t_k(k + 1)];
+                    if k ~= k_0 
+                        x_0 = x_cont(:, end);
+                    end
+                        [t_cont_k, x_cont_k] = ode45(@(t, x) prob.cont.f{k}(t, x, u_func(t), p), tspan_k, x_0, prob.tolerances);
+    
+                    if k == 1
+                        t_cont = t_cont_k;
+                        x_cont = x_cont_k';
+                    else
+                        t_cont = [t_cont; t_cont_k];
+                        x_cont = [x_cont, x_cont_k'];
+                    end
+                end
+            end
 
             if prob.u_hold == "ZOH"
                 u_cont = u_func(t_cont(1:(numel(t_cont) - 1)));

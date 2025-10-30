@@ -38,12 +38,20 @@ cvx_begin quiet
         for k = 1:prob.Nu
             % Convex Constraints
             for cc = 1:prob.n.cvx
-                prob.convex_constraints{cc}(t_k(k), prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0) <= 0;
+                cc_k = prob.convex_constraints{cc}{1};
+                if ismember(k, cc_k)
+                    cvx_constraint_func = prob.convex_constraints{cc}{2};
+                    cvx_constraint_func(t_k(k), prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0) <= 0;
+                end
             end
             % Nonconvex Constraints
             for nc = 1:prob.n.ncvx
-                prob.nonconvex_constraints{nc}(t_k(k), prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, prob.unscale_x(x_ref), prob.unscale_u(u_ref), 0) ...
-                    - v_prime(nc) <= 0;
+                nc_k = prob.nonconvex_constraints{nc}{1};
+                if ismember(k, nc_k)
+                    ncvx_constraint_func = prob.nonconvex_constraints{nc}{2};
+                    ncvx_constraint_func(t_k(k), prob.unscale_x(X(:, k)), prob.unscale_u(U(:, k)), 0, prob.unscale_x(x_ref), prob.unscale_u(u_ref), 0, k) ...
+                        - v_prime(nc) <= 0;
+                end
             end
         end
         v_prime >= 0;
@@ -53,7 +61,8 @@ cvx_begin quiet
         prob.terminal_bc(prob.unscale_x(X(:, prob.N)), 0) + v_N == 0;
 
         % Trust Region Constraints
-        ptr_ops.alpha_x * norms(X(:, 1:prob.Nu) - x_ref(:, 1:prob.Nu), ptr_ops.q, 1) + ptr_ops.alpha_u * norms(U - u_ref, ptr_ops.q, 1) <= eta;
+        ptr_ops.alpha_x * sum_square(X(:, 1:prob.Nu) - x_ref(:, 1:prob.Nu)) + ptr_ops.alpha_u * sum_square(U - u_ref) <= eta;
+        %ptr_ops.alpha_x * norms(X(:, 1:prob.Nu) - x_ref(:, 1:prob.Nu), ptr_ops.q, 1) + ptr_ops.alpha_u * norms(U - u_ref, ptr_ops.q, 1) <= eta;
 cvx_end
 
 if size(U,1) == 5

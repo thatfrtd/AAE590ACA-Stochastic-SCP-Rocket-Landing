@@ -46,12 +46,12 @@ initial_guess = "straight line"; % "CasADi" or "straight line"
 % PTR algorithm parameters
 ptr_ops.iter_max = 20;
 ptr_ops.iter_min = 2;
-ptr_ops.Delta_min = 5e-5;
-ptr_ops.w_vc = 1e5;
-ptr_ops.w_tr = ones(1, Nu) * 1e0;
+ptr_ops.Delta_min = 1e-3;
+ptr_ops.w_vc = 1e3;
+ptr_ops.w_tr = ones(1, Nu) * 1e-3;
 ptr_ops.w_tr_p = 1e-1;
 ptr_ops.update_w_tr = false;
-ptr_ops.delta_tol = 1e-3;
+ptr_ops.delta_tol = 2e-2;
 ptr_ops.q = 2;
 ptr_ops.alpha_x = 1;
 ptr_ops.alpha_u = 1;
@@ -220,18 +220,11 @@ figure
 plot_3DoFc_trajectory(t_k, ptr_sol.x(:, :, i), ptr_sol.u(:, :, i), glideslope_angle_max, gimbal_max, T_min, T_max, step = 1, title = "")
 %%
 figure
-comparison_plot_3DoF_trajectory({guess.x, ptr_sol.x(:, :, i),  FOH_ptr_sol.x(:, :, FOH_ptr_sol.converged_i), CasADi_sol.x}, ["Guess", "ZOH", "FOH", "CasADi"], glideslope_angle_max, linestyle = [":", "-", "--", "-"], title = "")
-%%
-figure
 comparison_plot_3DoF_trajectory({guess.x, x_cont_sol, CasADi_sol.x}, ["Guess", "PTR", "CasADi"], glideslope_angle_max, linestyle = [":", "-", "-"], title = "")
 
 %%
 figure
 comparison_plot_3DoFc_time_histories({t_k, t_cont_sol, t_k}, {guess.x, x_cont_sol, ptr_sol.x(:, :, i)}, {guess.u, u_cont_sol, ptr_sol.u(:, :, i)}, ["Guess", "Cont", "Disc"], linestyle = [":", "-", "--"], title = "")
-
-%%
-figure
-comparison_plot_3DoFc_time_histories({t_cont_sol_ZOH, t_cont_sol_FOH}, {x_cont_sol_ZOH, x_cont_sol_FOH}, {u_cont_sol_ZOH, u_cont_sol_FOH}, ["ZOH", "FOH"], linestyle = ["-", "--"], title = "")
 
 %%
 t_iters = {};

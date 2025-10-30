@@ -1,5 +1,5 @@
-function [ptr_sol] = ptr(prob, ptr_ops)
-%PTR Sequential Convex Programming algorithm
+function [ptr_sol] = ptr_phase(prob, ptr_ops)
+%PTR_PHASE Sequential Convex Programming algorithm with phases
 %   If converged, solution satisfies the nonlinear continuous-time equations of motion
 % to within a tolerance on the order of eps_feasible feasible, satisfies all algebraic constraints at each
 % temporal node, and approximates (local) optimality of the original optimal control problem.
@@ -25,9 +25,9 @@ disp(" k |       status      |   vd  |   vs  |  vbc_0 |  vbc_N |    J    |   J_t
 for i = 1:(ptr_ops.iter_max)
     % Solve convex subproblem and update reference
     if prob.n.p == 0
-        [x_ref(:, :, i + 1), u_ref(:, :, i + 1), sol_info] = solve_ptr_convex_subproblem_no_p(prob, ptr_ops, x_ref(:, :, i), u_ref(:, :, i));
+        [x_ref(:, :, i + 1), u_ref(:, :, i + 1), sol_info] = solve_ptr_convex_subproblem_no_p_phase(prob, ptr_ops, x_ref(:, :, i), u_ref(:, :, i));
     else
-        [x_ref(:, :, i + 1), u_ref(:, :, i + 1), p_ref(:, i + 1), sol_info] = solve_ptr_convex_subproblem(prob, ptr_ops, x_ref(:, :, i), u_ref(:, :, i), p_ref(:, i));
+        [x_ref(:, :, i + 1), u_ref(:, :, i + 1), p_ref(:, i + 1), sol_info] = solve_ptr_convex_subproblem_phase(prob, ptr_ops, x_ref(:, :, i), u_ref(:, :, i), p_ref(:, i));
     end
 
     % Convexify along reference trajectory
@@ -44,18 +44,19 @@ for i = 1:(ptr_ops.iter_max)
         ptr_sol.info(i).dJ = ptr_sol.info(i - 1);
     end
     sol_info.delta = ptr_sol.delta_xp(i);
-    if norm(ptr_sol.Delta(:, i + 1)) > ptr_ops.Delta_min
-        sol_info.dyn = norm(ptr_sol.Delta(:, i + 1));
+    sol_info.dyn = norm(ptr_sol.Delta(:, i + 1)) <= ptr_ops.Delta_min;
+    if sol_info.dyn
+        dyn_string = "true";
     else
-        sol_info.dyn = true;
+        dyn_string = sprintf("%.4f", norm(ptr_sol.Delta(:, i + 1)));
     end
 
     ptr_sol.info(i) = sol_info;
 
     if i == 1
-        fprintf("%2.f | %17s | %5.1g | %5.1g | %5.1g | %5.1g | %5.3g | %5.3g | %5.3g |         | %6.1g | %6.1g | %5.1g | %5.1g | %5s | %5.1g | %5.1g | %5.1g | %5.1g\n", i, ptr_sol.info(i).status, normest(ptr_sol.info(i).vd), norm(ptr_sol.info(i).vs), norm(ptr_sol.info(i).vbc_0), norm(ptr_sol.info(i).vbc_N), ptr_sol.info(i).J, ptr_sol.info(i).J_tr, ptr_sol.info(i).J_vc, sum(ptr_sol.info(i).dx), sum(ptr_sol.info(i).du), sum(ptr_sol.info(i).dp), ptr_sol.info(i).delta, string(ptr_sol.info(i).dyn), norm(ptr_sol.info(i).eta), norm(ptr_sol.info(i).eta_x), norm(ptr_sol.info(i).eta_u), norm(ptr_sol.info(i).eta_p))
+        fprintf("%2.f | %17s | %5.1g | %5.1g | %5.1g | %5.1g | %5.3g | %5.3g | %5.3g |         | %6.1g | %6.1g | %5.1g | %5.1g | %5s | %5.1g | %5.1g | %5.1g | %5.1g\n", i, ptr_sol.info(i).status, normest(ptr_sol.info(i).vd), norm(ptr_sol.info(i).vs), norm(ptr_sol.info(i).vbc_0), norm(ptr_sol.info(i).vbc_N), ptr_sol.info(i).J, ptr_sol.info(i).J_tr, ptr_sol.info(i).J_vc, sum(ptr_sol.info(i).dx), sum(ptr_sol.info(i).du), sum(ptr_sol.info(i).dp), ptr_sol.info(i).delta, dyn_string, norm(ptr_sol.info(i).eta), norm(ptr_sol.info(i).eta_x), norm(ptr_sol.info(i).eta_u), norm(ptr_sol.info(i).eta_p))
     else
-        fprintf("%2.f | %17s | %5.1g | %5.1g | %5.1g | %5.1g | %5.3g | %5.3g | %5.3g | %6.3f | %6.1g | %6.1g | %5.1g | %5.1g | %5s | %5.1g | %5.1g | %5.1g | %5.1g\n", i, ptr_sol.info(i).status, normest(ptr_sol.info(i).vd), norm(ptr_sol.info(i).vs), norm(ptr_sol.info(i).vbc_0), norm(ptr_sol.info(i).vbc_N), ptr_sol.info(i).J, ptr_sol.info(i).J_tr, ptr_sol.info(i).J_vc, ptr_sol.info(i).dJ, sum(ptr_sol.info(i).dx), sum(ptr_sol.info(i).du), sum(ptr_sol.info(i).dp), ptr_sol.info(i).delta, string(ptr_sol.info(i).dyn), norm(ptr_sol.info(i).eta), norm(ptr_sol.info(i).eta_x), norm(ptr_sol.info(i).eta_u), norm(ptr_sol.info(i).eta_p))
+        fprintf("%2.f | %17s | %5.1g | %5.1g | %5.1g | %5.1g | %5.3g | %5.3g | %5.3g | %6.3f | %6.1g | %6.1g | %5.1g | %5.1g | %5s | %5.1g | %5.1g | %5.1g | %5.1g\n", i, ptr_sol.info(i).status, normest(ptr_sol.info(i).vd), norm(ptr_sol.info(i).vs), norm(ptr_sol.info(i).vbc_0), norm(ptr_sol.info(i).vbc_N), ptr_sol.info(i).J, ptr_sol.info(i).J_tr, ptr_sol.info(i).J_vc, ptr_sol.info(i).dJ, sum(ptr_sol.info(i).dx), sum(ptr_sol.info(i).du), sum(ptr_sol.info(i).dp), ptr_sol.info(i).delta, dyn_string, norm(ptr_sol.info(i).eta), norm(ptr_sol.info(i).eta_x), norm(ptr_sol.info(i).eta_u), norm(ptr_sol.info(i).eta_p))
     end
 
     if i >= ptr_ops.iter_min && ptr_sol.delta_xp(i) < ptr_ops.delta_tol && ~ptr_sol.converged && sol_info.dyn
